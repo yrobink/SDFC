@@ -86,16 +86,67 @@
 ## Libraries ##
 ###############
 
-from SDFC.__Dataset            import Dataset
-from SDFC.__NormalLaw          import NormalLaw
-from SDFC.__ExpLaw             import ExpLaw
-from SDFC.__GammaLaw           import GammaLaw
-from SDFC.__GPDLaw             import GPDLaw
-from SDFC.__GEVLaw             import GEVLaw
-from SDFC.__QuantileRegression import QuantileRegression
+import numpy         as np
+import scipy.special as scs
 
-from SDFC.__lmoments           import lmoments
 
-__version__ = "0.1.4"
+###############
+## Functions ##
+###############
+
+## TODO: vectorialize and use symmetrie to optimize methods
+## TODO: add order 4?
+
+def _lmoments2(X):
+	Y    = np.sort(X)
+	size = Y.size
+	res  = 0
+	for i in range(size):
+		res += ( scs.binom( i , 1 ) - scs.binom( size - i + 1 , 1 ) ) * Y[i]
+	
+	res = res / ( 2 * scs.binom( size , 2 ) )
+	
+	return res
+
+
+def _lmoments3(X):
+	Y    = np.sort(X)
+	size = Y.size
+	res  = 0
+	for i in range(size):
+		res += ( scs.binom( i , 2 ) - scs.binom( i , 1 ) * scs.binom( size - i + 1 , 1 ) + scs.binom( size - i + 1 , 2 ) ) * Y[i]
+	
+	res = res / ( 3 * scs.binom( size , 3 ) )
+	
+	return res
+
+
+def lmoments( X , order ):
+	"""
+		SDFC.lmoments
+		=============
+		
+		Estimate the lmoments of order 1, 2 or 3
+		
+		Parameters
+		----------
+		X     : np.array
+			Dataset to fit the lmoments
+		order : integer
+			1, 2 or 3.
+		
+		Returns
+		-------
+		The lmoments. If order > 3 or < 0, return np.nan
+	"""
+	if order == 1:
+		return np.mean(X)
+	elif order == 2:
+		return _lmoments2(X)
+	elif order == 3:
+		return _lmoments3(X)
+	else:
+		return np.nan
+
 
 

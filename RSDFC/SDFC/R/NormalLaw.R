@@ -249,7 +249,7 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 	find_init = function() ##{{{
 	{
 		## Estimate mu
-		lm_res = stats::lm( self$loc_design ~ self$Y )
+		lm_res = stats::lm( self$Y ~ self$loc_design - 1)
 		init_loc = lm_res$coefficients[1:self$nloc]
 		init_scale = numeric(self$nscale)
 		init_scale[1] = stats::sd(self$Y)

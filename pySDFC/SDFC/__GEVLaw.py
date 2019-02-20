@@ -97,11 +97,10 @@
 ## Libraries ##
 ###############
 
-import numpy                  as np
-import scipy.stats            as sc
-import scipy.linalg           as scl
-import scipy.optimize         as sco
-import scipy.spatial.distance as ssd
+import numpy          as np
+import scipy.special  as scs
+import scipy.linalg   as scl
+import scipy.optimize as sco
 
 from SDFC.__lmoments import lmoments
 
@@ -110,12 +109,12 @@ from SDFC.__lmoments import lmoments
 ## Classes ##
 #############
 
-class GPDLaw:
+class GEVLaw:
 	"""
-	SDFC.GPDLaw
+	SDFC.GEVLaw
 	===========
 	
-	Fit generalized pareto law, possibly with co-variable
+	Fit generalized extreme value law, possibly with co-variable
 	
 	"""
 	
@@ -141,16 +140,20 @@ class GPDLaw:
 			Scale parameter(s)
 		shape        : numpy.ndarray
 			Shape parameter(s)
+		loc_design   : numpy.ndarray
+			Design matrix for loc
 		scale_design : numpy.ndarray
 			Design matrix for scale
 		shape_design : numpy.ndarray
 			Design matrix for shape
+		nloc         : integer
+			Number of co-variate for loc + 1 (intercept)
 		nscale       : integer
 			Number of co-variate for scale + 1 (intercept)
 		nshape       : integer
 			Number of co-variate for shape + 1 (intercept)
 		ncov         : integer
-			nscale + nshape
+			nloc + nscale + nshape
 		optim_result : scipy.optimize.OptimizeResult
 			Result of minimization of likelihood
 		scale_coef_  : numpy.ndarray
@@ -168,27 +171,30 @@ class GPDLaw:
 		self.loc          = None
 		self.scale        = None
 		self.shape        = None
+		self.loc_design   = None
 		self.scale_design = None
 		self.shape_design = None
+		self.nloc         = None
 		self.nscale       = None
 		self.nshape       = None
 		self.ncov         = None
 		self.optim_result = None
+		self.loc_coef_    = None
 		self.scale_coef_  = None
 		self.shape_coef_  = None
 	##}}}
 	
-	def fit( self , Y , loc , scale_cov = None , shape_cov = None ): ##{{{
+	def fit( self , Y , loc_cov = None , scale_cov = None , shape_cov = None ): ##{{{
 		"""
-		Fit function for GPDLaw
+		Fit function for GEVLaw
 		
 		Arguments
 		---------
 		
 		Y         : numpy.ndarray
 			Data to fit
-		loc       : numpy.ndarray or float
-			Loc parameter (use QuantileRegression to find the loc parameters)
+		loc_cov   : None or numpy.ndarray
+			Co-variates of loc in columns.
 		scale_cov : None or numpy.ndarray
 			Co-variates of scale in columns.
 		shape_cov : None or numpy.ndarray
@@ -196,42 +202,48 @@ class GPDLaw:
 		"""
 		self._Y    = Y.ravel()
 		self._size = Y.size
-		self.loc   = loc.ravel() if loc.size == self._size else np.repeat( loc[0] , self._size )
+		self.loc   = np.zeros(self._size)
 		self.scale = np.zeros(self._size)
 		self.shape = np.zeros(self._size)
 		
 		## Design matrix
+		loc_cov   = loc_cov   if ( loc_cov   is None or loc_cov.ndim > 1 )   else loc_cov.reshape( (self._size,1) )
 		scale_cov = scale_cov if ( scale_cov is None or scale_cov.ndim > 1 ) else scale_cov.reshape( (self._size,1) )
 		shape_cov = shape_cov if ( shape_cov is None or shape_cov.ndim > 1 ) else shape_cov.reshape( (self._size,1) )
+		self.loc_design   = np.hstack( (np.ones( (self._size,1) ) , loc_cov) )   if loc_cov   is not None else np.zeros( (self._size,1) ) + 1.
 		self.scale_design = np.hstack( (np.ones( (self._size,1) ) , scale_cov) ) if scale_cov is not None else np.zeros( (self._size,1) ) + 1.
 		self.shape_design = np.hstack( (np.ones( (self._size,1) ) , shape_cov) ) if shape_cov is not None else np.zeros( (self._size,1) ) + 1.
 		
+		if np.linalg.matrix_rank(self.loc_design) < self.loc_design.shape[1]:
+			if self.verbose:
+				print( "SDFC.GEVLaw: singular design matrix for loc, co-variable coefficients are set to 0" )
+			self.loc_design = np.ones( (self._size,1) )
+		
 		if np.linalg.matrix_rank(self.scale_design) < self.scale_design.shape[1]:
 			if self.verbose:
-				print( "SDFC.GPDLaw: singular design matrix for scale, co-variable coefficients are set to 0" )
+				print( "SDFC.GEVLaw: singular design matrix for scale, co-variable coefficients are set to 0" )
 			self.scale_design = np.ones( (self._size,1) )
 		
 		if np.linalg.matrix_rank(self.shape_design) < self.shape_design.shape[1]:
 			if self.verbose:
-				print( "SDFC.GPDLaw: singular design matrix for shape, co-variable coefficients are set to 0" )
+				print( "SDFC.GEVLaw: singular design matrix for shape, co-variable coefficients are set to 0" )
 			self.shape_design = np.ones( (self._size,1) )
 		
+		self.nloc   = self.loc_design.shape[1]
 		self.nscale = self.scale_design.shape[1]
 		self.nshape = self.shape_design.shape[1]
-		self.ncov   = self.nscale + self.nshape
+		self.ncov   = self.nloc + self.nscale + self.nshape
 		
 		## Initial condition
-		init_scale,init_shape = self._find_init()
-		param_init = np.zeros( (self.ncov) )
-		param_init[0] = init_scale
-		param_init[self.nscale] = init_shape
+		param_init = self._find_init()
 		
 		## Optimization
 		self.optim_result = sco.minimize( self._optim_function , param_init , jac = self._gradient_optim_function , method = self._method )
 		
 		## Set result
-		self.scale_coef_ = self.optim_result.x[:self.nscale]
-		self.shape_coef_ = self.optim_result.x[self.nscale:]
+		self.loc_coef_   = self.optim_result.x[:self.nloc]
+		self.scale_coef_ = self.optim_result.x[self.nloc:(self.nloc+self.nscale)]
+		self.shape_coef_ = self.optim_result.x[(self.nloc+self.nscale):]
 		self._update_param( self.optim_result.x )
 	##}}}
 	
@@ -245,48 +257,36 @@ class GPDLaw:
 	
 	def _update_param( self , param ):##{{{
 		## Extract coefficients from param
-		scale_coef = param[:self.nscale]
-		shape_coef = param[self.nscale:]
+		loc_coef   = param[:self.nloc]
+		scale_coef = param[self.nloc:(self.nloc+self.nscale)]
+		shape_coef = param[(self.nloc+self.nscale):]
 		
 		## Set scale and shape
+		self.loc   = self.loc_design @ loc_coef
 		self.scale = self._link( self.scale_design @ scale_coef )
 		self.shape = self.shape_design @ shape_coef
 	##}}}
-
+	
 	def _find_init( self ):##{{{
-		## LMoments initial condition
-		idx_excess = (self._Y > self.loc)
-		excess = self._Y[idx_excess] - self.loc[idx_excess]
-#		lmo1   = np.mean(excess)
-#		lmo2   = np.sum( ssd.squareform( ssd.pdist( excess.reshape( (excess.size,1) ) , "cityblock" )) ) / ( 2 * excess.size * (excess.size - 1) )
-		lmo1   = lmoments( excess , 1 )
-		lmo2   = lmoments( excess , 2 )
-		itau     = lmo1 / lmo2
-		scale_lm = lmo1 * ( itau - 1 )
-		scale_lm = scale_lm if scale_lm > 0 else 1e-8
-		shape_lm = - ( itau - 2 )
 		
-		## Check negloglikelihood
-		self.scale = np.repeat( scale_lm , self._size )
-		self.shape = np.repeat( shape_lm , self._size )
-		eval_lm = self._negloglikelihood()
+		lmom1 = lmoments( self._Y , 1 )
+		lmom2 = lmoments( self._Y , 2 )
+		lmom3 = lmoments( self._Y , 3 )
 		
-		## MOMS initial condition
-		scale_mm = np.sqrt( np.var(excess) )
-		scale_mm = scale_mm if scale_mm > 0 else 1e-8
-		shape_mm = -1e-8
+		tau3  = lmom3 / lmom2
+		co    = 2. / ( 3. + tau3 ) - np.log(2) / np.log(3)
+		kappa = 7.8590 * co + 2.9554 * co**2
+		g     = scs.gamma( 1. + kappa )
 		
-		## Check negloglikelihood
-		self.scale = np.repeat( scale_mm , self._size )
-		self.shape = np.repeat( shape_mm , self._size )
-		eval_mm = self._negloglikelihood()
+		init_loc   = np.zeros( self.nloc )
+		init_scale = np.zeros( self.nscale )
+		init_shape = np.zeros( self.nshape )
 		
-		## Keep best
-		init_scale,init_shape = self._link_inv(1.),1e-2
-		if np.isfinite(eval_mm) or np.isfinite(eval_lm):
-			init_scale = self._link_inv( scale_mm if eval_mm < eval_lm else scale_lm )
-			init_shape = shape_mm if eval_mm < eval_lm else shape_lm
-		return init_scale,init_shape
+		init_scale[0] = lmom2 * kappa / ( (1 - np.power( 2 , - kappa )) * g )
+		init_loc[0]   = lmom1 - init_scale[0] * (1 - g) / kappa
+		init_shape[0] = - kappa
+		
+		return np.hstack( (init_loc,init_scale,init_shape) )
 	##}}}
 	
 	def _negloglikelihood( self ): ##{{{
@@ -300,16 +300,12 @@ class GPDLaw:
 			self.shape[zero_shape] = -1e-10
 		
 		##
-		idx_excess = (self._Y > self.loc)
-		loc   = self.loc[idx_excess]
-		scale = self.scale[idx_excess]
-		shape = self.shape[idx_excess]
-		Z = 1. + shape * ( self._Y[idx_excess] - loc ) / scale
+		Z = 1 + self.shape * ( self._Y - self.loc ) / self.scale
 		
 		if np.any(Z <= 0):
 			return np.inf
 		
-		res = np.sum( np.log( scale ) + np.log(Z) * ( 1 + 1. / shape ) )
+		res = np.sum( ( 1. + 1. / self.shape ) * np.log(Z) + np.power( Z , - 1. / self.shape ) + np.log(self.scale) )
 		
 		return res if np.isfinite(res) else np.inf
 	##}}}
@@ -319,33 +315,39 @@ class GPDLaw:
 		return self._negloglikelihood()
 	##}}}
 	
+	def _logZafun( self, Z , alpha ):##{{{
+		return alpha * np.log( 1. + self.shape * Z )
+	##}}}
+	
+	def _Zafun( self , Z , alpha ):##{{{
+		return np.exp( self._logZafun( Z , alpha ) )
+	##}}}
+	
 	def _gradient_optim_function( self , param ): ##{{{
 		
 		self._update_param(param)
 		
-		idx_excess = ( self._Y > self.loc )
-		Y      = self._Y[idx_excess]
-		loc    = self.loc[idx_excess]
-		scale  = self.scale[idx_excess]
-		shape  = self.shape[idx_excess]
-		Y_zero   = Y - loc
-		Z        = 1. + shape * Y_zero / scale
-		exponent = 1. + 1. / shape
+		## Impossible
+		if np.any( 1. + self.shape * ( self._Y - self.loc ) / self.scale <= 0 ):
+			return np.zeros( self.ncov ) + np.nan
 		
-		grad_phi   = scale if self._use_phi else 1.
-		grad_scale = self.scale_design[idx_excess,:].transpose() @ (grad_phi / scale - ( grad_phi * exponent * shape * Y_zero / (scale**2) ) / Z)
-		grad_shape = self.shape_design[idx_excess,:].transpose() @ ( - np.log(Z) / (shape**2) + exponent * Y_zero / scale / Z) if np.all(Z>0) else np.repeat(np.nan,self.nshape)
+		## Usefull values
+		Z     = ( self._Y - self.loc ) / self.scale
+		Za1   = self._Zafun( Z , 1. )
+		Zamsi = self._Zafun( Z , - 1. / self.shape ) ## Za of Minus Shape Inverse
 		
-#		phi_grad = scale if self._use_phi else 1.
-#		coef = phi_grad / scale - ( phi_grad * exponent * shape * Y_zero / (scale**2) ) / Z
-#		grad_scale = np.apply_along_axis( lambda X : np.sum(coef * X) , 0 , self.scale_design[idx_excess,:] )
-#		if np.all(Z > 0):
-#			coef = - np.log(Z) / (shape**2) + exponent * Y_zero / scale / Z
-#		else:
-#			coef = np.nan
-#		grad_shape = np.apply_along_axis( lambda X : np.sum(coef * X) , 0 , self.shape_design[idx_excess,:] )
+		## Vectors
+		phi_vect   = 1. if self._use_phi else 1. / self.scale
+		loc_vect   = (Zamsi - 1 - self.shape) / ( self.scale * Za1 )
+		scale_vect = 1. + Z * ( Zamsi - 1 - self.shape ) / Za1
+		shape_vect = ( Zamsi - 1 ) * ( np.log(Za1) / self.shape**2 - ( 1. + 1. / self.shape ) * Z / Za1 )
 		
+		## Gradients
+		grad_loc   = np.dot( self.loc_design.transpose()   , loc_vect )
+		grad_scale = np.dot( self.scale_design.transpose() , scale_vect * phi_vect )
+		grad_shape = np.dot( self.shape_design.transpose() , shape_vect )
 		
-		return np.hstack( (grad_scale,grad_shape) )
+		return np.hstack( (grad_loc,grad_scale,grad_shape) )
 	##}}}
+
 

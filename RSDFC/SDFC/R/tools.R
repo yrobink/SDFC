@@ -94,7 +94,7 @@
 #' ## Data
 #' size = 2000
 #' data = Dataset0(size)
-#' lmom1 = SDFC::LMoments1(Y)
+#' lmom1 = SDFC::LMoments1(data$Y)
 #' @export
 LMoments1 = function(Y)
 {
@@ -114,7 +114,7 @@ LMoments1 = function(Y)
 #' ## Data
 #' size = 2000
 #' data = Dataset0(size)
-#' lmom2 = SDFC::LMoments2(Y)
+#' lmom2 = SDFC::LMoments2(data$Y)
 #' @export
 LMoments2 = function(Y)
 {

@@ -82,20 +82,154 @@
 ##################################################################################
 ##################################################################################
 
+
 ###############
 ## Libraries ##
 ###############
 
-from SDFC.__Dataset            import Dataset
-from SDFC.__NormalLaw          import NormalLaw
-from SDFC.__ExpLaw             import ExpLaw
-from SDFC.__GammaLaw           import GammaLaw
-from SDFC.__GPDLaw             import GPDLaw
-from SDFC.__GEVLaw             import GEVLaw
-from SDFC.__QuantileRegression import QuantileRegression
+import numpy          as np
+import scipy.optimize as sco
 
-from SDFC.__lmoments           import lmoments
 
-__version__ = "0.1.4"
+#############
+## Classes ##
+#############
 
+class ExpLaw:
+	"""
+	SDFC.ExpLaw
+	===========
+	
+	Fit Exponential law, possibly with co-variable
+	
+	"""
+	
+	def __init__( self , use_phi = False , method = "BFGS" , verbose = False ): ##{{{
+		"""
+		Initialization of ExpLaw
+		
+		Parameters
+		----------
+		use_phi : bool
+			If True, the exponential link function is used to fit the the scale parameter, default False. Use with caution (fit is not very good if True)
+		method  : string
+			Method called to minimize the negloglikelihood function, default "BFGS"
+		verbose : bool
+			If True, warning and error are printed
+		
+		Attributes
+		----------
+		
+		scale        : numpy.ndarray
+			Scale parameter(s)
+		scale_design : numpy.ndarray
+			Design matrix for scale
+		nscale       : integer
+			Number of co-variate for scale + 1 (intercept)
+		ncov         : integer
+			nscale
+		optim_result : scipy.optimize.OptimizeResult
+			Result of minimization of likelihood
+		scale_coef_  : numpy.ndarray
+			coefficient fitted for scale
+		
+		"""
+		self._use_phi = use_phi
+		self._method  = method
+		self.verbose  = verbose
+		
+		self._Y            = None
+		self._size         = None
+		self.scale        = None
+		self.scale_design = None
+		self.nscale       = None
+		self.ncov         = None
+		self.optim_result = None
+		self.scale_coef_  = None
+	##}}}
+	
+	def fit( self , Y , scale_cov = None ): ##{{{
+		"""
+		Fit function for ExpLaw
+		
+		Arguments
+		---------
+		
+		Y         : numpy.ndarray
+			Data to fit
+		scale_cov : None or numpy.ndarray
+			Co-variates of scale in columns.
+		"""
+		self._Y    = Y.ravel()
+		self._size = Y.size
+		self.scale = np.zeros(self._size)
+		
+		## Design matrix
+		scale_cov = scale_cov if ( scale_cov is None or scale_cov.ndim > 1 ) else scale_cov.reshape( (self._size,1) )
+		self.scale_design = np.hstack( (np.ones( (self._size,1) ) , scale_cov) ) if scale_cov is not None else np.zeros( (self._size,1) ) + 1.
+		
+		if np.linalg.matrix_rank(self.scale_design) < self.scale_design.shape[1]:
+			if self.verbose:
+				print( "SDFC.ExpLaw: singular design matrix for scale, co-variable coefficients are set to 0" )
+			self.scale_design = np.ones( (self._size,1) )
+		
+		self.nscale = self.scale_design.shape[1]
+		self.ncov   = self.nscale
+		
+		## Initial condition
+		param_init = self._find_init()
+		
+		## Optimization
+		self.optim_result = sco.minimize( self._optim_function , param_init , jac = self._gradient_optim_function , method = self._method )
+		
+		## Set result
+		self.scale_coef_ = self.optim_result.x
+		self._update_param( self.optim_result.x )
+	##}}}
+	
+	def _link( self , x ): ##{{{
+		return np.exp(x) if self._use_phi else x
+	##}}}
+	
+	def _link_inv( self , x ): ##{{{
+		return np.log(x) if self._use_phi else x
+	##}}}
+	
+	def _update_param( self , param ):##{{{
+		self.scale = self._link( np.dot( self.scale_design , param ) )
+	##}}}
+	
+	def _find_init( self ):##{{{
+		
+		init_scale = np.zeros( self.nscale )
+		
+		init_scale[0] = self._link_inv( np.mean(self._Y) )
+		
+		return init_scale
+	##}}}
+	
+	def _negloglikelihood( self ): ##{{{
+		
+		if not np.all(self.scale > 0):
+			return np.Inf
+		
+		return np.sum( self._Y / self.scale + np.log(self.scale) )
+	##}}}
+	
+	def _optim_function( self , param ):##{{{
+		self._update_param(param)
+		return self._negloglikelihood()
+	##}}}
+	
+	def _gradient_optim_function( self , param ): ##{{{
+		self._update_param(param)
+		
+		grad_scale = np.zeros(self.nscale) + np.nan
+		grad_phi_scale = 1. if self._use_phi else self.scale
+		
+		if np.all(self.scale > 0):
+			grad_scale = np.dot( self.scale_design.transpose() , (1. - self._Y / self.scale) / grad_phi_scale )
+		
+		return grad_scale
+	##}}}
 

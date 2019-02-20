@@ -99,7 +99,7 @@ import scipy.optimize as sco
 class NormalLaw:
 	"""
 	SDFC.NormalLaw
-	===========
+	==============
 	
 	Fit Normal law, possibly with co-variable
 	
@@ -138,7 +138,7 @@ class NormalLaw:
 		optim_result : scipy.optimize.OptimizeResult
 			Result of minimization of likelihood
 		loc_coef_    : numpy.ndarray
-			coefficient fitted for shape
+			coefficient fitted for loc
 		scale_coef_  : numpy.ndarray
 			coefficient fitted for scale
 		

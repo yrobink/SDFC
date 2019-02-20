@@ -108,13 +108,13 @@ R instruction
 
 Requires: R, devtools, roxygen2, Rcpp, RcppEigen
 
-Use devtools to build and install the package:
->> devtools::build("SDFC")
+I'm not really sure of how to build, but this sequence works (good luck):
+>> roxygen2::roxygenize("SDFC") ## Return an error, but necessary to generate NAMSPACE file...
+>> devtools::load_all("SDFC")
+>> roxygen2::roxygenize("SDFC") ## Now, no errors
+>> devtools::build("SDFC")      ## Generate the package
 >> install.packages( "SDFC_version.tar.gz" )
 
-Maybe the man pages could be re-generate, use:
-
->> roxygen2::roxygenize( "SDFC" )
 
 
 Note for Quantile Regression

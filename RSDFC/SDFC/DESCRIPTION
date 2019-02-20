@@ -1,7 +1,7 @@
 Package: SDFC
 Type: Package
 Title: Statistical Distribution Fit with Covariates
-Version: 0.1.0
+Version: 0.1.1
 Date: 2019-22-01
 Authors@R: person("Yoann", "Robin", email = "yoann.robin.k@gmail.com", role = c("aut", "cre"))
 Description: Distribution Fit
@@ -12,4 +12,4 @@ LazyData: true
 NeedsCompilation: yes
 LinkingTo: Rcpp, RcppEigen
 Imports: Rcpp, RcppEigen, methods, R6
-RoxygenNote: 6.1.0
+RoxygenNote: 6.1.1

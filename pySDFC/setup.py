@@ -148,13 +148,13 @@ list_packages = [
 setup(
 	name = "SDFC" ,
 	description = "Statistical Distribution Fit with Covariates" ,
-	version = "0.1.1" ,
+	version = "0.1.4" ,
 	author = "Yoann Robin" ,
 	author_email = "yoann.robin.k@gmail.com" ,
 	license = "CeCILL-C" ,
 	ext_modules = cythonize(extensions) ,
 	platforms = [ "linux" , "macosx" ] ,
-	requires = [ "numpy" , "matplotlib" , "cython" ],
+	requires = [ "numpy" , "scipy" , "matplotlib" , "cython" ],
 	packages = list_packages,
 	package_dir = { "SDFC" : "SDFC" }
 )

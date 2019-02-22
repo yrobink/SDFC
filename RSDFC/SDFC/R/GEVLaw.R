@@ -81,9 +81,9 @@
 ##################################################################################
 ##################################################################################
 
-#' GPDLaw (Generalized Pareto)
+#' GEVLaw (Generalized Extreme Value)
 #'
-#' Class to generate, fit, and use a generalized pareto law.
+#' Class to generate, fit, and use a generalized extreme values law.
 #'
 #' @docType class
 #' @importFrom R6 R6Class
@@ -110,43 +110,18 @@
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(loc,scale,shape,use_phi,method,verbose)}}{Initialize pareto law with code{GPDLaw}}
+#'   \item{\code{new(loc,scale,shape,use_phi,method,verbose)}}{Initialize GEV law with code{GEVLaw}}
 #'   \item{\code{rvs(size,loc,scale,shape)}}{Random number generator}.
 #'   \item{\code{density(x,loc,scale,shape)}}{Density}.
 #'   \item{\code{cdf(Y,loc,scale,shape)}}{Cumulative distribution function.}.
 #'   \item{\code{icdf(p,loc,scale,shape)}}{Inverse of Cumulative distribution function.}.
 #'   \item{\code{sf(Y,loc,scale,shape)}}{Survival function.}.
 #'   \item{\code{isf(p,loc,scale,shape)}}{Inverse of survival function.}.
-#'   \item{\code{fit(Y,loc,scale_cov,shape_cov)}}{Fit the GPD law}.
+#'   \item{\code{fit(Y,loc,scale_cov,shape_cov)}}{Fit the GEV law}.
 #' }
 #' @examples
 #' ## Data
-#' size = 2000
-#' data = SDFC::Dataset2(size)
-#' t = data$t
-#' X = data$X
-#' Y = data$Y
-#' 
-#' ## Quantile regression for loc parameters
-#' ltau = base::c( 0.05 , 0.95 )
-#' qr = SDFC::QuantileRegression$new( ltau )
-#' qr$fit( Y , X )
-#' ## Yq[,1] is the lower loc of GPD, and Yq[,2] the upper loc.
-#' Yq = if( qr$is_success() ) qr$predict() else NULL
-#' 
-#' ## Upper GPD
-#' gpdU = SDFC::GPDLaw$new()
-#' gpdU$fit( Y , loc = Yq[,2] , scale_cov = X )
-#' Yu = gpdU$rvs(size)
-#' print( gpdU$scale_coef_ ) ## Scale coef fitted
-#' print( gpdU$shape_coef_ ) ## Shape coef fitted
-#' 
-#' ## Lower GPD
-#' gpdL = SDFC::GPDLaw$new()
-#' gpdL$fit( -Y , loc = -Yq[,1] , scale_cov = -X ) ## Minima of Y is the maxima of -Y
-#' Yl = -gpdL$rvs(size)
-#' @export
-GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
+GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 	
 	
 	public = list(
@@ -163,12 +138,15 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 	loc          = NULL,
 	scale        = NULL,
 	shape        = NULL,
+	loc_design   = NULL,
 	scale_design = NULL,
 	shape_design = NULL,
 	ncov         = NULL,
+	nloc         = NULL,
 	nscale       = NULL,
 	nshape       = NULL,
 	optim_res    = NULL,
+	loc_coef     = NULL,
 	scale_coef   = NULL,
 	shape_coef   = NULL,
 	
@@ -192,20 +170,6 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 	{
 		Z   = stats::runif( size , min = 0 , max = 1 )
 		
-#		shape_zero  = ( shape == 0 )
-#		cshape_zero = !shape_zero
-#		
-#		out = numeric(size) + NA
-#		if( base::any(shape_zero) )
-#		{
-#			out[shape_zero] = loc[shape_zero] + stats::rexp( n , rate = 1. / scale[shape_zero] )
-#		}
-#		
-#		if( base::any(cshape_zero) )
-#		{
-#			out[cshape_zero] = loc[cshape_zero] + scale[cshape_zero] * ( Z[cshape_zero]^( -shape[cshape_zero] ) - 1 ) / shape[cshape_zero]
-#		}
-		
 		return(self$icdf( Z , loc = loc , scale = scale , shape = shape ))
 	},
 	##}}}
@@ -222,28 +186,21 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 		
 		Z = ( x - loc ) / scale
 		
-		shape_zero  = ( shape == 0 )
+		shape_zero  = ( base::abs(shape) < 1e-10 )
 		cshape_zero = !shape_zero
-		valid       = (Z > 0) & (1 + shape * Z > 0)
 		
-		out = numeric(length(x)) + NA
-		if( base::any(shape_zero) && base::any(valid) )
+		TX = numeric(length(x)) + NA
+		
+		if( base::any(shape_zero) )
 		{
-			idx = valid[shape_zero]
-			out[shape_zero][idx] = -base::log(scale[shape_zero][idx]) - Z[shape_zero][idx]
+			TX[shape_zero] = base::exp( - Z[shape_zero] )
+		}
+		if( base::any(cshape_zero) )
+		{
+			TX[cshape_zero] = ( 1 + shape[cshape_zero] * Z[cshape_zero] )^( - 1. / shape[cshape_zero] )
 		}
 		
-		if( base::any(cshape_zero) && base::any(valid) )
-		{
-			idx = valid[cshape_zero]
-			out[cshape_zero][idx] = -base::log(scale[cshape_zero][idx]) - base::log(1. + shape[cshape_zero][idx] * Z[cshape_zero][idx]) / shape[cshape_zero][idx]
-		}
-		
-		if( base::any(!valid) )
-		{
-			out[!valid] = -Inf
-		}
-		return(base::exp(out))
+		return( TX^( shape + 1  ) * base::exp( - TX ) / scale )
 	},
 	##}}}
 	
@@ -257,19 +214,20 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 		scale = if( length(scale) == 1 ) base::rep( scale , length(Y) ) else scale
 		shape = if( length(shape) == 1 ) base::rep( shape , length(Y) ) else shape
 		
-		shape_zero  = ( shape == 0 )
+		shape_zero  = ( base::abs(shape) < 1e-10 )
 		cshape_zero = !shape_zero
 		
 		Z = ( Y - loc ) / scale
 		out = numeric(length(Y)) + NA
+		
 		if( base::any(shape_zero) )
 		{
-			out[shape_zero] = 1. - base::exp( - Z )
+			out[shape_zero] = base::exp( - base::exp( - Z[shape_zero] ) )
 		}
 		
 		if( base::any(cshape_zero) )
 		{
-			out[cshape_zero] = 1. - ( 1. + shape * Z )^( -1. / shape )
+			out[cshape_zero] = base::exp( - ( 1. + shape[cshape_zero] * Z[cshape_zero] )^( - 1. / shape[cshape_zero] ) )
 		}
 		
 		return(out)
@@ -286,18 +244,18 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 		scale = if( length(scale) == 1 ) base::rep( scale , length(p) ) else scale
 		shape = if( length(shape) == 1 ) base::rep( shape , length(p) ) else shape
 		
-		shape_zero  = ( shape == 0 )
+		shape_zero  = ( base::abs(shape) < 1e-10 )
 		cshape_zero = !shape_zero
 		
 		out = numeric(length(p)) + NA
 		if( base::any(shape_zero) )
 		{
-			out[shape_zero] = loc - scale * base::log(1. - p)
+			out[shape_zero] = loc[shape_zero] - scale[shape_zero] * base::log( - base::log(p[shape_zero]) )
 		}
 		
 		if( base::any(cshape_zero) )
 		{
-			out[cshape_zero] = loc + scale * ( (1. - p)^(-shape) - 1 ) / shape
+			out[cshape_zero] = loc[cshape_zero] + scale[cshape_zero] * ( ( - base::log(p[cshape_zero]) )^(- shape[cshape_zero]) - 1. ) / shape[cshape_zero]
 		}
 		
 		return(out)
@@ -316,27 +274,29 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 	},
 	##}}}
 	
-	fit = function( Y , loc , scale_cov = NULL , shape_cov = NULL ) ##{{{
+	fit = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL ) ##{{{
 	{
 		self$Y    = Y
 		self$size = length(Y)
-		self$loc  = if( length(loc) == length(Y) ) loc else base::rep(loc[1],length(Y))
 		
 		## Design matrix
 		size = length(Y)
+		self$loc_design   = base::cbind( base::rep(1,self$size) , loc_cov )
 		self$scale_design = base::cbind( base::rep(1,self$size) , scale_cov )
 		self$shape_design = base::cbind( base::rep(1,self$size) , shape_cov )
+		self$nloc         = base::ncol(self$loc_design)
 		self$nscale       = base::ncol(self$scale_design)
 		self$nshape       = base::ncol(self$shape_design)
-		self$ncov         = self$nscale + self$nshape
+		self$ncov         = self$nloc + self$nscale + self$nshape
 		
 		## Initial condition
 		param_init = self$find_init()
 		
 		## Optimization
 		self$optim_res  = stats::optim( param_init , fn = self$optim_function , gr = self$gradient_optim_function , method = self$method , hessian = TRUE )
-		self$scale_coef = self$optim_res$par[1:self$nscale]
-		self$shape_coef = self$optim_res$par[(self$nscale+1):(self$ncov)]
+		self$loc_coef   = self$optim_res$par[1:self$nloc]
+		self$scale_coef = self$optim_res$par[(self$nloc+1):(self$nloc+self$nscale)]
+		self$shape_coef = self$optim_res$par[(self$nloc+self$nscale+1):(self$ncov)]
 		
 		## Set scale and shape
 		self$update_param( self$optim_res$par )
@@ -372,10 +332,12 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 	update_param = function( param ) ##{{{
 	{
 		## Extract coefficients from param
-		scale_coef = param[1:self$nscale]
-		shape_coef = param[(self$nscale+1):(self$ncov)]
+		loc_coef   = param[1:self$nloc]
+		scale_coef = param[(self$nloc+1):(self$nloc+self$nscale)]
+		shape_coef = param[(self$nloc+self$nscale+1):(self$ncov)]
 		
 		## Set scale and shape
+		self$loc   = self$loc_design %*% loc_coef
 		self$scale = self$link( self$scale_design %*% scale_coef )
 		self$shape = self$shape_design %*% shape_coef
 	},
@@ -383,40 +345,24 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 	
 	find_init = function() ##{{{
 	{
-		## LMoments initial condition
-		idx_excess = (self$Y > self$loc)
-		excess = self$Y[idx_excess] - self$loc[idx_excess]
-		lmo1     = SDFC::lmoments(excess,1)
-		lmo2     = SDFC::lmoments(excess,2)
-		itau     = lmo1 / lmo2
-		scale_lm = lmo1 * ( itau - 1 )
-		scale_lm = if( scale_lm > 0 ) scale_lm else 1e-8
-		shape_lm = - ( itau - 2 )
+		lmom1 = SDFC::lmoments( self$Y , 1 )
+		lmom2 = SDFC::lmoments( self$Y , 2 )
+		lmom3 = SDFC::lmoments( self$Y , 3 )
 		
-		## Check negloglikelihood
-		self$scale = base::rep( scale_lm , self$size )
-		self$shape = base::rep( shape_lm , self$size )
-		eval_lm = self$negloglikelihood()
+		tau3  = lmom3 / lmom2
+		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
+		kappa = 7.8590 * co + 2.9554 * co**2
+		g     = base::gamma( 1. + kappa )
 		
-		## MOMS initial condition
-		scale_mm = base::sqrt( stats::var(excess) )
-		scale_mm = if( scale_mm > 0 ) scale_mm else 1e-8
-		shape_mm = -1e-8
+		init_loc   = numeric( self$nloc )
+		init_scale = numeric( self$nscale )
+		init_shape = numeric( self$nshape )
 		
-		## Check negloglikelihood
-		self$scale = base::rep( scale_mm , self$size )
-		self$shape = base::rep( shape_mm , self$size )
-		eval_mm = self$negloglikelihood()
+		init_scale[1] = lmom2 * kappa / ( (1 - 2^(-kappa) ) * g )
+		init_loc[1]   = lmom1 - init_scale[1] * (1 - g) / kappa
+		init_shape[1] = - kappa
 		
-		## Keep best
-		init_scale = base::rep( 0 , self$nscale )
-		init_shape = base::rep( 0 , self$nshape )
-		if( is.finite(eval_mm) || is.finite(eval_lm) )
-		{
-			init_scale[1] = self$link_inv( if( eval_mm < eval_lm ) scale_mm else scale_lm )
-			init_shape[1] = if( eval_mm < eval_lm ) shape_mm else shape_lm
-		}
-		return(base::c(init_scale,init_shape))
+		return(base::c(init_loc,init_scale,init_shape))
 	},
 	##}}}
 	
@@ -427,27 +373,22 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 			return(Inf)
 		
 		## Fuck exponential case
-		zero.shape = ( base::abs(self$shape) < 1e-10 )
-		if( !is.null(zero.shape) )
-		{
-			self$shape[zero.shape] = -1e-10
-		}
+		zero_shape = ( base::abs(self$shape) < 1e-10 )
+		if( base::any(zero_shape) )
+			self$shape[zero_shape] = -1e-10
 		
 		##
-		idx_excess = (self$Y > self$loc)
-		loc   = self$loc[idx_excess]
-		scale = self$scale[idx_excess]
-		shape = self$shape[idx_excess]
-		Z = 1. + shape * ( self$Y[idx_excess] - loc ) / scale
+		Z = 1 + self$shape * ( self$Y - self$loc ) / self$scale
 		
 		if( base::any(Z <= 0) )
-			return(Inf)
+			return( Inf )
 		
-		res = base::sum( base::log( scale ) + base::log(Z) * ( 1 + 1. / shape ) )
+		res = base::sum( ( 1. + 1. / self$shape ) * base::log(Z) + Z^( - 1. / self$shape ) + base::log(self$scale) )
 		
-		if( is.na(res) )
+		if( is.finite(res) )
+			return(res)
+		else
 			return(Inf)
-		return(res)
 	},
 	##}}}
 	
@@ -458,32 +399,43 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 	},
 	##}}}
 	
+	logZafun = function( Z , alpha ) ##{{{
+	{
+		return( alpha * base::log( 1. + self$shape * Z ) )
+	},
+	##}}}
+	
+	Zafun = function( Z , alpha ) ##{{{
+	{
+		return( base::exp( self$logZafun( Z , alpha ) ) )
+	},
+	##}}}
+	
 	gradient_optim_function = function( param ) ##{{{
 	{
 		self$update_param(param)
 		
-		idx_excess = ( self$Y > self$loc )
-		Y      = self$Y[idx_excess]
-		loc    = self$loc[idx_excess]
-		scale  = self$scale[idx_excess]
-		shape  = self$shape[idx_excess]
-		Y_zero   = Y - loc
-		Z        = 1. + shape * Y_zero / scale
-		exponent = 1. + 1. / shape
+		## Impossible
+		if( base::any( 1. + self$shape * ( self$Y - self$loc ) / self$scale <= 0 ) )
+			return( numeric( self$ncov ) + NA )
 		
-		grad_phi   = if( self$use_phi ) scale else 1.
-		grad_scale = base::t(self$scale_design[idx_excess,]) %*% (grad_phi / scale - ( grad_phi * exponent * shape * Y_zero / (scale^2) ) / Z)
-		grad_shape = if( base::all(Z>0) ) base::t(self$shape_design[idx_excess,]) %*% ( - base::log(Z) / (shape**2) + exponent * Y_zero / scale / Z) else base::rep(NaN,self$nshape)
+		## Usefull values
+		Z     = ( self$Y - self$loc ) / self$scale
+		Za1   = self$Zafun( Z , 1. )
+		Zamsi = self$Zafun( Z , - 1. / self$shape ) ## Za of Minus Shape Inverse
 		
-#		phi.grad = if( use_phi ) scale else 1.
-#		
-#		coef = phi.grad / scale - ( phi.grad * exponent * shape * Y_zero / (scale^2) ) / Z
-#		grad_scale = base::apply( scale_design , 2 , function(X) { return(base::sum(coef*X)) } )
-#		
-#		coef =  - base::log(Z) / (shape^2) + exponent * Y_zero / scale / Z 
-#		grad_shape = base::apply( shape_design , 2 , function(X) { return(base::sum(coef*X)) } )
+		## Vectors
+		phi_vect   = if( self$use_phi ) 1. else 1. / self$scale
+		loc_vect   = (Zamsi - 1 - self$shape) / ( self$scale * Za1 )
+		scale_vect = phi_vect * ( 1. + Z * ( Zamsi - 1 - self$shape ) / Za1 )
+		shape_vect = ( Zamsi - 1 ) * ( base::log(Za1) / self$shape^2 - ( 1. + 1. / self$shape ) * Z / Za1 )
 		
-		return( base::c(grad_scale,grad_shape) )
+		## Gradients
+		grad_loc   = base::t(self$loc_design)   %*% loc_vect 
+		grad_scale = base::t(self$scale_design) %*% scale_vect
+		grad_shape = base::t(self$shape_design) %*% shape_vect 
+		
+		return( base::c(grad_loc,grad_scale,grad_shape) )
 	}
 	##}}}
 	

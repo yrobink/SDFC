@@ -82,7 +82,7 @@
 ##################################################################################
 
 
-#' LMoments1
+#' lmoments1
 #'
 #' Compute the L-Moments of order 1 (just the mean...)
 #'
@@ -94,15 +94,15 @@
 #' ## Data
 #' size = 2000
 #' data = Dataset0(size)
-#' lmom1 = SDFC::LMoments1(data$Y)
+#' lmom1 = SDFC::lmoments1(data$Y)
 #' @export
-LMoments1 = function(Y)
+lmoments1 = function(Y)
 {
 	return( base::mean(Y) )
 }
 
 
-#' LMoments2
+#' lmoments2
 #'
 #' Compute the L-Moments of order 2 (half mean of pairwise difference)
 #'
@@ -114,10 +114,85 @@ LMoments1 = function(Y)
 #' ## Data
 #' size = 2000
 #' data = Dataset0(size)
-#' lmom2 = SDFC::LMoments2(data$Y)
+#' lmom2 = SDFC::lmoments2(data$Y)
 #' @export
-LMoments2 = function(Y)
+lmoments2 = function(Y)
 {
 	size = length(Y)
-	return( base::sum( base::apply( matrix( Y , nrow = size , ncol = 1 ) , 1 , function(X) { return(abs(X-Y)) } ) ) / ( size * (size - 1) * 2 ) )
+	res = 0
+	
+	X = Y[order(Y)]
+	
+	for( i in 1:size )
+	{
+		res = res + ( base::choose( i - 1 , 1 ) - base::choose( size - i , 1 ) ) * X[i]
+	}
+	res = res / ( 2 * base::choose( size , 2 ) )
+	
+	return(res)
 }
+
+
+#' lmoments3
+#'
+#' Compute the L-Moments of order 3 
+#'
+#' @param Y  [vector] Dataset
+#'
+#' @return [lmom3] L-Moments of order 3
+#'
+#' @examples
+#' ## Data
+#' size = 2000
+#' data = Dataset0(size)
+#' lmom2 = SDFC::lmoments3(data$Y)
+#' @export
+lmoments3 = function(Y)
+{
+	size = length(Y)
+	res = 0
+	
+	X = Y[order(Y)]
+	
+	for( i in 1:size )
+	{
+		res = res + ( base::choose( i - 1 , 2 ) - 2 * base::choose( i-1 , 1 ) * base::choose( size - i , 1 ) + base::choose( size - i , 2 ) ) * X[i]
+	}
+	res = res / ( 3 * base::choose( size , 3 ) )
+	
+	return(res)
+}
+
+
+
+#' lmoments
+#'
+#' Compute the L-Moments
+#'
+#' @param Y  [vector] Dataset
+#'
+#' @param order [int] order of moments
+#'
+#' @return [lmom] L-Moments
+#'
+#' @examples
+#' ## Data
+#' size = 2000
+#' data = Dataset0(size)
+#' lmom1 = SDFC::lmoments(data$Y,1)
+#' lmom2 = SDFC::lmoments(data$Y,2)
+#' lmom3 = SDFC::lmoments(data$Y,3)
+#' @export
+lmoments = function( Y , order )
+{
+	if( order == 1 )
+		return( SDFC::lmoments1(Y) )
+	if( order == 2 )
+		return( SDFC::lmoments2(Y) )
+	if( order == 3 )
+		return( SDFC::lmoments3(Y) )
+	return(NULL)
+}
+
+
+

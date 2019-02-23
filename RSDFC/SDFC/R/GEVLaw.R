@@ -351,7 +351,7 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 		
 		tau3  = lmom3 / lmom2
 		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
-		kappa = 7.8590 * co + 2.9554 * co**2
+		kappa = 7.8590 * co + 2.9554 * co^2
 		g     = base::gamma( 1. + kappa )
 		
 		init_loc   = numeric( self$nloc )

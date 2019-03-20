@@ -86,6 +86,8 @@
 ## Libraries ##
 ###############
 
+__version__ = "0.1.7"
+
 from SDFC.__Dataset            import Dataset
 from SDFC.__NormalLaw          import NormalLaw
 from SDFC.__ExpLaw             import ExpLaw
@@ -96,6 +98,5 @@ from SDFC.__QuantileRegression import QuantileRegression
 
 from SDFC.__lmoments           import lmoments
 
-__version__ = "0.1.4"
 
 

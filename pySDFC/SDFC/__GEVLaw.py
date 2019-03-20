@@ -103,13 +103,14 @@ import scipy.linalg   as scl
 import scipy.optimize as sco
 
 from SDFC.__lmoments import lmoments
-
+from SDFC.__QuantileRegression import QuantileRegression
 
 #############
 ## Classes ##
 #############
 
-class GEVLaw:
+
+class GEVLaw:##{{{
 	"""
 	SDFC.GEVLaw
 	===========
@@ -120,15 +121,15 @@ class GEVLaw:
 	
 	def __init__( self , use_phi = False , method = "BFGS" , verbose = False ): ##{{{
 		"""
-		Initialization of GPDLaw
+		Initialization of GEVLaw
 		
 		Parameters
 		----------
-		use_phi : bool
+		use_phi     : bool
 			If True, the exponential link function is used to fit the the scale parameter, default False
-		method  : string
+		method      : string
 			Method called to minimize the negloglikelihood function, default "BFGS"
-		verbose : bool
+		verbose     : bool
 			If True, warning and error are printed
 		
 		Attributes
@@ -161,10 +162,18 @@ class GEVLaw:
 		shape_coef_  : numpy.ndarray
 			coefficient fitted for shape
 		
+		Notes
+		-----
+		
+		To find first estimates, two methods are available. "extRemes" use the same method as extRemes R package. "quantiles"
+		use quantile regression. For example, the "loc" parameter is the quantile exp(-1), and the scale depend linearly of the
+		centered quantile function.
+		
+		
 		"""
-		self._use_phi = use_phi
-		self._method  = method
-		self.verbose = verbose
+		self._use_phi     = use_phi
+		self._method      = method
+		self.verbose      = verbose
 		
 		self._Y           = None
 		self._size        = None
@@ -267,8 +276,9 @@ class GEVLaw:
 		self.shape = self.shape_design @ shape_coef
 	##}}}
 	
-	def _find_init( self ):##{{{
+	def _find_init_extRemes( self ): ##{{{
 		
+		## LMoments
 		lmom1 = lmoments( self._Y , 1 )
 		lmom2 = lmoments( self._Y , 2 )
 		lmom3 = lmoments( self._Y , 3 )
@@ -285,8 +295,98 @@ class GEVLaw:
 		init_scale[0] = lmom2 * kappa / ( (1 - np.power( 2 , - kappa )) * g )
 		init_loc[0]   = lmom1 - init_scale[0] * (1 - g) / kappa
 		init_shape[0] = - kappa
+		init_scale[0] = self._link_inv(init_scale[0])
 		
-		return np.hstack( (init_loc,init_scale,init_shape) )
+		
+		param   = np.hstack( (init_loc,init_scale,init_shape) )
+		test_ll = self._optim_function(param)
+		
+		## Moments
+		m     = np.mean(self._Y)
+		s     = np.sqrt(6) * np.std(self._Y) / np.pi
+		
+		init_loc2   = np.zeros( self.nloc )
+		init_scale2 = np.zeros( self.nscale )
+		init_shape2 = np.zeros( self.nshape )
+		
+		init_loc2[0]   = m - 0.57722 * s
+		init_scale2[0] = np.log(s)
+		init_shape2[0] = 1e-8
+		init_scale2[0] = self._link_inv(init_scale2[0])
+		
+		param2   = np.hstack( (init_loc2,init_scale2,init_shape2) )
+		test_ll2 = self._optim_function(param2)
+		
+		if not np.isfinite(test_ll) and not np.isfinite(test_ll2):
+			init_loc3   = np.zeros( self.nloc )
+			init_scale3 = np.zeros( self.nscale )
+			init_shape3 = np.zeros( self.nshape )
+			init_loc3[0]   = 0
+			init_scale3[0] = 1
+			init_shape3[0] = 0.1
+			param3 = np.hstack( (init_loc3,init_scale3,init_shape3) )
+			test_ll3 = self._optim_function(param3)
+			return param3,test_ll3
+		
+		return (param,test_ll) if test_ll < test_ll2 else (param2,test_ll2)
+	##}}}
+	
+	def _find_init_quantiles( self ): ##{{{
+		
+		init_loc   = np.zeros( self.nloc )
+		init_scale = np.zeros( self.nscale )
+		init_shape = np.zeros( self.nshape )
+		
+		## Fit loc
+		loc = None
+		if self.nloc == 1:
+			init_loc[0] = sc.rv_histogram( np.histogram( self._Y , 100 ) ).ppf( np.exp(-1) )
+			loc = np.repeat( init_loc[0] , self._Y.size )
+		else:
+			reg = QuantileRegression( [np.exp(-1)] )
+			reg.fit( self._Y , self.loc_design[:,1:] )
+			init_loc = reg.coef_.ravel()
+			loc = reg.predict().ravel()
+		
+		## Fit shape	
+		lmom1 = lmoments( self._Y - loc , 1 )
+		lmom2 = lmoments( self._Y - loc , 2 )
+		lmom3 = lmoments( self._Y - loc , 3 )
+		
+		tau3  = lmom3 / lmom2
+		co    = 2. / ( 3. + tau3 ) - np.log(2) / np.log(3)
+		kappa = 7.8590 * co + 2.9554 * co**2
+		init_shape[0] = - kappa
+		
+		## Fit scale
+		qscale = np.array([0.25,0.5,0.75])
+		if self.nscale == 1:
+			coef = - kappa / ( np.power( -np.log(qscale) , kappa ) - 1 )
+			init_scale[0] = self._link_inv(np.mean( sc.rv_histogram( np.histogram( self._Y - loc , 100 ) ).ppf( qscale ) * coef ))
+		else:
+			reg = QuantileRegression( qscale )
+			reg.fit( self._Y - loc , self.scale_design[:,1:] )
+			fshape = np.repeat( -kappa , self._Y.size )
+			coef = np.array( [ fshape / ( np.power( -np.log(x) , - fshape ) - 1 ) for x in qscale ] ).T
+			fscale = np.mean( reg.predict() * coef , axis = 1 )
+			init_scale,_,_,_ = scl.lstsq( self.scale_design , self._link_inv(fscale) )
+		
+		
+		param   = np.hstack( (init_loc,init_scale,init_shape) )
+		while not np.isfinite(self._optim_function(param)) or not np.all(np.isfinite(self._gradient_optim_function(param))):
+			param[(self.nloc+self.nscale)] *= 0.95
+		
+		test_ll = self._optim_function(param)
+		
+		return param,test_ll
+	##}}}
+	
+	def _find_init( self ):##{{{
+		
+		param_e,ll_e = self._find_init_extRemes()
+		param_q,ll_q = self._find_init_quantiles()
+		
+		return param_e if ll_e < ll_q else param_q
 	##}}}
 	
 	def _negloglikelihood( self ): ##{{{
@@ -306,6 +406,7 @@ class GEVLaw:
 			return np.inf
 		
 		res = np.sum( ( 1. + 1. / self.shape ) * np.log(Z) + np.power( Z , - 1. / self.shape ) + np.log(self.scale) )
+		
 		
 		return res if np.isfinite(res) else np.inf
 	##}}}
@@ -332,22 +433,26 @@ class GEVLaw:
 			return np.zeros( self.ncov ) + np.nan
 		
 		## Usefull values
-		Z     = ( self._Y - self.loc ) / self.scale
-		Za1   = self._Zafun( Z , 1. )
-		Zamsi = self._Zafun( Z , - 1. / self.shape ) ## Za of Minus Shape Inverse
+		Z      = ( self._Y - self.loc ) / self.scale
+		Za1    = self._Zafun( Z , 1. )
+		ishape = 1. / self.shape
+		Zamsi  = self._Zafun( Z , - ishape ) ## Za of Minus Shape Inverse
 		
 		## Vectors
 		phi_vect   = 1. if self._use_phi else 1. / self.scale
 		loc_vect   = (Zamsi - 1 - self.shape) / ( self.scale * Za1 )
-		scale_vect = 1. + Z * ( Zamsi - 1 - self.shape ) / Za1
-		shape_vect = ( Zamsi - 1 ) * ( np.log(Za1) / self.shape**2 - ( 1. + 1. / self.shape ) * Z / Za1 )
+		scale_vect = phi_vect * ( 1. + Z * ( Zamsi - 1 - self.shape ) / Za1 )
+		shape_vect = ( Zamsi - 1. ) * np.log(Za1) * ishape**2 + ( 1. + ishape - ishape * Zamsi ) * Z / Za1
 		
 		## Gradients
-		grad_loc   = np.dot( self.loc_design.transpose()   , loc_vect )
-		grad_scale = np.dot( self.scale_design.transpose() , scale_vect * phi_vect )
+		grad_loc   = np.dot( self.loc_design.transpose()   , loc_vect   )
+		grad_scale = np.dot( self.scale_design.transpose() , scale_vect )
 		grad_shape = np.dot( self.shape_design.transpose() , shape_vect )
 		
 		return np.hstack( (grad_loc,grad_scale,grad_shape) )
 	##}}}
+##}}}
+
+
 
 

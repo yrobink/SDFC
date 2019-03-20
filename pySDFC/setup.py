@@ -99,7 +99,8 @@
 ## Libraries ##
 ###############
 
-from distutils.core import setup
+#from distutils.core import setup
+from setuptools import setup, find_packages
 from Cython.Build import cythonize
 from distutils.extension import Extension
 import numpy
@@ -116,13 +117,28 @@ i_eigen = -1
 for i,arg in enumerate(sys.argv):
 	if arg[:5] == "eigen":
 		eigen_include = arg[6:]
-		if not os.path.isdir( os.path.join( eigen_include , "Eigen" ) ):
-			print( "Warning : eigen: bad directory" )
-			eigen_include = ""
 		i_eigen = i
 
 if i_eigen > -1:
 	del sys.argv[i_eigen]
+
+def find_eigen( eigen_include ):
+	if os.path.isdir( os.path.join( eigen_include , "Eigen" ) ):
+		return eigen_include
+	
+	possible_path = [ "/usr/include/" , "/usr/local/include/" ]
+	if os.environ.get("HOME") is not None:
+		possible_path.append( os.path.join( os.environ["HOME"] , ".local/include" ) )
+	
+	for path in possible_path:
+		eigen_include = os.path.join( path , "Eigen" )
+		if os.path.isdir( eigen_include ):
+			return eigen_include
+	
+	return ""
+
+eigen_include = find_eigen(eigen_include)
+
 
 
 #################
@@ -148,7 +164,7 @@ list_packages = [
 setup(
 	name = "SDFC" ,
 	description = "Statistical Distribution Fit with Covariates" ,
-	version = "0.1.4" ,
+	version = "0.1.7" ,
 	author = "Yoann Robin" ,
 	author_email = "yoann.robin.k@gmail.com" ,
 	license = "CeCILL-C" ,

@@ -121,6 +121,7 @@
 #' }
 #' @examples
 #' ## Data
+#' @export
 GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 	
 	
@@ -343,26 +344,137 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 	},
 	##}}}
 	
-	find_init = function() ##{{{
+	find_init_extRemes = function() ##{{{
 	{
+		## LMoments
 		lmom1 = SDFC::lmoments( self$Y , 1 )
 		lmom2 = SDFC::lmoments( self$Y , 2 )
 		lmom3 = SDFC::lmoments( self$Y , 3 )
 		
 		tau3  = lmom3 / lmom2
 		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
-		kappa = 7.8590 * co + 2.9554 * co^2
+		kappa = 7.8590 * co + 2.9554 * co**2
 		g     = base::gamma( 1. + kappa )
 		
 		init_loc   = numeric( self$nloc )
 		init_scale = numeric( self$nscale )
 		init_shape = numeric( self$nshape )
 		
-		init_scale[1] = lmom2 * kappa / ( (1 - 2^(-kappa) ) * g )
+		init_scale[1] = lmom2 * kappa / ( ( 1 - 2^(- kappa) ) * g )
 		init_loc[1]   = lmom1 - init_scale[1] * (1 - g) / kappa
 		init_shape[1] = - kappa
+		init_scale[1] = self$link_inv(init_scale[1])
 		
-		return(base::c(init_loc,init_scale,init_shape))
+		param   = base::c(init_loc,init_scale,init_shape)
+		test_ll = self$optim_function(param)
+		
+		## Moments
+		m     = base::mean(self$Y)
+		s     = base::sqrt(6) * stats::sd(self$Y) / base::pi
+		
+		init_loc2   = numeric( self$nloc )
+		init_scale2 = numeric( self$nscale )
+		init_shape2 = numeric( self$nshape )
+		
+		init_loc2[1]   = m - 0.57722 * s
+		init_scale2[1] = base::log(s)
+		init_shape2[1] = 1e-8
+		init_scale2[1] = self$link_inv(init_scale2[1])
+		
+		param2   = base::c(init_loc2,init_scale2,init_shape2)
+		test_ll2 = self$optim_function(param2)
+		
+		if( !is.finite(test_ll) && !is.finite(test_ll2) )
+		{
+			init_loc3      = numeric( self$nloc )
+			init_scale3    = numeric( self$nscale )
+			init_shape3    = numeric( self$nshape )
+			init_loc3[1]   = 0
+			init_scale3[1] = 1
+			init_shape3[1] = 0.01
+			param3 = base::c(init_loc3,init_scale3,init_shape3)
+			test_ll3 = self$optim_function(param3)
+			return( list( param = param3 , ll = test_ll3 ) )
+		}
+		
+		if( test_ll < test_ll2 )
+			return( list( param = param , ll = test_ll ) )
+		else
+			return( list( param = param2 , ll = test_ll2 ) )
+	}, ##}}}
+	
+	find_init_quantiles = function() ##{{{
+	{
+		init_loc   = numeric( self$nloc )
+		init_scale = numeric( self$nscale )
+		init_shape = numeric( self$nshape )
+		
+		## Fit loc
+		if( self$nloc == 1)
+		{
+			rvY = SDFC::rv_histogram$new( self$Y )
+			init_loc[1] = rvY$icdf( base::exp(-1) )
+			loc = base::rep( init_loc[1] , length(self$Y) )
+		}
+		else
+		{
+			reg = SDFC::QuantileRegression$new( base::c( base::exp(-1) ) )
+			reg$fit( self$Y , self$loc_design[,2:self$nloc] )
+			init_loc = reg$coef()
+			loc      = reg$predict()
+		}
+		
+		## Fit shape	
+		lmom1 = SDFC::lmoments( self$Y - loc , 1 )
+		lmom2 = SDFC::lmoments( self$Y - loc , 2 )
+		lmom3 = SDFC::lmoments( self$Y - loc , 3 )
+		
+		tau3  = lmom3 / lmom2
+		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
+		kappa = 7.8590 * co + 2.9554 * co^2
+		init_shape[1] = - kappa
+		
+		## Fit scale
+		qscale = base::c(0.25,0.5,0.75)
+		if( self$nscale == 1 )
+		{
+			rvY = SDFC::rv_histogram$new( self$Y )
+			coef = - kappa / ( ( -np.log(qscale) )^kappa - 1 )
+			init_scale[1] = self$link_inv( base::mean( rvY$icdf( qscale ) * coef ) )
+		}
+		else
+		{
+			reg = QuantileRegression$new( qscale )
+			reg$fit( self$Y - loc , self$scale_design[,2:self$nscale] )
+			fshape = base::rep( -kappa , length(self$Y) )
+			coef = matrix( NA , nrow = length(qscale) , ncol = length(self$Y) )
+			for( i in 1:length(qscale) )
+			{
+				coef[i,] = fshape / ( (-base::log(qscale[i]))^(-fshape) -1 )
+			}
+			fscale = self$link_inv( base::apply( reg$predict() * base::t(coef) , 1 , base::mean ) )
+			lm = stats::lm( fscale ~ self$scale_design[,2:self$nscale] )
+			init_scale = as.vector( lm$coefficients )
+		}
+		
+		param   = base::c(init_loc,init_scale,init_shape)
+		test_ll = self$optim_function(param)
+		return( list( param = param , ll = test_ll ) )
+	}, ##}}}
+	
+	find_init = function() ##{{{
+	{
+		method_ext = self$find_init_extRemes()
+		method_qua = self$find_init_quantiles()
+		
+		if( method_ext$ll < method_qua$ll )
+		{
+			return(method_ext$param)
+		}
+		else
+		{
+			return(method_qua$param)
+		}
 	},
 	##}}}
 	
@@ -420,15 +532,16 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 			return( numeric( self$ncov ) + NA )
 		
 		## Usefull values
-		Z     = ( self$Y - self$loc ) / self$scale
-		Za1   = self$Zafun( Z , 1. )
-		Zamsi = self$Zafun( Z , - 1. / self$shape ) ## Za of Minus Shape Inverse
+		Z      = ( self$Y - self$loc ) / self$scale
+		ishape = 1. / self$shape
+		Za1    = self$Zafun( Z , 1. )
+		Zamsi  = self$Zafun( Z , - ishape ) ## Za of Minus Shape Inverse
 		
 		## Vectors
 		phi_vect   = if( self$use_phi ) 1. else 1. / self$scale
 		loc_vect   = (Zamsi - 1 - self$shape) / ( self$scale * Za1 )
 		scale_vect = phi_vect * ( 1. + Z * ( Zamsi - 1 - self$shape ) / Za1 )
-		shape_vect = ( Zamsi - 1 ) * ( base::log(Za1) / self$shape^2 - ( 1. + 1. / self$shape ) * Z / Za1 )
+		shape_vect = ( Zamsi - 1. ) * base::log(Za1) * ishape^2 + ( 1. + ishape - ishape * Zamsi ) * Z / Za1
 		
 		## Gradients
 		grad_loc   = base::t(self$loc_design)   %*% loc_vect 

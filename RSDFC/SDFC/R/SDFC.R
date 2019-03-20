@@ -83,8 +83,8 @@
 
 #' SDFC
 #'
-#' Fit statistical distributions with covariates
-#'
+#' Statistical Distributions Fit with Covariates
+#' 
 #' @details This library makes it possible to fit some statistical law with covariate, even in
 #'          non parametric case (Quantile Regression)
 #' @docType package

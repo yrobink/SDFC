@@ -91,18 +91,6 @@ This library makes it possible to fit some statistical distribution
 on Dataset, including Gaussian Law, Generalized Pareto Law and Quantile Regression.
 
 
-Python instruction
-------------------
-
-Requires: python3, numpy, scipy, Eigen (c++)
-
-For python, just use the command:
->> python3 setup.py install
-
-If the Eigen library is not find (needed for Quantile Regression), use:
-python3 setup.py install eigen="path-to-eigen, i.e; /usr/include or /usr/local/include/"
-
-
 R instruction
 -------------
 

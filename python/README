@@ -103,20 +103,6 @@ If the Eigen library is not find (needed for Quantile Regression), use:
 python3 setup.py install eigen="path-to-eigen, i.e; /usr/include or /usr/local/include/"
 
 
-R instruction
--------------
-
-Requires: R, devtools, roxygen2, Rcpp, RcppEigen
-
-I'm not really sure of how to build, but this sequence works (good luck):
->> roxygen2::roxygenize("SDFC") ## Return an error, but necessary to generate NAMSPACE file...
->> devtools::load_all("SDFC")
->> roxygen2::roxygenize("SDFC") ## Now, no errors
->> devtools::build("SDFC")      ## Generate the package
->> install.packages( "SDFC_version.tar.gz" )
-
-
-
 Note for Quantile Regression
 ----------------------------
 

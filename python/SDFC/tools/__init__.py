@@ -86,5 +86,19 @@
 ## Libraries ##
 ###############
 
-from SDFC.solver.FrishNewton import FrishNewton
+from SDFC.tools.__dataset  import Dataset
+from SDFC.tools.__LawParam import LawParam
+from SDFC.tools.__LinkFct  import LinkFct
+from SDFC.tools.__LinkFct  import ChainLinkFct
+from SDFC.tools.__LinkFct  import IdLinkFct
+from SDFC.tools.__LinkFct  import InverseLinkFct
+from SDFC.tools.__LinkFct  import ExpLinkFct
+from SDFC.tools.__LinkFct  import LogitLinkFct
+from SDFC.tools.__LinkFct  import SemiBoundedLinkFct
+from SDFC.tools.__LinkFct  import BoundedLinkFct
+from SDFC.tools.__plot_confidences_intervals import plot_confidences_intervals
+from SDFC.tools.__plot_confidences_intervals import plot_confidences_intervals_scaled
+
+
+
 

@@ -82,21 +82,73 @@
 ##################################################################################
 ##################################################################################
 
+
 ###############
 ## Libraries ##
 ###############
 
-__version__ = "0.1.7"
-
-from SDFC.__Dataset            import Dataset
-from SDFC.__NormalLaw          import NormalLaw
-from SDFC.__ExpLaw             import ExpLaw
-from SDFC.__GammaLaw           import GammaLaw
-from SDFC.__GPDLaw             import GPDLaw
-from SDFC.__GEVLaw             import GEVLaw
-from SDFC.__QuantileRegression import QuantileRegression
-
-from SDFC.__lmoments           import lmoments
+import numpy as np
 
 
+#############
+## Classes ##
+#############
+
+class Dataset:
+	"""
+		SDFC.Dataset
+		============
+		
+		Some dataset to test SDFC
+		
+	"""
+	def normal_cst_scale( size ):
+		"""
+		SDFC.Dataset.normal_cst_scale
+		=============================
+		
+		
+		Parameters
+		----------
+		size : int
+			Length of dataset
+		
+		Returns
+		-------
+		t : np.array
+			A "time" axis
+		X : np.array
+			A covariate
+		Y :
+			The dataset to fit
+		
+		"""
+		t = np.linspace( 0 , 1 , size )
+		X = t**2 + np.cos( 2* np.pi * t ) * 0.2
+		Y = np.random.normal( loc = X , scale = np.repeat( 0.1 , size ) )
+		return t,X,Y
+	
+	def normal_moving_scale( size ):
+		"""
+		SDFC.Dataset.normal_moving_scale
+		================================
+		
+		
+		Parameters
+		----------
+		size : int
+			Length of dataset
+		
+		Returns
+		-------
+		t : np.array
+			A "time" axis
+		X : np.array
+			A covariate
+		Y :
+			The dataset to fit
+		
+		"""
+		t = np.linspace( 0 , 1 , size )
+		X = t**2 + np.cos( 2* np.pi * t ) * 0.2
 

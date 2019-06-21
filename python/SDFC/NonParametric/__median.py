@@ -8,7 +8,7 @@
 ## yoann.robin.k@gmail.com                                                      ##
 ##                                                                              ##
 ## This software is a computer program that is part of the SDFC (Statistical    ##
-## Distribution Fitted with Covariates) library. This library makes it possible ##
+## Distribution Fit with Covariates) library. This library makes it possible    ##
 ## to regress the parameters of some statistical law with co-variates.          ##
 ##                                                                              ##
 ## This software is governed by the CeCILL-C license under French law and       ##
@@ -48,7 +48,7 @@
 ## yoann.robin.k@gmail.com                                                      ##
 ##                                                                              ##
 ## Ce logiciel est un programme informatique faisant partie de la librairie     ##
-## SDFC (Statistical Distribution Fitted with Covariates). Cette librairie      ##
+## SDFC (Statistical Distribution Fit with Covariates). Cette librairie         ##
 ## permet de calculer de regresser les parametres de lois statistiques selon    ##
 ## plusieurs co-variables                                                       ##
 ##                                                                              ##
@@ -82,56 +82,39 @@
 ##################################################################################
 ##################################################################################
 
-
 ###############
 ## Libraries ##
 ###############
 
 import numpy as np
-cimport numpy as np
-import cython
-from libcpp.vector cimport vector
-from cython.operator cimport dereference as deref, preincrement as inc
 
+from SDFC.NonParametric.__quantile import quantile
 
-#####################
-## cpp declaration ##
-#####################
+###############
+## Functions ##
+###############
 
-cdef extern from "PyFrishNewton.hpp":
-	cdef cppclass PyFrishNewton:
-		PyFrishNewton() except +
-		PyFrishNewton( vector[double]& , int , double , double ) except +
-		void fit( vector[double]& , vector[vector[double]]& )
-		vector[vector[double]] predict()
-		vector[vector[double]] coef()
-		int state()
-
-
-####################
-## Cython wrapper ##
-####################
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef class PyFrishNewtonBase:
-	
-	cdef PyFrishNewton pyFrishNewton
-	
-	def __cinit__( self , ltau , maxit , tol , beta ):
-		self.pyFrishNewton = PyFrishNewton( ltau , maxit , tol , beta )
-	
-	def fit( self , Y , X ):
-		self.pyFrishNewton.fit(Y,X)
-	
-	def predict( self ):
-		return self.pyFrishNewton.predict()
-	
-	def coef( self ):
-		return self.pyFrishNewton.coef()
-	
-	def state( self ):
-		return self.pyFrishNewton.state()
+def median( Y , X = None , return_coef = False ):
+	"""
+		SDFC.NonParametric.median
+		=========================
+		
+		Estimate the median
+		
+		Parameters
+		----------
+		Y       : np.array
+			Dataset to fit the mean
+		X       : np.array or None
+			Covariate(s)
+		return_coef : bool
+			If true, return coefficients with covariates, else return median fitted
+		
+		Returns
+		-------
+		The median
+	"""
+	return quantile( Y , [0.5] , X , return_coef )
 
 
 

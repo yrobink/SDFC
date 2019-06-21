@@ -86,67 +86,114 @@
 ## Libraries ##
 ###############
 
-import numpy         as np
-import scipy.special as scs
+import numpy as np
 
 
-###############
-## Functions ##
-###############
+###########
+## Class ##
+###########
 
-## TODO: vectorialize and use symmetrie to optimize methods
-## TODO: add order 4?
-
-def _lmoments2(X):
-	Y    = np.sort(X)
-	size = Y.size
-	res  = 0
-	for i in range(size):
-		res += ( scs.binom( i , 1 ) - scs.binom( size - i + 1 , 1 ) ) * Y[i]
-	
-	res = res / ( 2 * scs.binom( size , 2 ) )
-	
-	return res
-
-
-def _lmoments3(X):
-	Y    = np.sort(X)
-	size = Y.size
-	res  = 0
-	for i in range(size):
-		res += ( scs.binom( i , 2 ) - scs.binom( i , 1 ) * scs.binom( size - i + 1 , 1 ) + scs.binom( size - i + 1 , 2 ) ) * Y[i]
-	
-	res = res / ( 3 * scs.binom( size , 3 ) )
-	
-	return res
-
-
-def lmoments( X , order ):
+def plot_confidences_intervals( law , ax , color = "red" ):##{{{
 	"""
-		SDFC.lmoments
-		=============
-		
-		Estimate the lmoments of order 1, 2 or 3
-		
-		Parameters
-		----------
-		X     : np.array
-			Dataset to fit the lmoments
-		order : integer
-			1, 2 or 3.
-		
-		Returns
-		-------
-		The lmoments. If order > 3 or < 0, return np.nan
+	SDFC.tools.plot_confidence_intervals
+	====================================
+	Plot confidence intervals of a law if fitted
+	
+	Parameters
+	----------
+	
+	law : SDFC law
+		A law fitted by SDFC
+	ax  : matplotlib axes
+		Axes where figure is drawn
+	color : matplotlib color
+		Color used, default is red
 	"""
-	if order == 1:
-		return np.mean(X)
-	elif order == 2:
-		return _lmoments2(X)
-	elif order == 3:
-		return _lmoments3(X)
-	else:
-		return np.nan
+	
+	if law.confidence_interval is None or law.coef_ is None:
+		return
+	
+	coef   = law.coef_
+	n_coef = law.coef_.size
+	
+	i = 0
+	lticks = []
+	for p in law._lparams:
+		if p.not_fixed():
+			n_p = p.coef_.size
+			for j in range(n_p):
+				xb = i - 0.3
+				xe = i + 0.3
+				ax.fill_between( [xb,xe] , p.linkFct(law.confidence_interval[0,i] - coef[i]) , p.linkFct(law.confidence_interval[1,i] - coef[i]) , color = color , alpha = 0.5 )
+				ax.text( xb , 0 , "{}".format(round(p.linkFct(coef[i]),2)) )
+				lticks.append( "{}{}".format( p.kind , j ) )
+				i += 1
+	ax.hlines( 0 , -0.5 , n_coef - 0.5 , color = "black" )
+	ax.set_xlim( (-0.5,n_coef-0.5) )
+	ax.set_xticks( range(n_coef) )
+	ax.set_xticklabels( lticks )
+	ax.set_ylabel( "Parameters values" )
+	ax.set_xlabel( "Parameters" )
+	
+	return ax
+##}}}
+
+def plot_confidences_intervals_scaled( law , ax , color = "red" ):##{{{
+	"""
+	SDFC.tools.plot_confidence_intervals_scaled
+	===========================================
+	Plot confidence intervals of a law if fitted, where values of all parameters are scaled into the same range.
+	
+	Parameters
+	----------
+	
+	law : SDFC law
+		A law fitted by SDFC
+	ax  : matplotlib axes
+		Axes where figure is drawn
+	color : matplotlib color
+		Color used, default is red
+	"""
+	
+	if law.confidence_interval is None or law.coef_ is None:
+		return
+	
+	coef   = law.coef_
+	n_coef = law.coef_.size
+	
+	i = 0
+	lticks = []
+	for p in law._lparams:
+		if p.not_fixed():
+			n_p = p.coef_.size
+			for j in range(n_p):
+				xb = i - 0.3
+				xe = i + 0.3
+				val  = p.linkFct(coef[i])
+				valu = p.linkFct(law.confidence_interval[1,i] - coef[i])
+				vall = p.linkFct(law.confidence_interval[0,i] - coef[i])
+				valu -= p.linkFct(0)
+				vall -= p.linkFct(0)
+				exp  = -np.log10( max(valu,abs(vall)) )
+				exp  = 0 if not np.isfinite(exp) else int(exp)
+				ax.fill_between( [xb,xe] , vall * 10**exp, valu * 10**exp , color = color , alpha = 0.5 )
+				txt  = r"$" + r"{}".format(round(val * 10**exp,2))
+				if exp != 0:
+					txt += r"(\times 10^{" + str(-exp) + r"})$"
+				else:
+					txt += r"$"
+				ax.text( xb , 0 , txt )
+				lticks.append( "{}{}".format( p.kind , j ) )
+				i += 1
+	ax.hlines( 0 , -0.5 , n_coef - 0.5 , color = "black" )
+	ax.set_xlim( (-0.5,n_coef-0.5) )
+	ax.set_xticks( range(n_coef) )
+	ax.set_xticklabels( lticks )
+	ax.set_ylabel( "Parameters values" )
+	ax.set_xlabel( "Parameters" )
+	
+	return ax
+##}}}
 
 
 

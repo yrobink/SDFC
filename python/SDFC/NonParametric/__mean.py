@@ -86,43 +86,49 @@
 ## Libraries ##
 ###############
 
-import numpy as np
-from SDFC.solver.__PyFrishNewtonBase import PyFrishNewtonBase
+import numpy          as np
+import scipy.linalg   as scl
+
+from SDFC.tools.__LinkFct import IdLinkFct
 
 
-#############
-## Classes ##
-#############
+###############
+## Functions ##
+###############
 
-class FrishNewton:
-	
-	def __init__( self , ltau , maxit = 50 , tol = 1e-6 , beta = 0.99995 , verbose = False ):
-		self._frishNewtonBase = PyFrishNewtonBase( ltau , maxit , tol , beta )
-		self.coef_  = None
-		self._state = self._frishNewtonBase.state()
-		self._verbose = verbose
-	
-	
-	def fit( self , Y , X ):
-		X = X if X.ndim > 1 else X.reshape( (X.size,1) )
-		self._frishNewtonBase.fit(Y,X)
-		self._state = self._frishNewtonBase.state()
-		if self._state == 0:
-			self.coef_ = np.array( self._frishNewtonBase.coef() , dtype = np.float )
-		else:
-			if self._verbose:
-				print( "QuantileRegression: unfeasible problem" )
-	
-	
-	def predict(self):
-		return np.array( self._frishNewtonBase.predict() , dtype = np.float ) if self._state == 0 else None
-	
-	def is_fitted(self):
-		return self._state == 0 or self._state == 1
-	
-	def is_success(self):
-		return self._state == 0
-	
-	def is_unfeasible(self):
-		return self._state == 1
+def mean( Y , X = None , linkFct = IdLinkFct() , return_coef = False ):
+	"""
+		SDFC.NonParametric.mean
+		=======================
+		
+		Estimate the mean
+		
+		Parameters
+		----------
+		Y       : np.array
+			Dataset to fit the mean
+		X       : np.array or None
+			Covariate(s)
+		linkFct : class based on SDFC.tools.LinkFct
+			Link function, default is identity
+		return_coef : bool
+			If true, return coefficients with covariates, else return mean fitted
+		
+		Returns
+		-------
+		The mean or the coefficients of the regression
+	"""
+	out,coef = None,None
+	if X is None:
+		out = np.mean(Y)
+		coef = linkFct.inverse(out)
+	else:
+		size = X.shape[0]
+		if X.ndim == 1:
+			X = X.reshape( (size,1) )
+		design = np.hstack( ( np.ones( (size,1) ) , X ) )
+		coef,_,_,_ = scl.lstsq( design , linkFct.inverse(Y) )
+		out = linkFct( design @ coef )
+	return coef if return_coef else out
+
 

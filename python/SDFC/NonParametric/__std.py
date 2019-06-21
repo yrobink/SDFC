@@ -86,99 +86,56 @@
 ## Libraries ##
 ###############
 
-import numpy as np
-from SDFC.solver.FrishNewton import FrishNewton
+import numpy        as np
+import scipy.linalg as scl
+
+from SDFC.NonParametric.__var import var
+from SDFC.tools.__LinkFct     import IdLinkFct
 
 
-###########
-## Class ##
-###########
+###############
+## Functions ##
+###############
 
-class QuantileRegression:
+def std( Y , X = None , m = None , linkFct = IdLinkFct() , return_coef = False ):
 	"""
-	SDFC.QuantileRegression
-	=======================
-	
-	Description
-	-----------
-	Generic class to fit the quantile regression
-	
-	Attributes
-	----------
-	coef_ : numpy.array[ shape = (n_quantiles,length_covariable) ]
-		coefficients of quantile regression
+		SDFC.NonParametric.std
+		======================
+		
+		Estimate standard deviation given a covariate (or not)
+		
+		Parameters
+		----------
+		Y       : np.array
+			Dataset to fit the mean
+		X       : np.array or None
+			Covariate(s)
+		m       : np.array or float or None
+			mean of Y. If None, m = np.mean(Y)
+		linkFct : class based on SDFC.tools.LinkFct
+			Link function, default is identity
+		return_coef : bool
+			If true, return coefficients with covariates, else return standard deviation fitted
+		
+		Returns
+		-------
+		The standard deviation
 	"""
+	out = np.sqrt( var( Y , X , m , linkFct ) )
 	
-	def __init__( self , ltau , method = "Frish-Newton" , verbose = False ): ##{{{
-		"""
-		Initialization of regressor
-		
-		Parameters
-		----------
-		ltau   : array_like
-			Array of quantile between 0 and 1 where quantile regression is performed
-		method : string
-			Method used, currently only "Frish-Newton" is supported
-		
-		Returns
-		-------
-		None
-		"""
-		self.ltau = np.array( [ltau] , dtype = np.float ).ravel()
-		self.method = method
-		self._state = 2
-		self._qrmethod = FrishNewton( self.ltau , verbose = verbose )
-		self.coef_ = None
-	##}}}
+	if return_coef:
+		if X is None:
+			coef = linkFct.inverse(out)
+		else:
+			size = X.shape[0]
+			if X.ndim == 1:
+				X = X.reshape( (size,1) )
+			design = np.hstack( ( np.ones( (size,1) ) , X ) )
+			coef,_,_,_ = scl.lstsq( design , linkFct.inverse( out ) )
+			out = linkFct( design @ coef )
+		return coef
 	
-	def fit( self , Y , X ): ##{{{
-		"""
-		Fit the quantile regression of Y with respect to the co-variable(s) X
-		
-		Parameters
-		----------
-		Y : array
-			Dataset where we want to perform the quantile regression
-		X : array
-			Each column is a covariable used to perform the quantile regression.
-		
-		Returns
-		-------
-		None
-		"""
-		X = X if X.ndim > 1 else X.reshape( (X.size,1) )
-		self._qrmethod.fit( Y , X )
-		self._state = self._qrmethod._state
-		self.coef_ = self._qrmethod.coef_
-	##}}}
-	
-	def predict( self ): ##{{{
-		"""
-		Return the prediction after fit
-		
-		Parameters
-		----------
-		None
-		
-		Returns
-		-------
-		Yq : array[ shape = (length_covariable,n_quantiles) ]
-			Quantile regression
-		"""
-		return self._qrmethod.predict()
-	##}}}
-	
-	def is_fitted(self): ##{{{
-		return self._state == 0 or self._state == 1
-	##}}}
-	
-	def is_success(self): ##{{{
-		return self._state == 0
-	##}}}
-	
-	def is_unfeasible(self): ##{{{
-		return self._state == 1
-	##}}}
+	return out
 
 
 

@@ -316,7 +316,7 @@ class GEVLaw(AbstractLaw):
 	##}}}
 	
 	def _fit_quantiles( self ):##{{{
-		
+		#TODO: bug if design matrix is singular
 		## Fit loc
 		if self._loc.not_fixed():
 			if self._loc.size == 1:

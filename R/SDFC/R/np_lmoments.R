@@ -82,90 +82,7 @@
 ##################################################################################
 
 
-#' lmoments1
-#'
-#' Compute the L-Moments of order 1 (just the mean...)
-#'
-#' @param Y  [vector] Dataset
-#'
-#' @return [lmom1] L-Moments of order 1
-#'
-#' @examples
-#' ## Data
-#' size = 2000
-#' data = Dataset0(size)
-#' lmom1 = SDFC::lmoments1(data$Y)
-#' @export
-lmoments1 = function(Y)
-{
-	return( base::mean(Y) )
-}
-
-
-#' lmoments2
-#'
-#' Compute the L-Moments of order 2 (half mean of pairwise difference)
-#'
-#' @param Y  [vector] Dataset
-#'
-#' @return [lmom2] L-Moments of order 2
-#'
-#' @examples
-#' ## Data
-#' size = 2000
-#' data = Dataset0(size)
-#' lmom2 = SDFC::lmoments2(data$Y)
-#' @export
-lmoments2 = function(Y)
-{
-	size = length(Y)
-	res = 0
-	
-	X = Y[order(Y)]
-	
-	for( i in 1:size )
-	{
-		res = res + ( base::choose( i - 1 , 1 ) - base::choose( size - i , 1 ) ) * X[i]
-	}
-	res = res / ( 2 * base::choose( size , 2 ) )
-	
-	return(res)
-}
-
-
-#' lmoments3
-#'
-#' Compute the L-Moments of order 3 
-#'
-#' @param Y  [vector] Dataset
-#'
-#' @return [lmom3] L-Moments of order 3
-#'
-#' @examples
-#' ## Data
-#' size = 2000
-#' data = Dataset0(size)
-#' lmom2 = SDFC::lmoments3(data$Y)
-#' @export
-lmoments3 = function(Y)
-{
-	size = length(Y)
-	res = 0
-	
-	X = Y[order(Y)]
-	
-	for( i in 1:size )
-	{
-		res = res + ( base::choose( i - 1 , 2 ) - 2 * base::choose( i-1 , 1 ) * base::choose( size - i , 1 ) + base::choose( size - i , 2 ) ) * X[i]
-	}
-	res = res / ( 3 * base::choose( size , 3 ) )
-	
-	return(res)
-}
-
-
-
-#' lmoments
+#' np_lmoments
 #'
 #' Compute the L-Moments
 #'
@@ -179,19 +96,41 @@ lmoments3 = function(Y)
 #' ## Data
 #' size = 2000
 #' data = Dataset0(size)
-#' lmom1 = SDFC::lmoments(data$Y,1)
-#' lmom2 = SDFC::lmoments(data$Y,2)
-#' lmom3 = SDFC::lmoments(data$Y,3)
+#' lmom1 = SDFC::np_lmoments(data$Y,1)
+#' lmom2 = SDFC::np_lmoments(data$Y,2)
+#' lmom3 = SDFC::np_lmoments(data$Y,3)
 #' @export
-lmoments = function( Y , order )
+np_lmoments = function( Y , order )
 {
+	size = length(Y)
+	res = 0
+	
+	X = Y[order(Y)]
+	
 	if( order == 1 )
-		return( SDFC::lmoments1(Y) )
+	{
+		res = base::mean(Y)
+	}
+	
 	if( order == 2 )
-		return( SDFC::lmoments2(Y) )
+	{
+		for( i in 1:size )
+		{
+			res = res + ( base::choose( i - 1 , 1 ) - base::choose( size - i , 1 ) ) * X[i]
+		}
+		res = res / ( 2 * base::choose( size , 2 ) )
+	}
+	
 	if( order == 3 )
-		return( SDFC::lmoments3(Y) )
-	return(NULL)
+	{
+		for( i in 1:size )
+		{
+			res = res + ( base::choose( i - 1 , 2 ) - 2 * base::choose( i-1 , 1 ) * base::choose( size - i , 1 ) + base::choose( size - i , 2 ) ) * X[i]
+		}
+		res = res / ( 3 * base::choose( size , 3 ) )
+	}
+	
+	return(res)
 }
 
 

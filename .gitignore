@@ -5,3 +5,6 @@ a.out
 .DS_Store
 notebook/.ipynb_checkpoints
 *.swp
+RcppExports.cpp
+NAMESPACE
+*.Rd

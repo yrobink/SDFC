@@ -99,7 +99,8 @@
 #' @export
 np_std = function( Y , X = NULL , m = NULL , linkFct = SDFC::IdLinkFct$new() , return_coef = FALSE )
 {
-	out  = base::sqrt( SDFC::np_var( Y , X , m , linkFct ) )
+	var = SDFC::np_var( Y , X , m , linkFct )
+	out = base::sqrt( var )
 	
 	if( return_coef )
 	{
@@ -113,7 +114,6 @@ np_std = function( Y , X = NULL , m = NULL , linkFct = SDFC::IdLinkFct$new() , r
 			YY = linkFct$inverse(out)
 			return( as.vector(stats::lm( YY ~ X )$coefficients) )
 		}
-	
 	}
 	
 	return(out)

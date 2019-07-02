@@ -103,7 +103,7 @@ np_var = function( Y , X = NULL , m = NULL , linkFct = SDFC::IdLinkFct$new() , r
 	coef = NULL
 	if( is.null(X) )
 	{
-		out  = stats::var(Y)
+		out  = stats::var(Y-m)
 		coef = linkFct$inverse(out)
 	}
 	else

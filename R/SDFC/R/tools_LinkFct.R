@@ -85,177 +85,60 @@
 ## Classes ##
 #############
 
+## Base class for LinkFct {{{
 
-## LawParam 
-
-#' LawParam
+#' Base class for LinkFct
 #'
-#' Class used to describe parameters of law (loc, scale, shape). Internal class, so do not use it
+#' Base class used to define generic link function
 #'
 #' @docType class
 #' @importFrom R6 R6Class
 #'
-#' @param linkFct [LinkFct] link function
-#' @param kind [str] Name of parameters (loc,scale... etc)
-#' @param X [vector or NULL] covariate
-#' @param fix_values [vector or NULL] fix the values of the param at fix_values
-#' @param size [integer or NULL] size of dataset to fit
-#' @param coef [vector] coefficients
-#' @param inter [vector] Intercept of the coefficients
+#' @param x [vector]
 #'
 #' @return Object of \code{\link{R6Class}}
 #' @format \code{\link{R6Class}} object.
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(linkFct,kind)}}{This method is used to create object of this class with \code{LawParam}}
-#'   \item{\code{init(X,fix_values,size)}}{This method is used to initialize}
-#'   \item{\code{not_fixed()}}{Return true if the param need to be estimate}
-#'   \item{\code{set_coef(coef)}}{Set coefficient}
-#'   \item{\code{set_intercept(inter)}}{Set intercept of coefficients}
-#'   \item{\code{design_wo1()}}{Return design matrix without intercept, NULL if no covariate}
-#'   \item{\code{update()}}{Update value of params}
-#'   \item{\code{value()}}{Return value BEFORE link function}
-#'   \item{\code{valueLf()}}{Return value AFTER link function}
-#'   \item{\code{valueGrLf()}}{Return value of gradient of link function}
+#'   \item{\code{new()}}{This method is used to create object of this class with \code{LinkFct}}
+#'   \item{\code{eval(x)}}{Evaluation of LinkFct at x}
+#'   \item{\code{inverse(x)}}{Inverse of LinkFct at x}
+#'   \item{\code{gradient(x)}}{Gradient of LinkFct at x}
 #' }
 #' @examples
 #'
 #' @export
-LawParam = R6::R6Class( "LawParam" ,
+LinkFct = R6::R6Class( "LinkFct" ,
 	public = list(
 	
 	###############
 	## Arguments ##
 	###############
 	
-	linkFct = NULL,
-	coef_   = NULL,
-	design_ = NULL,
-	size_   = 0,
-	kind    = NULL,
-	
-	
 	#################
 	## Constructor ##
 	#################
 	
-	initialize = function( linkFct = IdLinkFct$new() , kind = "Parameter" ) ##{{{
+	initialize = function()
 	{
-		self$linkFct = linkFct
-		self$kind    = kind
 	},
-	##}}}
-	
-	init = function( X = NULL , fix_values = NULL , size = NULL )##{{{
+
+	eval = function(x)
 	{
-		private$not_fixed_ = is.null(fix_values)
-		if( !private$not_fixed_ )
-		{
-			fix_values = as.vector(fix_values)
-			if( length(fix_values) == 1 && !is.null(size) )
-			{
-				private$value_ = self$linkFct$inverse( base::rep( fix_values[1] , size ) )
-			}
-			else if( length(fix_values) > 1 )
-			{
-				private$value_ = self$linkFct$inverse( fix_values )
-			}
-			else
-			{
-				cat( "Error on fix values\n" )
-			}
-		}
-		else
-		{
-			if( is.null(X) && !is.null(size) )
-			{
-				self$coef_   = 1.
-				self$design_ = matrix( 1 , nrow = size , ncol = 1 )
-			}
-			else if( !is.null(X) )
-			{
-				if( !is.matrix(X) )
-					X = matrix( X , nrow = length(X) , ncol = 1 )
-				self$design_ = base::cbind( 1 , X )
-				self$coef_   = base::rep( 0 , base::ncol(self$design_) )
-			}
-			else
-			{
-				cat( "Error\n" )
-			}
-			
-			if( base::qr(self$design_)$rank < base::ncol(self$design_) )
-			{
-				self$design_ = matrix( 1 , nrow = base::nrow(self$design_) , ncol = 1 )
-				self$coef_   = 1
-			}
-			self$size_ = base::ncol( self$design_ )
-		}
 	},
-	##}}}
 	
-	not_fixed = function()##{{{
+	inverse = function(x)
 	{
-		return(private$not_fixed_)
 	},
-	##}}}
 	
-	set_coef = function( coef_ ) ##{{{
+	gradient = function(x)
 	{
-		if( private$not_fixed_ )
-		{
-			self$coef_ = as.vector(coef_)
-		}
-	},
-	##}}}
-	
-	set_intercept = function( inter ) ##{{{
-	{
-		if( private$not_fixed_ )
-		{
-			self$coef_[1] = as.double(inter[1])
-		}
-	},
-	##}}}
-	
-	design_wo1 = function() ##{{{
-	{
-		if( self$size_ == 1 )
-			return(NULL)
-		else
-			return(self$design_[,2:self$size_])
-	},
-	##}}}
-	
-	update = function() ##{{{
-	{
-		if( private$not_fixed_ )
-		{
-			private$value_ = as.vector( self$design_ %*% self$coef_ )
-		}
-	},
-	##}}}
-	
-	value = function() ##{{{
-	{
-		return( private$value_ )
-	},
-	##}}}
-	
-	valueLf = function()##{{{
-	{
-		return( as.vector( self$linkFct$eval( private$value_ ) ) )
-	},
-	##}}}
-	
-	valueGrLf = function() ##{{{
-	{
-		return( as.vector( self$linkFct$gradient( private$value_ ) ) )
 	}
-	##}}}
+	
 	
 	),
+	
 	
 	######################
 	## Private elements ##
@@ -267,7 +150,415 @@ LawParam = R6::R6Class( "LawParam" ,
 	## Arguments ##
 	###############
 	
-	value_     = NULL,
-	not_fixed_ = NULL
 	)
 )
+##}}}
+
+## ChainLinkFct {{{
+
+#' ChainLinkFct
+#'
+#' Chain link function to chain two link functions
+#'
+#' @docType class
+#' @importFrom R6 R6Class
+#'
+#' @param x [vector]
+#' @param linFct1 [LinkFct] Second link function to apply
+#' @param linFct0 [LinkFct] First link function to apply
+#'
+#' @return Object of \code{\link{R6Class}}
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new(linkFct1,linkFct0)}}{This method is used to create object of this class with \code{IdLinkFct}}
+#'   \item{\code{eval(x)}}{Evaluation of IdLinkFct at x}
+#'   \item{\code{inverse(x)}}{Inverse of IdLinkFct at x}
+#'   \item{\code{gradient(x)}}{Gradient of IdLinkFct at x}
+#' }
+#' @examples
+#'
+#' @export
+ChainLinkFct = R6::R6Class( "ChainLinkFct" ,
+	
+	inherit = SDFC::LinkFct,
+	
+	
+	public = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	linkFct0 = NULL,
+	linkFct1 = NULL,
+	
+	
+	#################
+	## Constructor ##
+	#################
+	
+	initialize = function( linkFct1 , linkFct0 )
+	{
+		super$initialize()
+		self$linkFct0 = linkFct0
+		self$linkFct1 = linkFct1
+	},
+	
+	eval = function(x)
+	{
+		return( self$linkFct1$eval( self$linkFct0$eval(x) ) )
+	},
+	
+	inverse = function(x)
+	{
+		return( self$linkFct0$inverse( self$linkFct1$inverse(x) ) )
+	},
+	
+	gradient = function(x)
+	{
+		return( self$linkFct0$gradient(x) * self$linkFct1$gradient( self$linkFct0$eval(x) ) )
+	}
+	
+	
+	),
+	
+	
+	######################
+	## Private elements ##
+	######################
+	
+	private = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	)
+)
+##}}}
+
+## IdLinkFct {{{
+
+#' IdLinkFct
+#'
+#' Identity link function
+#'
+#' @docType class
+#' @importFrom R6 R6Class
+#'
+#' @param x [vector]
+#'
+#' @return Object of \code{\link{R6Class}}
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new()}}{This method is used to create object of this class with \code{IdLinkFct}}
+#'   \item{\code{eval(x)}}{Evaluation of IdLinkFct at x}
+#'   \item{\code{inverse(x)}}{Inverse of IdLinkFct at x}
+#'   \item{\code{gradient(x)}}{Gradient of IdLinkFct at x}
+#' }
+#' @examples
+#'
+#' @export
+IdLinkFct = R6::R6Class( "IdLinkFct" ,
+	
+	inherit = SDFC::LinkFct,
+	
+	
+	public = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	#################
+	## Constructor ##
+	#################
+	
+	initialize = function()
+	{
+		super$initialize()
+	},
+	
+	eval = function(x)
+	{
+		return(x)
+	},
+	
+	inverse = function(x)
+	{
+		return(x)
+	},
+	
+	gradient = function(x)
+	{
+		return( base::rep( 1. , length(x) ) )
+	}
+	
+	
+	),
+	
+	
+	######################
+	## Private elements ##
+	######################
+	
+	private = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	)
+)
+##}}}
+
+## InverseLinkFct {{{
+
+#' InverseLinkFct
+#'
+#' Inverse link function
+#'
+#' @docType class
+#' @importFrom R6 R6Class
+#'
+#' @param x [vector]
+#'
+#' @return Object of \code{\link{R6Class}}
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new()}}{This method is used to create object of this class with \code{InverseLinkFct}}
+#'   \item{\code{eval(x)}}{Evaluation of InverseLinkFct at x}
+#'   \item{\code{inverse(x)}}{Inverse of InverseLinkFct at x}
+#'   \item{\code{gradient(x)}}{Gradient of InverseLinkFct at x}
+#' }
+#' @examples
+#'
+#' @export
+InverseLinkFct = R6::R6Class( "InverseLinkFct" ,
+	
+	inherit = SDFC::LinkFct,
+	
+	
+	public = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	#################
+	## Constructor ##
+	#################
+	
+	initialize = function()
+	{
+		super$initialize()
+	},
+	
+	eval = function(x)
+	{
+		return( 1. / x )
+	},
+	
+	inverse = function(x)
+	{
+		return( 1. / x )
+	},
+	
+	gradient = function(x)
+	{
+		return( - 1. / x^2 )
+	}
+	
+	
+	),
+	
+	
+	######################
+	## Private elements ##
+	######################
+	
+	private = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	)
+)
+##}}}
+
+## ExpLinkFct {{{
+
+#' ExpLinkFct
+#'
+#' Exponential link function
+#'
+#' @docType class
+#' @importFrom R6 R6Class
+#'
+#' @param x [vector]
+#'
+#' @return Object of \code{\link{R6Class}}
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new()}}{This method is used to create object of this class with \code{ExpLinkFct}}
+#'   \item{\code{eval(x)}}{Evaluation of ExpLinkFct at x}
+#'   \item{\code{inverse(x)}}{Inverse of ExpLinkFct at x}
+#'   \item{\code{gradient(x)}}{Gradient of ExpLinkFct at x}
+#' }
+#' @examples
+#'
+#' @export
+ExpLinkFct = R6::R6Class( "ExpLinkFct" ,
+	
+	inherit = SDFC::LinkFct,
+	
+	
+	public = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	#################
+	## Constructor ##
+	#################
+	
+	initialize = function()
+	{
+		super$initialize()
+	},
+	
+	eval = function(x)
+	{
+		return( base::exp(x) )
+	},
+	
+	inverse = function(x)
+	{
+		return( base::log(x) )
+	},
+	
+	gradient = function(x)
+	{
+		return( base::exp(x) )
+	}
+	
+	
+	),
+	
+	
+	######################
+	## Private elements ##
+	######################
+	
+	private = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	)
+)
+##}}}
+
+## LogitLinkFct {{{
+
+#' LogitLinkFct
+#'
+#' Logit link function
+#'
+#' @docType class
+#' @importFrom R6 R6Class
+#'
+#' @param a [float] Lower bound of logit
+#' @param b [float] Upper bound of logit
+#' @param s [float] Speed of logit between a and b
+#' @param x [vector]
+#'
+#' @return Object of \code{\link{R6Class}}
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new(a,b,s)}}{This method is used to create object of this class with \code{LogitLinkFct}}
+#'   \item{\code{eval(x)}}{Evaluation of LogitLinkFct at x}
+#'   \item{\code{inverse(x)}}{Inverse of LogitLinkFct at x}
+#'   \item{\code{gradient(x)}}{Gradient of LogitLinkFct at x}
+#' }
+#' @examples
+#'
+#' @export
+LogitLinkFct = R6::R6Class( "LogitLinkFct" ,
+	
+	inherit = SDFC::LinkFct,
+	
+	
+	public = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	a = 0,
+	b = 1,
+	s = 1,
+	
+	#################
+	## Constructor ##
+	#################
+	
+	initialize = function( a = 0 , b = 1 , s = 1 )
+	{
+		super$initialize()
+		self$a = a
+		self$b = b
+		self$s = s
+	},
+	
+	eval = function(x)
+	{
+		return( (self$b - self$a) / ( 1. + base::exp(- self$s * x) ) + self$a )
+	},
+	
+	inverse = function(x)
+	{
+		idx_lo = x < self$a
+		idx_up = x > self$b
+		x[idx_lo] = self$a + 1e-3
+		x[idx_up] = self$b - 1e-3
+		return( - base::log( (self$b - self$a) / (x - self$a) - 1 ) / self$s )
+	},
+	
+	gradient = function(x)
+	{
+		e = base::exp( - self$s * x )
+		return( self$s * (self$b - self$a) * e / ( 1 + e )^2 )
+	}
+	
+	
+	),
+	
+	
+	######################
+	## Private elements ##
+	######################
+	
+	private = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	)
+)
+##}}}
+

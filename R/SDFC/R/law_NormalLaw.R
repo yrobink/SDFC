@@ -81,7 +81,6 @@
 ##################################################################################
 ##################################################################################
 
-
 #' NormalLaw (Gaussian)
 #'
 #' Class to fit a Normal law with covariates
@@ -114,146 +113,167 @@
 #' }
 #' @examples
 #' ## Data
-#' size = 2000
-#' data = SDFC::Dataset2(size)
-#' t = data$t
-#' X = data$X
-#' Y = data$Y
-#' 
-#' ## Normal Law
-#' norm = SDFC::NormalLaw$new()
-#' norm$fit( Y , loc_cov = X , scale_cov = X )
-#' print(norm$loc_coef_) ## Location coef fitted
-#' print(norm$scale_coef_) ## Scale coef fitted
+#' #size = 2000
+#' #data = SDFC::Dataset2(size)
+#' #t = data$t
+#' #X = data$X
+#' #Y = data$Y
+#' #
+#' ### Normal Law
+#' #norm = SDFC::NormalLaw$new()
+#' #norm$fit( Y , loc_cov = X , scale_cov = X )
+#' #print(norm$loc_coef_) ## Location coef fitted
+#' #print(norm$scale_coef_) ## Scale coef fitted
 #'
-#' ## In fact, it is better to fit:
-#' norm_best = SDFC::NormalLaw$new()
-#' norm_best$fit( Y , loc_cov = X[,1] , scale_cov = X[,2] )
+#' ### In fact, it is better to fit:
+#' #norm_best = SDFC::NormalLaw$new()
+#' #norm_best$fit( Y , loc_cov = X[,1] , scale_cov = X[,2] )
 #' @export
 NormalLaw = R6::R6Class( "NormalLaw" ,
 	
+	inherit = AbstractLaw,
+	
+	
 	public = list(
-	
-	use_phi      = NULL,
-	method       = NULL,
-	verbose      = NULL,
-	Y            = NULL,
-	size         = NULL,
-	Nlog2pi      = NULL,
-	loc          = NULL,
-	scale        = NULL,
-	loc_design   = NULL,
-	scale_design = NULL,
-	nloc         = NULL,
-	nscale       = NULL,
-	ncov         = NULL,
-	optim_result = NULL,
-	loc_coef_    = NULL,
-	scale_coef_  = NULL,
-	
 	
 	###############
 	## Arguments ##
 	###############
+	
+	loc      = NULL,
+	scale    = NULL,
 	
 	
 	#################
 	## Constructor ##
 	#################
 	
-	initialize = function( use_phi = FALSE , method = "BFGS" , verbose = FALSE ) ##{{{
+	initialize = function( method = "MLE" , link_fct_loc = IdLinkFct$new() , link_fct_scale = IdLinkFct$new() , n_bootstrap = 0 , alpha = 0.05 ) ##{{{
 	{
-		self$use_phi = use_phi
-		self$method  = method
-		self$verbose = verbose
-	},
-	##}}}
-
-	fit = function( Y , loc_cov = NULL , scale_cov = NULL )##{{{
-	{
-		self$Y    = Y
-		self$size = base::length(Y)
-		self$Nlog2pi = self$size * base::log( 2 * base::pi ) / 2.
-		
-		## Design matrix
-		self$loc_design   = if( !is.null(loc_cov)   ) base::cbind( 1 , loc_cov)   else matrix( 1 , nrow = self$size , ncol = 1 )
-		self$scale_design = if( !is.null(scale_cov) ) base::cbind( 1 , scale_cov) else matrix( 1 , nrow = self$size , ncol = 1 )
-		
-		if( base::qr(self$loc_design)$rank < base::ncol(self$loc_design) )
-		{
-			if( self$verbose )
-			{
-				print( "SFDC::NormalLaw: singular design matrix for loc, co-variable coefficients are set to 0" )
-			}
-			self$loc_design = matrix( 1 , nrow = self$size , ncol = 1 )
-		}
-		if( base::qr(self$scale_design)$rank < base::ncol(self$scale_design) )
-		{
-			if( self$verbose )
-			{
-				print( "SFDC::NormalLaw: singular design matrix for scale, co-variable coefficients are set to 0" )
-			}
-			self$scale_design = matrix( 1 , nrow = self$size , ncol = 1 )
-		}
-		
-		self$nloc   = base::ncol(self$loc_design)
-		self$nscale = base::ncol(self$scale_design)
-		self$ncov   = self$nloc + self$nscale
-		
-		## Initial condition
-		param_init = self$find_init()
-		
-		## Optimization
-		self$optim_result = stats::optim( param_init , fn = self$optim_function , gr = self$gradient_optim_function , method = self$method )
-		
-		## Set result
-		self$loc_coef_   = self$optim_result$par[1:self$nloc]
-		self$scale_coef_ = self$optim_result$par[(self$nloc+1):self$ncov]
-		self$update_param( self$optim_result$par )
+		super$initialize( method , n_bootstrap , alpha )
+		self$loc       = NULL
+		self$scale     = NULL
+		private$loc_   = LawParam$new( linkFct = link_fct_loc   , kind = "loc"   )
+		private$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
 	},
 	##}}}
 	
-	link = function( x ) ##{{{
+	
+	#############
+	## Methods ##
+	#############
+	
+	fit = function( Y , loc_cov = NULL , scale_cov = NULL , floc = NULL , fscale = NULL )##{{{
 	{
-		if( self$use_phi )
+		private$fit_( Y , loc_cov , scale_cov , floc , fscale )
+	}
+	##}}}
+	
+	
+	),
+	
+	private = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	loc_     = NULL,
+	scale_   = NULL,
+	
+	
+	#############
+	## Methods ##
+	#############
+	
+	fit_ = function( Y , loc_cov , scale_cov , floc , fscale ) ##{{{
+	{
+		private$Y_    = as.vector(Y)
+		private$size_ = length(private$Y_)
+		
+		private$loc_$init(   X = loc_cov   , fix_values = floc   , size = private$size_ )
+		private$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
+		
+		if( self$method == "moments" )
 		{
-			return( base::exp(x) )
+			private$fit_moments()
 		}
 		else
 		{
-			return(x)
+			private$fit_mle()
 		}
+		
+		self$coef_ = private$concat_param()
 	},
 	##}}}
 	
-	link_inv = function( x ) ##{{{
+	fit_moments = function()##{{{
 	{
-		if( self$use_phi )
+		if( private$loc_$not_fixed() )
 		{
-			return( base::log(x) )
+			lX = private$loc_$design_wo1()
+			private$loc_$set_coef( np_mean( private$Y_ , lX , return_coef = TRUE , linkFct = private$loc_$linkFct ) )
+			private$loc_$update()
 		}
-		else
+		
+		if( private$scale_$not_fixed() )
 		{
-			return(x)
+			sX = private$scale_$design_wo1()
+			private$scale_$set_coef( np_std( private$Y_ , sX , m = private$loc_$valueLf() , return_coef = TRUE , linkFct = private$scale_$linkFct ) )
+			private$scale_$update()
 		}
+		self$loc   = private$loc_$valueLf()
+		self$scale = private$scale_$valueLf()
 	},
 	##}}}
 	
-	update_param = function( param ) ##{{{
+	fit_mle = function()##{{{
 	{
-		self$loc   = self$loc_design %*% param[1:self$nloc]
-		self$scale = self$link( self$scale_design %*% param[(self$nloc+1):self$ncov] )
+		private$fit_moments()
+		param_init = private$concat_param()
+		optim_result = stats::optim( param_init , fn = private$optim_function , gr = private$gradient_optim_function , method = "BFGS" )
+		private$update_param( optim_result$par )
 	},
 	##}}}
 	
-	find_init = function() ##{{{
+	split_param = function( param )##{{{
 	{
-		## Estimate mu
-		lm_res = stats::lm( self$Y ~ self$loc_design - 1)
-		init_loc = lm_res$coefficients[1:self$nloc]
-		init_scale = numeric(self$nscale)
-		init_scale[1] = stats::sd(self$Y)
-		return( base::c(init_loc,init_scale) )
+		param_loc   = NULL
+		param_scale = NULL
+		
+		if( private$loc_$not_fixed() )
+		{
+			param_loc   = param[1:private$loc_$size_]
+			if( private$scale_$not_fixed() )
+			{
+				param_scale = param[(private$loc_$size_+1):length(param)]
+			}
+		}
+		else if( private$scale_$not_fixed() )
+		{
+			param_scale = param[1:private$scale_$size_]
+		}
+		
+		return( list( loc = param_loc , scale = param_scale ) )
+	},
+	##}}}
+	
+	concat_param = function()##{{{
+	{
+		param = NULL
+		if( private$loc_$not_fixed() && private$scale_$not_fixed() )
+		{
+			param = base::c( private$loc_$coef_ , private$scale_$coef_ )
+		}
+		else if( private$loc_$not_fixed() )
+		{
+			param = private$loc_$coef_
+		}
+		else if( private$scale_$not_fixed() )
+		{
+			param = private$scale_$coef_
+		}
+		return( param )
 	},
 	##}}}
 	
@@ -265,29 +285,55 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 		}
 		
 		scale2 = self$scale^2
-		return( self$Nlog2pi + base::sum( base::log( scale2 ) ) / 2. + base::sum( ( self$Y - self$loc )^2 / scale2 ) / 2. )
+		res =  base::sum( base::log( scale2 ) ) / 2. + base::sum( ( private$Y_ - self$loc )^2 / scale2 ) / 2. 
+		return(res)
+	},
+	##}}}
+	
+	update_param = function( param ) ##{{{
+	{
+		param_sp = private$split_param(param)
+		private$loc_$set_coef(   param_sp$loc )
+		private$scale_$set_coef( param_sp$scale )
+		private$loc_$update()
+		private$scale_$update()
+		self$loc   = private$loc_$valueLf()
+		self$scale = private$scale_$valueLf()
 	},
 	##}}}
 	
 	optim_function = function( param )##{{{
 	{
-		self$update_param(param)
-		return( self$negloglikelihood() )
+		private$update_param(param)
+		return( private$negloglikelihood() )
 	},
 	##}}}
 	
 	gradient_optim_function = function( param ) ##{{{
 	{
-		self$update_param(param)
+		private$update_param(param)
 		
-		Yc = self$Y - self$loc
-		grad_loc   = - base::t(self$loc_design) %*% (Yc / self$scale^2)
-		grad_phi   = if( self$use_phi ) 1. else self$scale
-		grad_scale = base::t(self$scale_design) %*% ( 1. / grad_phi - (Yc / self$scale)^2 / grad_phi )
+		Yc = private$Y_ - self$loc
+		grad = base::c()
 		
-		return( base::c(grad_loc,grad_scale) )
+		if( private$loc_$not_fixed() )
+		{
+			grad_loc = - base::t( private$loc_$design_  ) %*% ( Yc / self$scale^2 * private$loc_$valueGrLf() )
+			grad     = base::c( grad , grad_loc )
+		}
+		if( private$scale_$not_fixed() )
+		{
+			grad_scale = base::t( private$scale_$design_) %*% ( ( 1. / self$scale - Yc^2 / self$scale^3 ) * private$scale_$valueGrLf() )
+			grad       = base::c( grad , grad_scale )
+		}
+		
+		return( grad )
 	}
 	##}}}
-
-	)
+	
+	
+	),
+	
 )
+
+

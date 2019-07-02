@@ -165,6 +165,35 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 	
 	fit = function( Y , loc_cov = NULL , scale_cov = NULL , floc = NULL , fscale = NULL )##{{{
 	{
+		Y = as.vector(Y)
+		private$size_ = length(Y)
+		
+		## Bootstrap
+		if( self$n_bootstrap > 0 )
+		{
+			if( !is.null(loc_cov) && !is.matrix(loc_cov) )
+				loc_cov = matrix( loc_cov , nrow = private$size_ , ncol = 1 )
+			if( !is.null(scale_cov) && !is.matrix(scale_cov) )
+				scale_cov = matrix( scale_cov , nrow = private$size_ , ncol = 1 )
+			
+			self$coefs_bootstrap = base::c()
+			
+			for( i in 1:self$n_bootstrap )
+			{
+				idx = base::sample( 1:private$size_ , private$size_ , replace = TRUE )
+				loc_cov_bs   = if( is.null(loc_cov) )   loc_cov   else loc_cov[idx,]
+				scale_cov_bs = if( is.null(scale_cov) ) scale_cov else scale_cov[idx,]
+				floc_bs      = if( is.null(floc) || length(floc) == 1 )     floc      else floc[idx]
+				fscale_bs    = if( is.null(fscale) || length(fscale) == 1 ) fscale    else fscale[idx]
+				
+				private$fit_( Y[idx] , loc_cov_bs , scale_cov_bs , floc_bs , fscale_bs )
+				self$coefs_bootstrap = base::rbind( self$coefs_bootstrap , self$coef_ )
+			}
+			self$confidence_interval = base::apply( self$coefs_bootstrap , 2 , stats::quantile , probs = base::c( self$alpha / 2. , 1. - self$alpha / 2. ) )
+		}
+		
+		
+		## Good fit
 		private$fit_( Y , loc_cov , scale_cov , floc , fscale )
 	}
 	##}}}
@@ -189,7 +218,6 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 	fit_ = function( Y , loc_cov , scale_cov , floc , fscale ) ##{{{
 	{
 		private$Y_    = as.vector(Y)
-		private$size_ = length(private$Y_)
 		
 		private$loc_$init(   X = loc_cov   , fix_values = floc   , size = private$size_ )
 		private$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )

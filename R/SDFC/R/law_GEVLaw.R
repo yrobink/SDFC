@@ -278,61 +278,22 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 	}
 	##}}}
 	
-#	fit = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL ) ##{{{
-#	{
-#		self$Y    = Y
-#		self$size = length(Y)
-#		
-#		## Design matrix
-#		size = length(Y)
-#		self$loc_design   = base::cbind( base::rep(1,self$size) , loc_cov )
-#		self$scale_design = base::cbind( base::rep(1,self$size) , scale_cov )
-#		self$shape_design = base::cbind( base::rep(1,self$size) , shape_cov )
-#		self$nloc         = base::ncol(self$loc_design)
-#		self$nscale       = base::ncol(self$scale_design)
-#		self$nshape       = base::ncol(self$shape_design)
-#		self$ncov         = self$nloc + self$nscale + self$nshape
-#		
-#		## Initial condition
-#		param_init = self$find_init()
-#		
-#		## Optimization
-#		self$optim_res  = stats::optim( param_init , fn = self$optim_function , gr = self$gradient_optim_function , method = self$method , hessian = TRUE )
-#		self$loc_coef   = self$optim_res$par[1:self$nloc]
-#		self$scale_coef = self$optim_res$par[(self$nloc+1):(self$nloc+self$nscale)]
-#		self$shape_coef = self$optim_res$par[(self$nloc+self$nscale+1):(self$ncov)]
-#		
-#		## Set scale and shape
-#		self$update_param( self$optim_res$par )
-#	},
-#	##}}}
-#	
-#	link = function( x ) ##{{{
-#	{
-#		if( self$use_phi )
-#		{
-#			return( base::exp(x) )
-#		}
-#		else
-#		{
-#			return(x)
-#		}
-#	},
-#	##}}}
-#	
-#	link_inv = function( x ) ##{{{
-#	{
-#		if( self$use_phi )
-#		{
-#			return( base::log(x) )
-#		}
-#		else
-#		{
-#			return(x)
-#		}
-#	},
-#	##}}}
-#	
+	
+	###############
+	## Functions ##
+	###############
+	
+	fit = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL , floc = NULL , fscale = NULL , fshape = NULL ) ##{{{
+	{
+		Y = as.vector(Y)
+		private$size_ = length(Y)
+		
+		##=> Bootstrap here
+		
+		private$fit_( Y , loc_cov , scale_cov , shape_cov , floc , fscale , fshape )
+	},
+	##}}}
+	
 #	update_param = function( param ) ##{{{
 #	{
 #		## Extract coefficients from param
@@ -565,7 +526,38 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 	
 	loc_   = NULL,
 	scale_ = NULL,
-	shape_ = NULL
+	shape_ = NULL,
+	
+	
+	###############
+	## Functions ##
+	###############
+	
+	fit_ = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL , floc = NULL , fscale = NULL , fshape = NULL ) ##{{{
+	{
+	}
+	##}}}
+	
+	fit_moments = function() ##{{{
+	{
+	},
+	##}}}
+	
+	fit_lmoments = function() ##{{{
+	{
+	},
+	##}}}
+	
+	fit_quantiles = function() ##{{{
+	{
+	},
+	##}}}
+	
+	fit_mle = function() ##{{{
+	{
+	},
+	##}}}
+	
 	
 	)
 )

@@ -81,6 +81,7 @@
 ##################################################################################
 ##################################################################################
 
+
 #' GPDLaw (Generalized Pareto)
 #'
 #' Class to generate, fit, and use a generalized pareto law.
@@ -490,5 +491,323 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 	)
 )
 ##}}}
+
+
+########################################################################################################################
+##                                                                                                                    ##
+## Generalized Pareto function like R                                                                                 ##
+##                                                                                                                    ##
+########################################################################################################################
+
+dgpd = function( x , loc = 0 , scale = 1 , shape = 0 , log = FALSE ) ##{{{
+{
+	size_x = length(x)
+	loc   = if( length(loc)   == size_x ) loc   else base::rep( loc[1]   , size_x )
+	scale = if( length(scale) == size_x ) scale else base::rep( scale[1] , size_x )
+	shape = if( length(shape) == size_x ) shape else base::rep( shape[1] , size_x )
+	
+	Z = ( x - loc ) / scale
+	
+	shape_zero  = ( shape == 0 )
+	cshape_zero = !shape_zero
+	valid       = (Z > 0) & (1 + shape * Z > 0)
+	
+	out = numeric(length(x)) + NA
+	if( base::any(shape_zero) && base::any(valid) )
+	{
+		idx = valid[shape_zero]
+		out[shape_zero][idx] = -base::log(scale[shape_zero][idx]) - Z[shape_zero][idx]
+	}
+	
+	if( base::any(cshape_zero) && base::any(valid) )
+	{
+		idx = valid[cshape_zero]
+		out[cshape_zero][idx] = -base::log(scale[cshape_zero][idx]) - base::log(1. + shape[cshape_zero][idx] * Z[cshape_zero][idx]) / shape[cshape_zero][idx]
+	}
+	
+	if( base::any(!valid) )
+	{
+		out[!valid] = -Inf
+	}
+	if( log )
+		return(out)
+	else
+		return(base::exp(out))
+
+}
+##}}}
+
+pgpd = function( q , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
+{
+	size_q = length(q)
+	loc   = if( length(loc)   == size_q ) loc   else base::rep( loc[1]   , size_q )
+	scale = if( length(scale) == size_q ) scale else base::rep( scale[1] , size_q )
+	shape = if( length(shape) == size_q ) shape else base::rep( shape[1] , size_q )
+	
+	shape_zero  = ( shape == 0 )
+	cshape_zero = !shape_zero
+	
+	Z = ( q - loc ) / scale
+	out = numeric(size_q) + NA
+	if( base::any(shape_zero) )
+	{
+		out[shape_zero] = 1. - base::exp( - Z )
+	}
+	
+	if( base::any(cshape_zero) )
+	{
+		out[cshape_zero] = 1. - ( 1. + shape * Z )^( -1. / shape )
+	}
+	
+	if( !lower.tail )
+		out = 1. - out
+	
+	return(out)
+}
+##}}}
+
+qgpd = function( p , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
+{
+	if( !lower.tail )
+		return( qgpd( 1 - p , loc , scale , shape , TRUE ) )
+	
+	## Test size
+	size_p = length(p)
+	loc   = if( length(loc)   == size_p ) loc   else base::rep( loc[1]   , size_p )
+	scale = if( length(scale) == size_p ) scale else base::rep( scale[1] , size_p )
+	shape = if( length(shape) == size_p ) shape else base::rep( shape[1] , size_p )
+	
+	## Difference shape == 0 and non zero
+	shape_zero  = ( shape == 0 )
+	cshape_zero = !shape_zero
+	
+	out = numeric(length(p)) + NA
+	if( base::any(shape_zero) )
+	{
+		out[shape_zero] = loc - scale * base::log(1. - p)
+	}
+	
+	if( base::any(cshape_zero) )
+	{
+		out[cshape_zero] = loc + scale * ( (1. - p)^(-shape) - 1 ) / shape
+	}
+	
+	return(out)
+}
+##}}}
+
+rgpd = function( n = 1 , loc = 0 , scale = 1 , shape = 0 ) ##{{{
+{
+	p = stats::runif( n = n )
+	return( qgpd( p , loc , scale , shape ) )
+}
+##}}}
+
+
+
+########################################################################################################################
+##                                                                                                                    ##
+## Generalized Pareto class                                                                                           ##
+##                                                                                                                    ##
+########################################################################################################################
+
+GPDLaw2 = R6::R6Class( "GPDLaw2" , ##{{{
+	
+	
+	public = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	method = NULL,
+	loc    = NULL,
+	scale  = NULL,
+	shape  = NULL,
+	scale_ = NULL,
+	shape_ = NULL,
+	
+	
+	#################
+	## Constructor ##
+	#################
+	
+	initialize = function( method = "MLE" , link_fct_scale = SDFC::IdLinkFct$new() , link_fct_shape = SDFC::IdLinkFct$new() ) ##{{{
+	{
+		self$method      = method
+		private$lf_scale = link_fct_scale
+		private$lf_shape = link_fct_shape
+	},
+	##}}}
+	
+	
+	#############
+	## Methods ##
+	#############
+	
+	fit = function( Y , loc , scale_cov = NULL , shape_cov = NULL ) ##{{{
+	{
+		private$Y_    = as.vector(Y)
+		private$size_ = length(Y)
+		
+		self$loc    = if( length(loc) == private$size_) as.vector(loc) else as.vector( base::rep( loc[1] , private$size_ ) )
+		self$scale_ = LawParam$new( scale_cov , private$size_ , private$lf_scale )
+		self$shape_ = LawParam$new( shape_cov , private$size_ , private$lf_shape )
+		
+		if( self$method == "moments" )
+		{
+			private$fit_moments()
+		}
+		else if( self$method == "lmoments" )
+		{
+			private$fit_lmoments()
+		}
+		else
+		{
+			private$fit_mle()
+		}
+		
+	},
+	##}}}
+	
+	),
+	
+	
+	private = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	Y_       = NULL,
+	size_    = NULL,
+	lf_scale = NULL,
+	lf_shape = NULL,
+	
+	
+	#############
+	## Methods ##
+	#############
+	
+	fit_moments = function()
+	{
+		idx_excess = (private$Y_ > self$loc)
+		excess = private$Y_[idx_excess] - self$loc[idx_excess]
+		
+		self$scale_$set_coef( SDFC::np_std( excess , self$scale_$design_without_intercept()[idx_excess,] , linkFct = private$lf_scale , return_coef = TRUE ) )
+		self$shape_$set_intercept( private$lf_shape$inverse(-1e-8) )
+		
+		self$scale_$update()
+		self$shape_$update()
+		
+		self$scale = self$scale_$valueLf()
+		self$shape = self$shape_$valueLf()
+		
+	},
+	
+	fit_lmoments = function()
+	{
+		idx_excess = (self$Y > self$loc)
+		excess = self$Y[idx_excess] - self$loc[idx_excess]
+		lmo1     = SDFC::lmoments(excess,1)
+		lmo2     = SDFC::lmoments(excess,2)
+		itau     = lmo1 / lmo2
+		scale_lm = lmo1 * ( itau - 1 )
+		scale_lm = if( scale_lm > 0 ) scale_lm else 1e-8
+		shape_lm = - ( itau - 2 )
+	
+	},
+	
+	fit_mle = function()
+	{
+	
+	},
+	
+	
+	update_param = function( param ) ##{{{
+	{
+		## Extract coefficients from param
+		scale_coef = param[1:self$nscale]
+		shape_coef = param[(self$nscale+1):(self$ncov)]
+		
+		## Set scale and shape
+		self$scale = self$link( self$scale_design %*% scale_coef )
+		self$shape = self$shape_design %*% shape_coef
+	},
+	##}}}
+	
+	negloglikelihood = function() ##{{{
+	{
+		## Impossible scale
+		if( base::any( self$scale <= 0 ) )
+			return(Inf)
+		
+		## Fuck exponential case
+		zero.shape = ( base::abs(self$shape) < 1e-10 )
+		if( !is.null(zero.shape) )
+		{
+			self$shape[zero.shape] = -1e-10
+		}
+		
+		##
+		idx_excess = (self$Y > self$loc)
+		loc   = self$loc[idx_excess]
+		scale = self$scale[idx_excess]
+		shape = self$shape[idx_excess]
+		Z = 1. + shape * ( self$Y[idx_excess] - loc ) / scale
+		
+		if( base::any(Z <= 0) )
+			return(Inf)
+		
+		res = base::sum( base::log( scale ) + base::log(Z) * ( 1 + 1. / shape ) )
+		
+		if( is.na(res) )
+			return(Inf)
+		return(res)
+	},
+	##}}}
+	
+	optim_function = function( param )##{{{
+	{
+		self$update_param(param)
+		return( self$negloglikelihood() )
+	},
+	##}}}
+	
+	gradient_optim_function = function( param ) ##{{{
+	{
+		self$update_param(param)
+		
+		idx_excess = ( self$Y > self$loc )
+		Y      = self$Y[idx_excess]
+		loc    = self$loc[idx_excess]
+		scale  = self$scale[idx_excess]
+		shape  = self$shape[idx_excess]
+		Y_zero   = Y - loc
+		Z        = 1. + shape * Y_zero / scale
+		exponent = 1. + 1. / shape
+		
+		grad_phi   = if( self$use_phi ) scale else 1.
+		grad_scale = base::t(self$scale_design[idx_excess,]) %*% (grad_phi / scale - ( grad_phi * exponent * shape * Y_zero / (scale^2) ) / Z)
+		grad_shape = if( base::all(Z>0) ) base::t(self$shape_design[idx_excess,]) %*% ( - base::log(Z) / (shape**2) + exponent * Y_zero / scale / Z) else base::rep(NaN,self$nshape)
+		
+#		phi.grad = if( use_phi ) scale else 1.
+#		
+#		coef = phi.grad / scale - ( phi.grad * exponent * shape * Y_zero / (scale^2) ) / Z
+#		grad_scale = base::apply( scale_design , 2 , function(X) { return(base::sum(coef*X)) } )
+#		
+#		coef =  - base::log(Z) / (shape^2) + exponent * Y_zero / scale / Z 
+#		grad_shape = base::apply( shape_design , 2 , function(X) { return(base::sum(coef*X)) } )
+		
+		return( base::c(grad_scale,grad_shape) )
+	}
+	##}}}
+	
+	
+	)
+	
+)
+##}}}
+
 
 

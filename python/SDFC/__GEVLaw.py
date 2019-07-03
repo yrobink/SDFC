@@ -451,20 +451,26 @@ class GEVLaw(AbstractLaw):
 	
 	def _concat_param( self ):##{{{
 		param = None
-		if self._loc.not_fixed() and self._scale.not_fixed() and self._shape.not_fixed():
-			param = np.hstack( (self._loc.coef_,self._scale.coef_,self._shape.coef_) )
-		elif self._loc.not_fixed() and self._scale.not_fixed():
-			param = np.hstack( (self._loc.coef_,self._scale.coef_) )
-		elif self._loc.not_fixed() and self._shape.not_fixed():
-			param = np.hstack( (self._loc.coef_,self._shape.coef_) )
-		elif self._scale.not_fixed() and self._shape.not_fixed():
-			param = np.hstack( (self._scale.coef_,self._shape.coef_) )
-		elif self._loc.not_fixed():
-			param = self._loc.coef_
-		elif self._scale.not_fixed():
-			param = self._scale.coef_
-		elif self._shape.not_fixed():
-			param = self._shape.coef_
+		param_loc   = self._loc.coef_   if self._loc.not_fixed()   else np.array([])
+		param_scale = self._scale.coef_ if self._scale.not_fixed() else np.array([])
+		param_shape = self._shape.coef_ if self._shape.not_fixed() else np.array([])
+		
+		param = np.hstack( (param_loc,param_scale,param_shape) )
+
+#		if self._loc.not_fixed() and self._scale.not_fixed() and self._shape.not_fixed():
+#			param = np.hstack( (self._loc.coef_,self._scale.coef_,self._shape.coef_) )
+#		elif self._loc.not_fixed() and self._scale.not_fixed():
+#			param = np.hstack( (self._loc.coef_,self._scale.coef_) )
+#		elif self._loc.not_fixed() and self._shape.not_fixed():
+#			param = np.hstack( (self._loc.coef_,self._shape.coef_) )
+#		elif self._scale.not_fixed() and self._shape.not_fixed():
+#			param = np.hstack( (self._scale.coef_,self._shape.coef_) )
+#		elif self._loc.not_fixed():
+#			param = self._loc.coef_
+#		elif self._scale.not_fixed():
+#			param = self._scale.coef_
+#		elif self._shape.not_fixed():
+#			param = self._shape.coef_
 		return param
 	##}}}
 	

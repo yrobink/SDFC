@@ -12,7 +12,12 @@
 
 ## Python instruction
 
-Requires: python3, numpy, scipy, Eigen (c++)
+Requires:
+- python3
+- [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
+- numpy
+- scipy
+- pybind11
 
 For python, just use the command:
 ```

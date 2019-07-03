@@ -13,11 +13,17 @@
 
 ## R instruction
 
-Requires: R, devtools, roxygen2, Rcpp, RcppEigen
+Requires:
+- R
+- [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
+- devtools
+- roxygen2
+- Rcpp
+- RcppEigen
 
-I'm not really sure of how to build, but this sequence works (good luck):
+I'm not really sure of how to build, but this sequence works:
 ```
-roxygen2::roxygenize("SDFC") ## Return an error, but necessary to generate NAMSPACE file...
+roxygen2::roxygenize("SDFC") ## Return an error, but necessary to generate NAMESPACE file...
 devtools::load_all("SDFC")
 roxygen2::roxygenize("SDFC") ## Now, no errors
 devtools::build("SDFC")      ## Generate the package

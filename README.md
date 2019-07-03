@@ -10,6 +10,12 @@
 - Support for user defined custom link function
 
 
+## Example
+
+![Alt](/figures/Example_py.png)
+
+
+
 ## Note for quantile regression
 
 The quantile regression is solved with the Frish-Newton algorithm, written in c++,

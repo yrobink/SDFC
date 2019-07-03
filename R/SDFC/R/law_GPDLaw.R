@@ -81,6 +81,149 @@
 ##################################################################################
 ##################################################################################
 
+########################################################################################################################
+##                                                                                                                    ##
+## Generalized Pareto function like R                                                                                 ##
+##                                                                                                                    ##
+########################################################################################################################
+
+dgpd = function( x , loc = 0 , scale = 1 , shape = 0 , log = FALSE ) ##{{{
+{
+	size_x = length(x)
+	loc   = if( length(loc)   == size_x ) loc   else base::rep( loc[1]   , size_x )
+	scale = if( length(scale) == size_x ) scale else base::rep( scale[1] , size_x )
+	shape = if( length(shape) == size_x ) shape else base::rep( shape[1] , size_x )
+	
+	Z = ( x - loc ) / scale
+	
+	shape_zero  = ( shape == 0 )
+	cshape_zero = !shape_zero
+	valid       = (Z > 0) & (1 + shape * Z > 0)
+	
+	out = numeric(length(x)) + NA
+	if( base::any(shape_zero) )
+	{
+		idx = shape_zero & valid
+		if( base::any(idx) )
+		{
+			out[idx] = -base::log(scale[idx]) - Z[idx]
+		}
+	}
+	
+	if( base::any(cshape_zero) )
+	{
+		idx = cshape_zero & valid
+		if( base::any(idx) )
+		{
+			out[idx] = -base::log(scale[idx]) - base::log(1. + shape[idx] * Z[idx]) * ( 1 + 1 / shape[idx] )
+		}
+	}
+	
+	if( base::any(!valid) )
+	{
+		out[!valid] = -Inf
+	}
+	if( log )
+		return(out)
+	else
+		return(base::exp(out))
+
+}
+##}}}
+
+pgpd = function( q , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
+{
+	if( !lower.tail )
+	{
+		return( 1 - pgpd( q , loc , scale , shape , lower.tail = TRUE ) )
+	}
+	
+	size_q = length(q)
+	loc   = if( length(loc)   == size_q ) loc   else base::rep( loc[1]   , size_q )
+	scale = if( length(scale) == size_q ) scale else base::rep( scale[1] , size_q )
+	shape = if( length(shape) == size_q ) shape else base::rep( shape[1] , size_q )
+	
+	shape_zero  = ( shape == 0 )
+	cshape_zero = !shape_zero
+	
+	Z     = ( q - loc ) / scale
+	valid = (Z > 0) & (1 + shape * Z > 0)
+	
+	out = numeric(size_q) + NA
+	if( base::any(shape_zero) )
+	{
+		idx = shape_zero & valid
+		if( base::any(idx) )
+		{
+			out[idx] = 1. - base::exp( - Z[idx] )
+		}
+	}
+	
+	if( base::any(cshape_zero) )
+	{
+		idx = cshape_zero & valid
+		if( base::any(idx) )
+		{
+			out[idx] = 1. - ( 1. + shape[idx] * Z[idx] )^( -1. / shape[idx] )
+		}
+	}
+	
+	if( base::any(!valid) )
+	{
+		idx0 = (Z > 1) & !valid
+		idx1 = !(Z > 1) & !valid
+		if( base::any(idx0) )
+			out[idx0] = 1
+		if( base::any(idx1) )
+			out[idx1] = 0
+	}
+	
+	return(out)
+}
+##}}}
+
+qgpd = function( p , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
+{
+	if( !lower.tail )
+		return( qgpd( 1 - p , loc , scale , shape , TRUE ) )
+	
+	## Test size
+	size_p = length(p)
+	loc   = if( length(loc)   == size_p ) loc   else base::rep( loc[1]   , size_p )
+	scale = if( length(scale) == size_p ) scale else base::rep( scale[1] , size_p )
+	shape = if( length(shape) == size_p ) shape else base::rep( shape[1] , size_p )
+	
+	## Difference shape == 0 and non zero
+	shape_zero  = ( shape == 0 )
+	cshape_zero = !shape_zero
+	
+	out = numeric(length(p)) + NA
+	if( base::any(shape_zero) )
+	{
+		out[shape_zero] = loc - scale * base::log(1. - p)
+	}
+	
+	if( base::any(cshape_zero) )
+	{
+		out[cshape_zero] = loc + scale * ( (1. - p)^(-shape) - 1 ) / shape
+	}
+	
+	return(out)
+}
+##}}}
+
+rgpd = function( n = 1 , loc = 0 , scale = 1 , shape = 0 ) ##{{{
+{
+	p = stats::runif( n = n )
+	return( qgpd( p , loc , scale , shape ) )
+}
+##}}}
+
+
+
+
+if( FALSE )
+{
 
 #' GPDLaw (Generalized Pareto)
 #'
@@ -493,116 +636,6 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 ##}}}
 
 
-########################################################################################################################
-##                                                                                                                    ##
-## Generalized Pareto function like R                                                                                 ##
-##                                                                                                                    ##
-########################################################################################################################
-
-dgpd = function( x , loc = 0 , scale = 1 , shape = 0 , log = FALSE ) ##{{{
-{
-	size_x = length(x)
-	loc   = if( length(loc)   == size_x ) loc   else base::rep( loc[1]   , size_x )
-	scale = if( length(scale) == size_x ) scale else base::rep( scale[1] , size_x )
-	shape = if( length(shape) == size_x ) shape else base::rep( shape[1] , size_x )
-	
-	Z = ( x - loc ) / scale
-	
-	shape_zero  = ( shape == 0 )
-	cshape_zero = !shape_zero
-	valid       = (Z > 0) & (1 + shape * Z > 0)
-	
-	out = numeric(length(x)) + NA
-	if( base::any(shape_zero) && base::any(valid) )
-	{
-		idx = valid[shape_zero]
-		out[shape_zero][idx] = -base::log(scale[shape_zero][idx]) - Z[shape_zero][idx]
-	}
-	
-	if( base::any(cshape_zero) && base::any(valid) )
-	{
-		idx = valid[cshape_zero]
-		out[cshape_zero][idx] = -base::log(scale[cshape_zero][idx]) - base::log(1. + shape[cshape_zero][idx] * Z[cshape_zero][idx]) / shape[cshape_zero][idx]
-	}
-	
-	if( base::any(!valid) )
-	{
-		out[!valid] = -Inf
-	}
-	if( log )
-		return(out)
-	else
-		return(base::exp(out))
-
-}
-##}}}
-
-pgpd = function( q , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
-{
-	size_q = length(q)
-	loc   = if( length(loc)   == size_q ) loc   else base::rep( loc[1]   , size_q )
-	scale = if( length(scale) == size_q ) scale else base::rep( scale[1] , size_q )
-	shape = if( length(shape) == size_q ) shape else base::rep( shape[1] , size_q )
-	
-	shape_zero  = ( shape == 0 )
-	cshape_zero = !shape_zero
-	
-	Z = ( q - loc ) / scale
-	out = numeric(size_q) + NA
-	if( base::any(shape_zero) )
-	{
-		out[shape_zero] = 1. - base::exp( - Z )
-	}
-	
-	if( base::any(cshape_zero) )
-	{
-		out[cshape_zero] = 1. - ( 1. + shape * Z )^( -1. / shape )
-	}
-	
-	if( !lower.tail )
-		out = 1. - out
-	
-	return(out)
-}
-##}}}
-
-qgpd = function( p , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
-{
-	if( !lower.tail )
-		return( qgpd( 1 - p , loc , scale , shape , TRUE ) )
-	
-	## Test size
-	size_p = length(p)
-	loc   = if( length(loc)   == size_p ) loc   else base::rep( loc[1]   , size_p )
-	scale = if( length(scale) == size_p ) scale else base::rep( scale[1] , size_p )
-	shape = if( length(shape) == size_p ) shape else base::rep( shape[1] , size_p )
-	
-	## Difference shape == 0 and non zero
-	shape_zero  = ( shape == 0 )
-	cshape_zero = !shape_zero
-	
-	out = numeric(length(p)) + NA
-	if( base::any(shape_zero) )
-	{
-		out[shape_zero] = loc - scale * base::log(1. - p)
-	}
-	
-	if( base::any(cshape_zero) )
-	{
-		out[cshape_zero] = loc + scale * ( (1. - p)^(-shape) - 1 ) / shape
-	}
-	
-	return(out)
-}
-##}}}
-
-rgpd = function( n = 1 , loc = 0 , scale = 1 , shape = 0 ) ##{{{
-{
-	p = stats::runif( n = n )
-	return( qgpd( p , loc , scale , shape ) )
-}
-##}}}
-
 
 
 ########################################################################################################################
@@ -810,4 +843,4 @@ GPDLaw2 = R6::R6Class( "GPDLaw2" , ##{{{
 ##}}}
 
 
-
+}

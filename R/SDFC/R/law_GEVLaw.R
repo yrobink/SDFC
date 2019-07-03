@@ -295,6 +295,32 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 		private$size_ = length(Y)
 		
 		##=> Bootstrap here
+		if( self$n_bootstrap > 0 )
+		{
+			if( !is.null(loc_cov) && !is.matrix(loc_cov) )
+				loc_cov = matrix( loc_cov , nrow = private$size_ , ncol = 1 )
+			if( !is.null(scale_cov) && !is.matrix(scale_cov) )
+				scale_cov = matrix( scale_cov , nrow = private$size_ , ncol = 1 )
+			if( !is.null(shape_cov) && !is.matrix(shape_cov) )
+				shape_cov = matrix( shape_cov , nrow = private$size_ , ncol = 1 )
+			
+			self$coefs_bootstrap = base::c()
+			
+			for( i in 1:self$n_bootstrap )
+			{
+				idx = base::sample( 1:private$size_ , private$size_ , replace = TRUE )
+				loc_cov_bs   = if( is.null(loc_cov) )   loc_cov   else loc_cov[idx,]
+				scale_cov_bs = if( is.null(scale_cov) ) scale_cov else scale_cov[idx,]
+				shape_cov_bs = if( is.null(shape_cov) ) shape_cov else shape_cov[idx,]
+				floc_bs      = if( is.null(floc) || length(floc) == 1 )     floc      else floc[idx]
+				fscale_bs    = if( is.null(fscale) || length(fscale) == 1 ) fscale    else fscale[idx]
+				fshape_bs    = if( is.null(fshape) || length(fshape) == 1 ) fshape    else fshape[idx]
+				
+				private$fit_( Y[idx] , loc_cov_bs , scale_cov_bs , shape_cov_bs , floc_bs , fscale_bs , fshape_bs )
+				self$coefs_bootstrap = base::rbind( self$coefs_bootstrap , self$coef_ )
+			}
+			self$confidence_interval = base::apply( self$coefs_bootstrap , 2 , stats::quantile , probs = base::c( self$alpha / 2. , 1. - self$alpha / 2. ) )
+		}
 		
 		private$fit_( Y , loc_cov , scale_cov , shape_cov , floc , fscale , fshape )
 	}
@@ -406,6 +432,11 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 			{
 				private$loc_$set_intercept( private$loc_$linkFct$inverse( as.vector(stats::quantile( private$Y_ , probs = base::exp(-1) )) ) )
 			}
+			else
+			{
+				loc = as.vector(np_quantile( private$Y_ , ltau = base::c(base::exp(-1)) , X = private$loc_$design_wo1() ))
+				private$loc_$set_coef( np_mean( loc , X = private$loc_$design_wo1() , linkFct = private$loc_$linkFct , return_coef = TRUE ) )
+			}
 		}
 		private$loc_$update()
 		self$loc = private$loc_$valueLf()
@@ -419,6 +450,12 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 			if( private$scale_$size_ == 1 )
 			{
 				private$scale_$set_intercept( private$scale_$linkFct$inverse(base::mean( as.vector( stats::quantile( private$Y_ - self$loc , probs ) ) * coef )) )
+			}
+			else
+			{
+				qreg = np_quantile( private$Y_ - self$loc , ltau = probs , X = private$scale_$design_wo1() )
+				fscale = ( qreg %*% coef ) / length(probs)
+				private$scale_$set_coef( np_mean( fscale , X = private$scale_$design_wo1() , linkFct = private$scale_$linkFct , return_coef = TRUE ) )
 			}
 		}
 		private$scale_$update()
@@ -439,6 +476,13 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 				sh = 2 * (llp0 - kappa * llp1 ) / ( llp0^2 - kappa * llp1^2 )
 				private$shape_$set_intercept( private$shape_$linkFct$inverse(sh) )
 			}
+			else
+			{
+				q = np_quantile( ( private$Y_ - self$loc ) / self$scale , ltau = base::c(p0,p1) , X = private$shape_$design_wo1() )
+				kappa = q[,1] / q[,2]
+				fshape = 2 * (llp0 - kappa * llp1 ) / ( llp0^2 - kappa * llp1^2 )
+				private$shape_$set_coef( np_mean( fshape , X = private$shape_$design_wo1() , linkFct = private$shape_$linkFct , return_coef = TRUE ) )
+			}
 		}
 		private$shape_$update()
 		self$shape = private$shape_$valueLf()
@@ -449,6 +493,17 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 	{
 		private$fit_quantiles()
 		param_init = private$concat_param()
+		
+		## Test for initial value
+		nll  = private$optim_function(param_init)
+		gnll = private$gradient_optim_function(param_init)
+		
+		if( !is.finite(nll) || !is.finite(gnll) )
+		{
+			private$shape_$set_coef( numeric( private$shape_$size_ ) )
+			param_init = private$concat_param()
+		}
+		
 		optim_result = stats::optim( param_init , fn = private$optim_function , gr = private$gradient_optim_function , method = "BFGS" )
 		private$update_param( optim_result$par )
 	},

@@ -101,6 +101,7 @@ np_var = function( Y , X = NULL , m = NULL , linkFct = SDFC::IdLinkFct$new() , r
 {
 	out  = NULL
 	coef = NULL
+	m    = if( is.null(m) ) base::mean(Y) else as.vector(m)
 	if( is.null(X) )
 	{
 		out  = stats::var(Y-m)
@@ -108,7 +109,6 @@ np_var = function( Y , X = NULL , m = NULL , linkFct = SDFC::IdLinkFct$new() , r
 	}
 	else
 	{
-		m    = if( is.null(m) ) base::mean(Y) else as.vector(m)
 		XX   = base::cbind( 1 , X )
 		Yres = linkFct$inverse( (Y - m)^2 )
 		coef = as.vector(stats::lm( Yres ~ X )$coefficients)

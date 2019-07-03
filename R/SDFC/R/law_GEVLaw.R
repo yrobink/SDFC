@@ -273,9 +273,11 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 	initialize = function( method = "MLE" , link_fct_loc = IdLinkFct$new() , link_fct_scale = IdLinkFct$new() , link_fct_shape = IdLinkFct$new() , n_bootstrap = 0 , alpha = 0.05 ) ##{{{
 	{
 		super$initialize( method , n_bootstrap , alpha )
+		
 		self$loc       = NULL
 		self$scale     = NULL
 		self$shape     = NULL
+		
 		private$loc_   = LawParam$new( linkFct = link_fct_loc   , kind = "loc"   )
 		private$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
 		private$shape_ = LawParam$new( linkFct = link_fct_shape , kind = "shape" )
@@ -298,228 +300,6 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 	}
 	##}}}
 	
-#	update_param = function( param ) ##{{{
-#	{
-#		## Extract coefficients from param
-#		loc_coef   = param[1:self$nloc]
-#		scale_coef = param[(self$nloc+1):(self$nloc+self$nscale)]
-#		shape_coef = param[(self$nloc+self$nscale+1):(self$ncov)]
-#		
-#		## Set scale and shape
-#		self$loc   = self$loc_design %*% loc_coef
-#		self$scale = self$link( self$scale_design %*% scale_coef )
-#		self$shape = self$shape_design %*% shape_coef
-#	},
-#	##}}}
-#	
-#	find_init_extRemes = function() ##{{{
-#	{
-#		## LMoments
-#		lmom1 = SDFC::lmoments( self$Y , 1 )
-#		lmom2 = SDFC::lmoments( self$Y , 2 )
-#		lmom3 = SDFC::lmoments( self$Y , 3 )
-#		
-#		tau3  = lmom3 / lmom2
-#		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
-#		kappa = 7.8590 * co + 2.9554 * co**2
-#		g     = base::gamma( 1. + kappa )
-#		
-#		init_loc   = numeric( self$nloc )
-#		init_scale = numeric( self$nscale )
-#		init_shape = numeric( self$nshape )
-#		
-#		init_scale[1] = lmom2 * kappa / ( ( 1 - 2^(- kappa) ) * g )
-#		init_loc[1]   = lmom1 - init_scale[1] * (1 - g) / kappa
-#		init_shape[1] = - kappa
-#		init_scale[1] = self$link_inv(init_scale[1])
-#		
-#		param   = base::c(init_loc,init_scale,init_shape)
-#		test_ll = self$optim_function(param)
-#		
-#		## Moments
-#		m     = base::mean(self$Y)
-#		s     = base::sqrt(6) * stats::sd(self$Y) / base::pi
-#		
-#		init_loc2   = numeric( self$nloc )
-#		init_scale2 = numeric( self$nscale )
-#		init_shape2 = numeric( self$nshape )
-#		
-#		init_loc2[1]   = m - 0.57722 * s
-#		init_scale2[1] = base::log(s)
-#		init_shape2[1] = 1e-8
-#		init_scale2[1] = self$link_inv(init_scale2[1])
-#		
-#		param2   = base::c(init_loc2,init_scale2,init_shape2)
-#		test_ll2 = self$optim_function(param2)
-#		
-#		if( !is.finite(test_ll) && !is.finite(test_ll2) )
-#		{
-#			init_loc3      = numeric( self$nloc )
-#			init_scale3    = numeric( self$nscale )
-#			init_shape3    = numeric( self$nshape )
-#			init_loc3[1]   = 0
-#			init_scale3[1] = 1
-#			init_shape3[1] = 0.01
-#			param3 = base::c(init_loc3,init_scale3,init_shape3)
-#			test_ll3 = self$optim_function(param3)
-#			return( list( param = param3 , ll = test_ll3 ) )
-#		}
-#		
-#		if( test_ll < test_ll2 )
-#			return( list( param = param , ll = test_ll ) )
-#		else
-#			return( list( param = param2 , ll = test_ll2 ) )
-#	}, ##}}}
-#	
-#	find_init_quantiles = function() ##{{{
-#	{
-#		init_loc   = numeric( self$nloc )
-#		init_scale = numeric( self$nscale )
-#		init_shape = numeric( self$nshape )
-#		
-#		## Fit loc
-#		if( self$nloc == 1)
-#		{
-#			rvY = SDFC::rv_histogram$new( self$Y )
-#			init_loc[1] = rvY$icdf( base::exp(-1) )
-#			loc = base::rep( init_loc[1] , length(self$Y) )
-#		}
-#		else
-#		{
-#			reg = SDFC::QuantileRegression$new( base::c( base::exp(-1) ) )
-#			reg$fit( self$Y , self$loc_design[,2:self$nloc] )
-#			init_loc = reg$coef()
-#			loc      = reg$predict()
-#		}
-#		
-#		## Fit shape	
-#		lmom1 = SDFC::lmoments( self$Y - loc , 1 )
-#		lmom2 = SDFC::lmoments( self$Y - loc , 2 )
-#		lmom3 = SDFC::lmoments( self$Y - loc , 3 )
-#		
-#		tau3  = lmom3 / lmom2
-#		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
-#		kappa = 7.8590 * co + 2.9554 * co^2
-#		init_shape[1] = - kappa
-#		
-#		## Fit scale
-#		qscale = base::c(0.25,0.5,0.75)
-#		if( self$nscale == 1 )
-#		{
-#			rvY = SDFC::rv_histogram$new( self$Y )
-#			coef = - kappa / ( ( -np.log(qscale) )^kappa - 1 )
-#			init_scale[1] = self$link_inv( base::mean( rvY$icdf( qscale ) * coef ) )
-#		}
-#		else
-#		{
-#			reg = QuantileRegression$new( qscale )
-#			reg$fit( self$Y - loc , self$scale_design[,2:self$nscale] )
-#			fshape = base::rep( -kappa , length(self$Y) )
-#			coef = matrix( NA , nrow = length(qscale) , ncol = length(self$Y) )
-#			for( i in 1:length(qscale) )
-#			{
-#				coef[i,] = fshape / ( (-base::log(qscale[i]))^(-fshape) -1 )
-#			}
-#			fscale = self$link_inv( base::apply( reg$predict() * base::t(coef) , 1 , base::mean ) )
-#			lm = stats::lm( fscale ~ self$scale_design[,2:self$nscale] )
-#			init_scale = as.vector( lm$coefficients )
-#		}
-#		
-#		param   = base::c(init_loc,init_scale,init_shape)
-#		test_ll = self$optim_function(param)
-#		return( list( param = param , ll = test_ll ) )
-#	}, ##}}}
-#	
-#	find_init = function() ##{{{
-#	{
-#		method_ext = self$find_init_extRemes()
-#		method_qua = self$find_init_quantiles()
-#		
-#		if( method_ext$ll < method_qua$ll )
-#		{
-#			return(method_ext$param)
-#		}
-#		else
-#		{
-#			return(method_qua$param)
-#		}
-#	},
-#	##}}}
-#	
-#	negloglikelihood = function() ##{{{
-#	{
-#		## Impossible scale
-#		if( base::any( self$scale <= 0 ) )
-#			return(Inf)
-#		
-#		## Fuck exponential case
-#		zero_shape = ( base::abs(self$shape) < 1e-10 )
-#		if( base::any(zero_shape) )
-#			self$shape[zero_shape] = -1e-10
-#		
-#		##
-#		Z = 1 + self$shape * ( self$Y - self$loc ) / self$scale
-#		
-#		if( base::any(Z <= 0) )
-#			return( Inf )
-#		
-#		res = base::sum( ( 1. + 1. / self$shape ) * base::log(Z) + Z^( - 1. / self$shape ) + base::log(self$scale) )
-#		
-#		if( is.finite(res) )
-#			return(res)
-#		else
-#			return(Inf)
-#	},
-#	##}}}
-#	
-#	optim_function = function( param )##{{{
-#	{
-#		self$update_param(param)
-#		return( self$negloglikelihood() )
-#	},
-#	##}}}
-#	
-#	logZafun = function( Z , alpha ) ##{{{
-#	{
-#		return( alpha * base::log( 1. + self$shape * Z ) )
-#	},
-#	##}}}
-#	
-#	Zafun = function( Z , alpha ) ##{{{
-#	{
-#		return( base::exp( self$logZafun( Z , alpha ) ) )
-#	},
-#	##}}}
-#	
-#	gradient_optim_function = function( param ) ##{{{
-#	{
-#		self$update_param(param)
-#		
-#		## Impossible
-#		if( base::any( 1. + self$shape * ( self$Y - self$loc ) / self$scale <= 0 ) )
-#			return( numeric( self$ncov ) + NA )
-#		
-#		## Usefull values
-#		Z      = ( self$Y - self$loc ) / self$scale
-#		ishape = 1. / self$shape
-#		Za1    = self$Zafun( Z , 1. )
-#		Zamsi  = self$Zafun( Z , - ishape ) ## Za of Minus Shape Inverse
-#		
-#		## Vectors
-#		phi_vect   = if( self$use_phi ) 1. else 1. / self$scale
-#		loc_vect   = (Zamsi - 1 - self$shape) / ( self$scale * Za1 )
-#		scale_vect = phi_vect * ( 1. + Z * ( Zamsi - 1 - self$shape ) / Za1 )
-#		shape_vect = ( Zamsi - 1. ) * base::log(Za1) * ishape^2 + ( 1. + ishape - ishape * Zamsi ) * Z / Za1
-#		
-#		## Gradients
-#		grad_loc   = base::t(self$loc_design)   %*% loc_vect 
-#		grad_scale = base::t(self$scale_design) %*% scale_vect
-#		grad_shape = base::t(self$shape_design) %*% shape_vect 
-#		
-#		return( base::c(grad_loc,grad_scale,grad_shape) )
-#	}
-	##}}}
-	
 	),
 	
 	private = list(
@@ -539,26 +319,330 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 	
 	fit_ = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL , floc = NULL , fscale = NULL , fshape = NULL ) ##{{{
 	{
+		private$Y_    = as.vector(Y)
+		
+		private$loc_$init(   X = loc_cov   , fix_values = floc   , size = private$size_ )
+		private$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
+		private$shape_$init( X = shape_cov , fix_values = fshape , size = private$size_ )
+		
+		if( self$method == "moments" )
+		{
+			private$fit_moments()
+		}
+		else if( self$method == "lmoments" )
+		{
+			private$fit_lmoments()
+		}
+		else if( self$method == "quantiles" )
+		{
+			private$fit_quantiles()
+		}
+		else
+		{
+			private$fit_mle()
+		}
+		
+		self$coef_ = private$concat_param()
 	},
 	##}}}
 	
 	fit_moments = function() ##{{{
 	{
+		m = base::mean(private$Y_)
+		s = base::sqrt(6) * stats::sd(private$Y_) / base::pi
+		
+		iloc   = m - 0.57722 * s
+		iscale = base::log(s)
+		ishape = 1e-8
+		
+		private$loc_$set_intercept(   private$loc_$linkFct$inverse( iloc )     )
+		private$scale_$set_intercept( private$scale_$linkFct$inverse( iscale ) )
+		private$shape_$set_intercept( private$shape_$linkFct$inverse( ishape ) )
+		
+		
+		private$loc_$update()
+		private$scale_$update()
+		private$shape_$update()
+		self$loc   = private$loc_$valueLf()
+		self$scale = private$scale_$valueLf()
+		self$shape = private$shape_$valueLf()
 	},
 	##}}}
 	
 	fit_lmoments = function() ##{{{
 	{
+		lmom1 = np_lmoments( private$Y_ , 1 )
+		lmom2 = np_lmoments( private$Y_ , 2 )
+		lmom3 = np_lmoments( private$Y_ , 3 )
+		
+		tau3  = lmom3 / lmom2
+		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
+		kappa = 7.8590 * co + 2.9554 * co**2
+		g     = base::gamma( 1. + kappa )
+		
+		iscale = lmom2 * kappa / ( (1 - 2^(-kappa)) * g )
+		iloc   = lmom1 - iscale * (1 - g) / kappa
+		ishape = - kappa
+		
+		private$loc_$set_intercept(   private$loc_$linkFct$inverse( iloc )     )
+		private$scale_$set_intercept( private$scale_$linkFct$inverse( iscale ) )
+		private$shape_$set_intercept( private$shape_$linkFct$inverse( ishape ) )
+		
+		private$loc_$update()
+		private$scale_$update()
+		private$shape_$update()
+		self$loc   = private$loc_$valueLf()
+		self$scale = private$scale_$valueLf()
+		self$shape = private$shape_$valueLf()
 	},
 	##}}}
 	
 	fit_quantiles = function() ##{{{
 	{
+		## Fit the loc
+		if( private$loc_$not_fixed() )
+		{
+			if( private$loc_$size_ == 1 )
+			{
+				private$loc_$set_intercept( private$loc_$linkFct$inverse( as.vector(stats::quantile( private$Y_ , probs = base::exp(-1) )) ) )
+			}
+		}
+		private$loc_$update()
+		self$loc = private$loc_$valueLf()
+		
+		
+		## Fit the scale
+		if( private$scale_$not_fixed() )
+		{
+			probs = base::c( 0.25 , 0.5 , 0.75 )
+			coef  = - 1. / base::log( - base::log(probs) )
+			if( private$scale_$size_ == 1 )
+			{
+				private$scale_$set_intercept( private$scale_$linkFct$inverse(base::mean( as.vector( stats::quantile( private$Y_ - self$loc , probs ) ) * coef )) )
+			}
+		}
+		private$scale_$update()
+		self$scale = private$scale_$valueLf()
+		
+		
+		## Fit the shape
+		if( private$shape_$not_fixed() )
+		{
+			p0 = 0.1
+			p1 = 0.9
+			llp0 = base::log( - base::log(p0) )
+			llp1 = base::log( - base::log(p1) )
+			if( private$shape_$size_ == 1 )
+			{
+				q = stats::quantile( ( private$Y_ - self$loc ) / self$scale , base::c(p0,p1) )
+				kappa = q[1] / q[2]
+				sh = 2 * (llp0 - kappa * llp1 ) / ( llp0^2 - kappa * llp1^2 )
+				private$shape_$set_intercept( private$shape_$linkFct$inverse(sh) )
+			}
+		}
+		private$shape_$update()
+		self$shape = private$shape_$valueLf()
 	},
 	##}}}
 	
 	fit_mle = function() ##{{{
 	{
+		private$fit_quantiles()
+		param_init = private$concat_param()
+		optim_result = stats::optim( param_init , fn = private$optim_function , gr = private$gradient_optim_function , method = "BFGS" )
+		private$update_param( optim_result$par )
+	},
+	##}}}
+	
+	split_param = function( param )##{{{
+	{
+		param_loc   = NULL
+		param_scale = NULL
+		param_shape = NULL
+		s0 = private$loc_$size_
+		s1 = private$scale_$size_
+		s2 = private$shape_$size_
+		
+		if( private$loc_$not_fixed() && private$scale_$not_fixed() && private$shape_$not_fixed() )
+		{
+			param_loc   = param[1:s0]
+			param_scale = param[(s0+1):(s0+s1)]
+			param_shape = param[(s0+s1+1):(s0+s1+s2)]
+		}
+		else if( private$loc_$not_fixed() && private$scale_$not_fixed() )
+		{
+			s0 = private$loc_$size_
+			s1 = private$scale_$size_
+			param_loc   = param[1:s0]
+			param_scale = param[(s0+1):(s0+s1)]
+		}
+		else if( private$loc_$not_fixed() && private$shape_$not_fixed() )
+		{
+			s0 = private$loc_$size_
+			s1 = private$shape_$size_
+			param_loc   = param[1:s0]
+			param_shape = param[(s0+1):(s0+s2)]
+		}
+		else if( private$scale_$not_fixed() && private$shape_$not_fixed() )
+		{
+			param_scale = param[1:s1]
+			param_shape = param[(s1+1):(s1+s2)]
+		}
+		else if( private$loc_$not_fixed() )
+		{
+			param_loc = param
+		}
+		else if( private$scale_$not_fixed() )
+		{
+			param_scale = param
+		}
+		else if( private$shape_$not_fixed() )
+		{
+			param_shape = param
+		}
+		
+		return( list( loc = param_loc , scale = param_scale , shape = param_shape ) )
+	},
+	##}}}
+	
+	concat_param = function()##{{{
+	{
+		param = NULL
+		param_loc   = if( private$loc_$not_fixed() )   private$loc_$coef_   else NULL
+		param_scale = if( private$scale_$not_fixed() ) private$scale_$coef_ else NULL
+		param_shape = if( private$shape_$not_fixed() ) private$shape_$coef_ else NULL
+		
+		param = base::c( param_loc , param_scale , param_shape )
+
+#		if( private$loc_$not_fixed() && private$scale_$not_fixed() && private$shape_$not_fixed() )
+#		{
+#			param = base::c( private$loc_$coef_ , private$scale_$coef_ , private$shape$coef_ )
+#		}
+#		else if( private$loc_$not_fixed() && private$scale_$not_fixed() )
+#		{
+#			param = base::c( private$loc_$coef_ , private$scale_$coef_ )
+#		}
+#		else if( private$loc_$not_fixed() && private$shape_$not_fixed() )
+#		{
+#			param = base::c( private$loc_$coef_ , private$shape$coef_ )
+#		}
+#		else if( private$scale_$not_fixed() && private$shape_$not_fixed() )
+#		{
+#			param = base::c( private$scale_$coef_ , private$shape$coef_ )
+#		}
+#		else if( private$loc_$not_fixed() )
+#		{
+#			param = private$loc_$coef_
+#		}
+#		else if( private$scale_$not_fixed() )
+#		{
+#			param = private$scale_$coef_
+#		}
+#		else if( private$shape_$not_fixed() )
+#		{
+#			param = private$shape_$coef_
+#		}
+		
+		return( param )
+	},
+	##}}}
+	
+	update_param = function( param ) ##{{{
+	{
+		param_sp = private$split_param(param)
+		private$loc_$set_coef(   param_sp$loc )
+		private$scale_$set_coef( param_sp$scale )
+		private$shape_$set_coef( param_sp$shape )
+		private$loc_$update()
+		private$scale_$update()
+		private$shape_$update()
+		self$loc   = private$loc_$valueLf()
+		self$scale = private$scale_$valueLf()
+		self$shape = private$shape_$valueLf()
+	},
+	##}}}
+	
+	optim_function = function( param )##{{{
+	{
+		private$update_param(param)
+		return( private$negloglikelihood() )
+	},
+	##}}}
+	
+	negloglikelihood = function() ##{{{
+	{
+		## Impossible scale
+		if( base::any( self$scale <= 0 ) )
+			return(Inf)
+		
+		## Fuck exponential case
+		zero_shape = ( base::abs(self$shape) < 1e-10 )
+		if( base::any(zero_shape) )
+			self$shape[zero_shape] = -1e-10
+		
+		##
+		Z = 1 + self$shape * ( private$Y_ - self$loc ) / self$scale
+		
+		if( base::any(Z <= 0) )
+			return( Inf )
+		
+		res = base::sum( ( 1. + 1. / self$shape ) * base::log(Z) + Z^( - 1. / self$shape ) + base::log(self$scale) )
+		
+		if( is.finite(res) )
+			return(res)
+		else
+			return(Inf)
+	},
+	##}}}
+	
+	logZafun = function( Z , alpha ) ##{{{
+	{
+		return( alpha * base::log( 1. + self$shape * Z ) )
+	},
+	##}}}
+	
+	Zafun = function( Z , alpha ) ##{{{
+	{
+		return( base::exp( private$logZafun( Z , alpha ) ) )
+	},
+	##}}}
+	
+	gradient_optim_function = function( param ) ##{{{
+	{
+		private$update_param(param)
+		
+		## Impossible
+		if( base::any( 1. + self$shape * ( private$Y_ - self$loc ) / self$scale <= 0 ) )
+			return( numeric( length(param) ) + NA )
+		
+		## Usefull values
+		Z      = ( private$Y_ - self$loc ) / self$scale
+		ishape = 1. / self$shape
+		Za1    = private$Zafun( Z , 1. )
+		Zamsi  = private$Zafun( Z , - ishape ) ## Za of Minus Shape Inverse
+		
+		##
+		grad = base::c()
+		if( private$loc_$not_fixed() )
+		{
+			loc_vect = private$loc_$valueGrLf()   * ( Zamsi - 1 - self$shape ) / ( self$scale * Za1 )
+			grad_loc = base::t(private$loc_$design_) %*% loc_vect
+			grad     = base::c(grad,grad_loc)
+		}
+		if( private$scale_$not_fixed() )
+		{
+			scale_vect = private$scale_$valueGrLf() * ( 1. + Z * ( Zamsi - 1 - self$shape ) / Za1 ) / self$scale
+			grad_scale = base::t(private$scale_$design_) %*% scale_vect
+			grad       = base::c(grad,grad_scale)
+		}
+		if( private$shape_$not_fixed() )
+		{
+			shape_vect = private$shape_$valueGrLf() * ( ( Zamsi - 1. ) * base::log(Za1) * ishape^2 + ( 1. + ishape - ishape * Zamsi ) * Z / Za1 )
+			grad_shape = base::t(private$shape_$design_) %*% shape_vect
+			grad       = base::c(grad,grad_shape)
+		}
+		
+		return(grad)
 	}
 	##}}}
 	

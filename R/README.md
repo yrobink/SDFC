@@ -1,3 +1,4 @@
+
 # SDFC (Statistical Distribution Fit with Covariates)
 
 
@@ -8,6 +9,18 @@
 - Fit of non parametric distribution (QuantileRegression)
 - Support for fit with fix parameters
 - Support for user defined custom link function
+
+
+## R instruction
+
+Requires: R, devtools, roxygen2, Rcpp, RcppEigen
+
+I'm not really sure of how to build, but this sequence works (good luck):
+```roxygen2::roxygenize("SDFC") ## Return an error, but necessary to generate NAMSPACE file...
+devtools::load_all("SDFC")
+roxygen2::roxygenize("SDFC") ## Now, no errors
+devtools::build("SDFC")      ## Generate the package
+install.packages( "SDFC_version.tar.gz" )```
 
 
 ## Note for quantile regression
@@ -52,3 +65,6 @@ same conditions as regards security.
 
 The fact that you are presently reading this means that you have had
 knowledge of the CeCILL-C license and that you accept its terms.
+
+
+

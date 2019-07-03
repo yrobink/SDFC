@@ -10,6 +10,17 @@
 - Support for user defined custom link function
 
 
+## Python instruction
+
+Requires: python3, numpy, scipy, Eigen (c++)
+
+For python, just use the command:
+```python3 setup.py install```
+
+If the Eigen library is not found (needed for Quantile Regression), use:
+```python3 setup.py install eigen="path-to-eigen"```
+
+
 ## Note for quantile regression
 
 The quantile regression is solved with the Frish-Newton algorithm, written in c++,
@@ -52,3 +63,6 @@ same conditions as regards security.
 
 The fact that you are presently reading this means that you have had
 knowledge of the CeCILL-C license and that you accept its terms.
+# -*- coding: utf-8 -*-
+
+

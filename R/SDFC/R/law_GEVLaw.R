@@ -97,8 +97,7 @@ dgev = function( x , loc = 0 , scale = 1 , shape = 0 , log = FALSE ) ##{{{
 	
 	
 	Z     = ( x - loc ) / scale
-	valid = (Z > 0) & (1 + shape * Z > 0)
-	
+	valid = (1 + shape * Z > 0)
 	shape_zero  = ( base::abs(shape) < 1e-10 )
 	cshape_zero = !shape_zero
 	
@@ -114,10 +113,9 @@ dgev = function( x , loc = 0 , scale = 1 , shape = 0 , log = FALSE ) ##{{{
 	}
 	
 	out = TX^( shape + 1  ) * base::exp( - TX ) / scale
-	
 	if( base::any(!valid) )
 	{
-		out[!valid] = -Inf
+		out[!valid] = 0
 	}
 	
 	if( log )
@@ -136,9 +134,9 @@ pgev = function( q , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
 	}
 	
 	size_q = base::length(q)
-	loc   = if( length(loc)   == size_p ) loc   else base::rep( loc[1]   , length(p) )
-	scale = if( length(scale) == size_p ) scale else base::rep( scale[1] , length(p) )
-	shape = if( length(shape) == size_p ) shape else base::rep( shape[1] , length(p) )
+	loc   = if( length(loc)   == size_q ) loc   else base::rep( loc[1]   , size_q )
+	scale = if( length(scale) == size_q ) scale else base::rep( scale[1] , size_q )
+	shape = if( length(shape) == size_q ) shape else base::rep( shape[1] , size_q )
 	
 	shape_zero  = ( base::abs(shape) < 1e-10 )
 	cshape_zero = !shape_zero
@@ -156,6 +154,12 @@ pgev = function( q , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
 		out[cshape_zero] = base::exp( - ( 1. + shape[cshape_zero] * Z[cshape_zero] )^( - 1. / shape[cshape_zero] ) )
 	}
 	
+	valid = (1 + shape * Z > 0)
+	if( base::any(!valid) )
+	{
+		out[(shape > 0) & !valid] = 0
+		out[(shape < 0) & !valid] = 1
+	}
 	return(out)
 }
 ##}}}
@@ -275,7 +279,7 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 		private$loc_   = LawParam$new( linkFct = link_fct_loc   , kind = "loc"   )
 		private$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
 		private$shape_ = LawParam$new( linkFct = link_fct_shape , kind = "shape" )
-	}
+	},
 	##}}}
 	
 	
@@ -291,7 +295,7 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 		##=> Bootstrap here
 		
 		private$fit_( Y , loc_cov , scale_cov , shape_cov , floc , fscale , fshape )
-	},
+	}
 	##}}}
 	
 #	update_param = function( param ) ##{{{
@@ -535,7 +539,7 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 	
 	fit_ = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL , floc = NULL , fscale = NULL , fshape = NULL ) ##{{{
 	{
-	}
+	},
 	##}}}
 	
 	fit_moments = function() ##{{{
@@ -555,7 +559,7 @@ GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
 	
 	fit_mle = function() ##{{{
 	{
-	},
+	}
 	##}}}
 	
 	

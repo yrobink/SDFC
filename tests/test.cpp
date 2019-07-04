@@ -3,7 +3,7 @@
 #include <random>
 #include <Eigen/Dense>
 
-#include "QuantileRegression.hpp"
+#include "../cpp/QuantileRegression.hpp"
 
 int main()
 {

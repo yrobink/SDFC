@@ -40,8 +40,6 @@ Koenker, available in the R package [quantreg](https://cran.r-project.org/web/pa
 ## License
 
 Copyright Yoann Robin, 2019, [CeCILL-C](https://cecill.info/licences.en.html) license (open source)
- 
-yoann.robin.k@gmail.com
 
 This software is a computer program that is part of the SDFC (Statistical
 Distribution Fit with Covariates) library. This library makes it possible

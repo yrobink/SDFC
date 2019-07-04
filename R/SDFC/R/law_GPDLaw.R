@@ -336,7 +336,26 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 		## Bootstrap
 		if( self$n_bootstrap > 0 )
 		{
+			if( !is.null(scale_cov) && !is.matrix(scale_cov) )
+				scale_cov = matrix( scale_cov , nrow = private$size_ , ncol = 1 )
+			if( !is.null(shape_cov) && !is.matrix(shape_cov) )
+				shape_cov = matrix( shape_cov , nrow = private$size_ , ncol = 1 )
 			
+			self$coefs_bootstrap = base::c()
+			
+			for( i in 1:self$n_bootstrap )
+			{
+				idx = base::sample( 1:private$size_ , private$size_ , replace = TRUE )
+				loc_bs       = loc[idx]
+				scale_cov_bs = if( is.null(scale_cov) ) scale_cov else scale_cov[idx,]
+				shape_cov_bs = if( is.null(shape_cov) ) shape_cov else shape_cov[idx,]
+				fscale_bs    = if( is.null(fscale) || length(fscale) == 1 ) fscale    else fscale[idx]
+				fshape_bs    = if( is.null(fshape) || length(fshape) == 1 ) fshape    else fshape[idx]
+				
+				private$fit_( Y[idx] , loc_bs , scale_cov_bs , shape_cov_bs , fscale_bs , fshape_bs )
+				self$coefs_bootstrap = base::rbind( self$coefs_bootstrap , self$coef_ )
+			}
+			self$confidence_interval = base::apply( self$coefs_bootstrap , 2 , stats::quantile , probs = base::c( self$alpha / 2. , 1. - self$alpha / 2. ) )
 		}
 		
 		private$fit_( Y , loc , scale_cov , shape_cov , fscale , fshape )
@@ -434,6 +453,21 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 	
 	fit_mle = function()##{{{
 	{
+		private$fit_lmoments()
+		param_init = private$concat_param()
+		
+		## Test for initial value
+		nll  = private$optim_function(param_init)
+		gnll = private$gradient_optim_function(param_init)
+		
+		if( !is.finite(nll) || !is.finite(gnll) )
+		{
+			private$shape_$set_coef( numeric( private$shape_$size_ ) )
+			param_init = private$concat_param()
+		}
+		
+		optim_result = stats::optim( param_init , fn = private$optim_function , gr = private$gradient_optim_function , method = "BFGS" )
+		private$update_param( optim_result$par )
 	
 	},
 	##}}}
@@ -503,18 +537,18 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 		}
 		
 		##
-		idx_excess = (self$Y > self$loc)
+		idx_excess = (private$Y_ > self$loc)
 		loc   = self$loc[idx_excess]
 		scale = self$scale[idx_excess]
 		shape = self$shape[idx_excess]
-		Z = 1. + shape * ( self$Y[idx_excess] - loc ) / scale
+		Z = 1. + shape * ( private$Y_[idx_excess] - loc ) / scale
 		
-		if( base::any(Z <= 0) )
+		if( base::any(!(Z > 0)) )
 			return(Inf)
 		
 		res = base::sum( base::log( scale ) + base::log(Z) * ( 1 + 1. / shape ) )
 		
-		if( is.na(res) )
+		if( !is.finite(res) )
 			return(Inf)
 		return(res)
 	},
@@ -522,37 +556,43 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 	
 	optim_function = function( param )##{{{
 	{
-		self$update_param(param)
-		return( self$negloglikelihood() )
+		private$update_param(param)
+		return( private$negloglikelihood() )
 	},
 	##}}}
 	
 	gradient_optim_function = function( param ) ##{{{
 	{
-		self$update_param(param)
+		private$update_param(param)
 		
-		idx_excess = ( self$Y > self$loc )
-		Y      = self$Y[idx_excess]
-		loc    = self$loc[idx_excess]
-		scale  = self$scale[idx_excess]
-		shape  = self$shape[idx_excess]
-		Y_zero   = Y - loc
-		Z        = 1. + shape * Y_zero / scale
+		idx      = ( private$Y_ > self$loc )
+		Y        = private$Y_[idx]
+		loc      = self$loc[idx]
+		scale    = self$scale[idx]
+		shape    = self$shape[idx]
+		Z        = ( Y - loc ) / scale
+		ZZ       = 1. + shape * Z
 		exponent = 1. + 1. / shape
 		
-		grad_phi   = if( self$use_phi ) scale else 1.
-		grad_scale = base::t(self$scale_design[idx_excess,]) %*% (grad_phi / scale - ( grad_phi * exponent * shape * Y_zero / (scale^2) ) / Z)
-		grad_shape = if( base::all(Z>0) ) base::t(self$shape_design[idx_excess,]) %*% ( - base::log(Z) / (shape**2) + exponent * Y_zero / scale / Z) else base::rep(NaN,self$nshape)
+		grad = base::c()
 		
-#		phi.grad = if( use_phi ) scale else 1.
-#		
-#		coef = phi.grad / scale - ( phi.grad * exponent * shape * Y_zero / (scale^2) ) / Z
-#		grad_scale = base::apply( scale_design , 2 , function(X) { return(base::sum(coef*X)) } )
-#		
-#		coef =  - base::log(Z) / (shape^2) + exponent * Y_zero / scale / Z 
-#		grad_shape = base::apply( shape_design , 2 , function(X) { return(base::sum(coef*X)) } )
+		if( private$scale_$not_fixed() )
+		{
+			gr_scale   = private$scale_$valueGrLf()[idx]
+			grad_scale = base::t(private$scale_$design_[idx,]) %*% ( gr_scale * ( - exponent * shape * Z / ZZ / scale + 1. / scale ) )
+			grad       = base::c( grad , grad_scale )
+		}
 		
-		return( base::c(grad_scale,grad_shape) )
+		if( private$shape_$not_fixed() )
+		{
+			gr_shape   = private$shape_$valueGrLf()[idx]
+			grad_shape = base::rep( NaN , private$shape_$size_ )
+			if( base::all(ZZ > 0) )
+				grad_shape = base::t(private$shape_$design_[idx,]) %*% ( gr_shape * ( - base::log(ZZ) / shape^2 + exponent * Z / ZZ ) )
+			grad       = base::c( grad , grad_shape )
+		}
+		
+		return( grad )
 	}
 	##}}}
 	
@@ -564,353 +604,3 @@ GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
 
 
 
-
-if( FALSE )
-{
-
-GPDLaw = R6::R6Class( "GPDLaw" , ##{{{
-	
-	
-	public = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	use_phi      = NULL,
-	method       = NULL,
-	verbose      = NULL,
-	Y            = NULL,
-	size         = NULL,
-	loc          = NULL,
-	scale        = NULL,
-	shape        = NULL,
-	scale_design = NULL,
-	shape_design = NULL,
-	ncov         = NULL,
-	nscale       = NULL,
-	nshape       = NULL,
-	optim_res    = NULL,
-	scale_coef   = NULL,
-	shape_coef   = NULL,
-	
-	
-	#################
-	## Constructor ##
-	#################
-	
-	initialize = function( loc = 0 , scale = 1 , shape = -0.1 , use_phi = FALSE , method = "BFGS" , verbose = FALSE ) ##{{{
-	{
-		self$loc     = loc
-		self$scale   = scale
-		self$shape   = shape
-		self$use_phi = use_phi
-		self$method  = method
-		self$verbose = verbose
-	},
-	##}}}
-	
-	rvs = function( size , loc = NULL , scale = NULL , shape = NULL ) ##{{{
-	{
-		Z   = stats::runif( size , min = 0 , max = 1 )
-		
-#		shape_zero  = ( shape == 0 )
-#		cshape_zero = !shape_zero
-#		
-#		out = numeric(size) + NA
-#		if( base::any(shape_zero) )
-#		{
-#			out[shape_zero] = loc[shape_zero] + stats::rexp( n , rate = 1. / scale[shape_zero] )
-#		}
-#		
-#		if( base::any(cshape_zero) )
-#		{
-#			out[cshape_zero] = loc[cshape_zero] + scale[cshape_zero] * ( Z[cshape_zero]^( -shape[cshape_zero] ) - 1 ) / shape[cshape_zero]
-#		}
-		
-		return(self$icdf( Z , loc = loc , scale = scale , shape = shape ))
-	},
-	##}}}
-	
-	density = function( x , loc = NULL , scale = NULL , shape = NULL ) ##{{{
-	{
-		loc   = if( is.null(loc) )   self$loc   else loc
-		scale = if( is.null(scale) ) self$scale else scale
-		shape = if( is.null(shape) ) self$shape else shape
-		
-		loc   = if( length(loc)   == 1 ) base::rep( loc   , length(x) ) else loc
-		scale = if( length(scale) == 1 ) base::rep( scale , length(x) ) else scale
-		shape = if( length(shape) == 1 ) base::rep( shape , length(x) ) else shape
-		
-		Z = ( x - loc ) / scale
-		
-		shape_zero  = ( shape == 0 )
-		cshape_zero = !shape_zero
-		valid       = (Z > 0) & (1 + shape * Z > 0)
-		
-		out = numeric(length(x)) + NA
-		if( base::any(shape_zero) && base::any(valid) )
-		{
-			idx = valid[shape_zero]
-			out[shape_zero][idx] = -base::log(scale[shape_zero][idx]) - Z[shape_zero][idx]
-		}
-		
-		if( base::any(cshape_zero) && base::any(valid) )
-		{
-			idx = valid[cshape_zero]
-			out[cshape_zero][idx] = -base::log(scale[cshape_zero][idx]) - base::log(1. + shape[cshape_zero][idx] * Z[cshape_zero][idx]) / shape[cshape_zero][idx]
-		}
-		
-		if( base::any(!valid) )
-		{
-			out[!valid] = -Inf
-		}
-		return(base::exp(out))
-	},
-	##}}}
-	
-	cdf = function( Y , loc = NULL , scale = NULL , shape = NULL ) ##{{{
-	{
-		loc   = if( is.null(loc) )   self$loc   else loc
-		scale = if( is.null(scale) ) self$scale else scale
-		shape = if( is.null(shape) ) self$shape else shape
-		
-		loc   = if( length(loc)   == 1 ) base::rep( loc   , length(Y) ) else loc
-		scale = if( length(scale) == 1 ) base::rep( scale , length(Y) ) else scale
-		shape = if( length(shape) == 1 ) base::rep( shape , length(Y) ) else shape
-		
-		shape_zero  = ( shape == 0 )
-		cshape_zero = !shape_zero
-		
-		Z = ( Y - loc ) / scale
-		out = numeric(length(Y)) + NA
-		if( base::any(shape_zero) )
-		{
-			out[shape_zero] = 1. - base::exp( - Z )
-		}
-		
-		if( base::any(cshape_zero) )
-		{
-			out[cshape_zero] = 1. - ( 1. + shape * Z )^( -1. / shape )
-		}
-		
-		return(out)
-	},
-	##}}}
-	
-	icdf = function( p , loc = NULL , scale = NULL , shape = NULL ) ##{{{
-	{
-		loc   = if( is.null(loc) )   self$loc   else loc
-		scale = if( is.null(scale) ) self$scale else scale
-		shape = if( is.null(shape) ) self$shape else shape
-		
-		loc   = if( length(loc)   == 1 ) base::rep( loc   , length(p) ) else loc
-		scale = if( length(scale) == 1 ) base::rep( scale , length(p) ) else scale
-		shape = if( length(shape) == 1 ) base::rep( shape , length(p) ) else shape
-		
-		shape_zero  = ( shape == 0 )
-		cshape_zero = !shape_zero
-		
-		out = numeric(length(p)) + NA
-		if( base::any(shape_zero) )
-		{
-			out[shape_zero] = loc - scale * base::log(1. - p)
-		}
-		
-		if( base::any(cshape_zero) )
-		{
-			out[cshape_zero] = loc + scale * ( (1. - p)^(-shape) - 1 ) / shape
-		}
-		
-		return(out)
-	},
-	##}}}
-	
-	sf = function( Y , loc = NULL , scale = NULL , shape = NULL ) ##{{{
-	{
-		return( 1 - self$cdf(Y , loc = loc , scale = scale , shape = shape ) )
-	},
-	##}}}
-	
-	isf = function( p , loc = NULL , scale = NULL , shape = NULL ) ##{{{
-	{
-		return( self$icdf( 1. - p , loc = loc , scale = scale , shape = shape ) )
-	},
-	##}}}
-	
-	fit = function( Y , loc , scale_cov = NULL , shape_cov = NULL ) ##{{{
-	{
-		self$Y    = Y
-		self$size = length(Y)
-		self$loc  = if( length(loc) == length(Y) ) loc else base::rep(loc[1],length(Y))
-		
-		## Design matrix
-		size = length(Y)
-		self$scale_design = base::cbind( base::rep(1,self$size) , scale_cov )
-		self$shape_design = base::cbind( base::rep(1,self$size) , shape_cov )
-		self$nscale       = base::ncol(self$scale_design)
-		self$nshape       = base::ncol(self$shape_design)
-		self$ncov         = self$nscale + self$nshape
-		
-		## Initial condition
-		param_init = self$find_init()
-		
-		## Optimization
-		self$optim_res  = stats::optim( param_init , fn = self$optim_function , gr = self$gradient_optim_function , method = self$method , hessian = TRUE )
-		self$scale_coef = self$optim_res$par[1:self$nscale]
-		self$shape_coef = self$optim_res$par[(self$nscale+1):(self$ncov)]
-		
-		## Set scale and shape
-		self$update_param( self$optim_res$par )
-	},
-	##}}}
-	
-	link = function( x ) ##{{{
-	{
-		if( self$use_phi )
-		{
-			return( base::exp(x) )
-		}
-		else
-		{
-			return(x)
-		}
-	},
-	##}}}
-	
-	link_inv = function( x ) ##{{{
-	{
-		if( self$use_phi )
-		{
-			return( base::log(x) )
-		}
-		else
-		{
-			return(x)
-		}
-	},
-	##}}}
-	
-	update_param = function( param ) ##{{{
-	{
-		## Extract coefficients from param
-		scale_coef = param[1:self$nscale]
-		shape_coef = param[(self$nscale+1):(self$ncov)]
-		
-		## Set scale and shape
-		self$scale = self$link( self$scale_design %*% scale_coef )
-		self$shape = self$shape_design %*% shape_coef
-	},
-	##}}}
-	
-	find_init = function() ##{{{
-	{
-		## LMoments initial condition
-		idx_excess = (self$Y > self$loc)
-		excess = self$Y[idx_excess] - self$loc[idx_excess]
-		lmo1     = SDFC::lmoments(excess,1)
-		lmo2     = SDFC::lmoments(excess,2)
-		itau     = lmo1 / lmo2
-		scale_lm = lmo1 * ( itau - 1 )
-		scale_lm = if( scale_lm > 0 ) scale_lm else 1e-8
-		shape_lm = - ( itau - 2 )
-		
-		## Check negloglikelihood
-		self$scale = base::rep( scale_lm , self$size )
-		self$shape = base::rep( shape_lm , self$size )
-		eval_lm = self$negloglikelihood()
-		
-		## MOMS initial condition
-		scale_mm = base::sqrt( stats::var(excess) )
-		scale_mm = if( scale_mm > 0 ) scale_mm else 1e-8
-		shape_mm = -1e-8
-		
-		## Check negloglikelihood
-		self$scale = base::rep( scale_mm , self$size )
-		self$shape = base::rep( shape_mm , self$size )
-		eval_mm = self$negloglikelihood()
-		
-		## Keep best
-		init_scale = base::rep( 0 , self$nscale )
-		init_shape = base::rep( 0 , self$nshape )
-		if( is.finite(eval_mm) || is.finite(eval_lm) )
-		{
-			init_scale[1] = self$link_inv( if( eval_mm < eval_lm ) scale_mm else scale_lm )
-			init_shape[1] = if( eval_mm < eval_lm ) shape_mm else shape_lm
-		}
-		return(base::c(init_scale,init_shape))
-	},
-	##}}}
-	
-	negloglikelihood = function() ##{{{
-	{
-		## Impossible scale
-		if( base::any( self$scale <= 0 ) )
-			return(Inf)
-		
-		## Fuck exponential case
-		zero.shape = ( base::abs(self$shape) < 1e-10 )
-		if( !is.null(zero.shape) )
-		{
-			self$shape[zero.shape] = -1e-10
-		}
-		
-		##
-		idx_excess = (self$Y > self$loc)
-		loc   = self$loc[idx_excess]
-		scale = self$scale[idx_excess]
-		shape = self$shape[idx_excess]
-		Z = 1. + shape * ( self$Y[idx_excess] - loc ) / scale
-		
-		if( base::any(Z <= 0) )
-			return(Inf)
-		
-		res = base::sum( base::log( scale ) + base::log(Z) * ( 1 + 1. / shape ) )
-		
-		if( is.na(res) )
-			return(Inf)
-		return(res)
-	},
-	##}}}
-	
-	optim_function = function( param )##{{{
-	{
-		self$update_param(param)
-		return( self$negloglikelihood() )
-	},
-	##}}}
-	
-	gradient_optim_function = function( param ) ##{{{
-	{
-		self$update_param(param)
-		
-		idx_excess = ( self$Y > self$loc )
-		Y      = self$Y[idx_excess]
-		loc    = self$loc[idx_excess]
-		scale  = self$scale[idx_excess]
-		shape  = self$shape[idx_excess]
-		Y_zero   = Y - loc
-		Z        = 1. + shape * Y_zero / scale
-		exponent = 1. + 1. / shape
-		
-		grad_phi   = if( self$use_phi ) scale else 1.
-		grad_scale = base::t(self$scale_design[idx_excess,]) %*% (grad_phi / scale - ( grad_phi * exponent * shape * Y_zero / (scale^2) ) / Z)
-		grad_shape = if( base::all(Z>0) ) base::t(self$shape_design[idx_excess,]) %*% ( - base::log(Z) / (shape**2) + exponent * Y_zero / scale / Z) else base::rep(NaN,self$nshape)
-		
-#		phi.grad = if( use_phi ) scale else 1.
-#		
-#		coef = phi.grad / scale - ( phi.grad * exponent * shape * Y_zero / (scale^2) ) / Z
-#		grad_scale = base::apply( scale_design , 2 , function(X) { return(base::sum(coef*X)) } )
-#		
-#		coef =  - base::log(Z) / (shape^2) + exponent * Y_zero / scale / Z 
-#		grad_shape = base::apply( shape_design , 2 , function(X) { return(base::sum(coef*X)) } )
-		
-		return( base::c(grad_scale,grad_shape) )
-	}
-	##}}}
-	
-	)
-)
-##}}}
-
-}

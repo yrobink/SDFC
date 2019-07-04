@@ -86,37 +86,68 @@ test_gev = function() ##{{{
 }
 ##}}}
 
+test_gpd = function()##{{{
+{
+	size  = 2500
+	t = base::seq( 0 , 1 , length = size )
+	X0 = t^2
+	X2 = base::seq( -1 , 1 , length = size )
+	loc   = 0.5 + 1.5 * X0
+	scale = 0.1 + 0.1 * X0
+	shape = 0.3 * X2
+	
+	Y = rgpd( n = size , loc = loc , scale = scale , shape = shape )
+	
+	gpd = GPDLaw$new( method = "MLE" , n_bootstrap = 10 )
+	gpd$fit( Y , loc = loc , scale_cov = X0 , shape_cov = X2 )
+	
+	
+	graphics::par( mfrow = base::c( 2 , 2 ) )
+	
+	plot( t , Y , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
+	
+	plot( loc , gpd$loc , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
+	
+	plot( scale , gpd$scale , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
+	
+	plot( shape , gpd$shape , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
+	
+}
+##}}}
+
+test_qr = function() ##{{{
+{
+	## Generate data
+	size = 2500
+	t    = base::seq( 0 , 1 , length = size )
+	X0   = t^2
+	X1   = base::cos( 2 * base::pi * t )
+	
+	loc   = 1. + 2 * X0
+	scale = 0.6 + 0.5 * X1
+	Y     = stats::rnorm( n = size , mean = loc , sd = scale )
+	
+	## QR
+	ltau = base::seq( 0.01 , 0.99 , length = 100 )
+	qr   = SDFC::np_quantile( Y , ltau = ltau , X = base::cbind( X0 , X1 ) )
+	
+	
+	## Plot
+	graphics::par( mfrow = base::c(1,1) )
+	graphics::plot( t , Y , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
+	for( i in 1:100 )
+	{
+		graphics::lines( t , qr[,i] , col = grDevices::rgb( 0.5 , 0.5 , 0.5 , 0.5 ) )
+	}
+}
+##}}}
 
 ##########
 ## main ##
 ##########
 
-#test_normal()
-#test_gev()
+test_normal()
+test_gev()
+test_gpd()
+test_qr()
 
-size  = 2500
-#t = base::seq( 0 , 1 , length = size )
-#X0 = t^2
-#X2 = base::seq( -1 , 1 , length = size )
-#loc   = 0.5 + 1.5 * X0
-#scale = 0.1 + 0.1 * X0
-#shape = 0.3 * X2
-loc   = base::rep( 0. , size )
-scale = base::rep( 1. , size )
-shape = base::rep( 0. , size )
-
-Y = rgpd( n = size , loc = loc , scale = scale , shape = shape )
-
-gpd = GPDLaw$new( method = "moments" )
-gpd$fit( Y , loc = loc )
-
-
-graphics::par( mfrow = base::c( 2 , 2 ) )
-
-plot( t , Y , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
-
-plot( loc , gpd$loc , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
-
-plot( scale , gpd$scale , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
-
-plot( shape , gpd$shape , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )

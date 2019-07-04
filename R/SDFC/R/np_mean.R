@@ -95,6 +95,14 @@
 #'
 #' @examples
 #' ## Data
+#' size = 2500
+#' t    = base::seq( 0 , 1 , length = size )
+#' X0    = t^2
+#' loc   = 1. + 2 * X0
+#' Y    = stats::rnorm( n = size , mean = loc , sd = 0.1 )
+#'
+#' m = np_mean( Y , X = X0 )
+#' 
 #' @export
 np_mean = function( Y , X = NULL , linkFct = SDFC::IdLinkFct$new() , return_coef = FALSE )
 {

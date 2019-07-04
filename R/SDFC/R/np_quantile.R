@@ -94,6 +94,14 @@
 #'
 #' @examples
 #' ## Data
+#' size = 2500
+#' t    = base::seq( 0 , 1 , length = size )
+#' X0    = t^2
+#' loc   = 1. + 2 * X0
+#' Y    = stats::rnorm( n = size , mean = loc , sd = 0.1 )
+#'
+#' q = np_quantile( Y , ltau = base::c(0.25,0.5,0.75) , X = X0 )
+#' 
 #' @export
 np_quantile = function( Y , ltau , X = NULL , return_coef = FALSE )
 {

@@ -96,6 +96,17 @@
 #'
 #' @examples
 #' ## Data
+#' size = 2500
+#' t    = base::seq( 0 , 1 , length = size )
+#' X0    = t^2
+#' X1    = base::cos( 2 * base::pi * t )
+#' loc   = 1. + 2 * X0
+#' scale = 0.6 + 0.5 * X1
+#' Y    = stats::rnorm( n = size , mean = loc , sd = scale )
+#'
+#' m = np_mean( Y , X = X0 ) ## First fit mean
+#' v = np_var( Y , X = X1 , m = m ) ## Now variance
+#' 
 #' @export
 np_var = function( Y , X = NULL , m = NULL , linkFct = SDFC::IdLinkFct$new() , return_coef = FALSE )
 {

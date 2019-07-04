@@ -81,53 +81,58 @@
 ##################################################################################
 ##################################################################################
 
-#' NormalLaw (Gaussian)
+## NormalLaw {{{
+
+#' NormalLaw (Gaussian Law)
 #'
-#' Class to fit a Normal law with covariates
+#' Class to fit a Normal law.
 #'
 #' @docType class
 #' @importFrom R6 R6Class
 #'
-#' @param loc  [vector]
-#'        Location parameters
-#' @param scale  [vector]
-#'        Scale parameters
-#' @param loc_cov  [matrix]
-#'        Location covariate for fit
-#' @param scale_cov  [matrix]
-#'        Scale covariate for fit
-#' @param use_phi [bool]
-#'        Use exponential function as link function for scale
 #' @param method [string]
-#'        Optimization method, default "BFGS"
-#' @param verbose [bool]
-#'        Print warning and error message
+#'        Fit method, "moments" and "MLE" are available.
+#' @param link_fct_loc [SDFC::LinkFct]
+#'        Link function for loc parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
+#' @param link_fct_scale [SDFC::LinkFct]
+#'        Link function for scale parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
+#' @param n_bootstrap [int]
+#'        Number of bootstrap, default 0
+#' @param alpha [float]
+#'        Level of confidence interval, default 0.05
+#' @param loc_cov  [matrix or NULL ]
+#'        Location covariate for fit
+#' @param scale_cov  [matrix or NULL]
+#'        Scale covariate for fit
+#' @param floc [vector or NULL]
+#'        Value of loc if it is not necessary to fit
+#' @param fscale [vector or NULL]
+#'        Value of scale if it is not necessary to fit
 #'
 #' @return Object of \code{\link{R6Class}} 
 #' @format \code{\link{R6Class}} object.
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(use_phi,method,verbose)}}{Initialize normal law with code{NormalLaw}}
-#'   \item{\code{fit(Y,loc_cov,scale_cov)}}{Fit the Normal law}.
+#'   \item{\code{new(method,link_fct_loc,link_fct_scale,n_bootstrap,alpha)}}{Initialize Normal law with code{NormalLaw}}
+#'   \item{\code{fit(Y,loc_cov,scale_cov,floc,fscale)}}{Fit the Normal law}.
 #' }
 #' @examples
 #' ## Data
-#' #size = 2000
-#' #data = SDFC::Dataset2(size)
-#' #t = data$t
-#' #X = data$X
-#' #Y = data$Y
-#' #
-#' ### Normal Law
-#' #norm = SDFC::NormalLaw$new()
-#' #norm$fit( Y , loc_cov = X , scale_cov = X )
-#' #print(norm$loc_coef_) ## Location coef fitted
-#' #print(norm$scale_coef_) ## Scale coef fitted
-#'
-#' ### In fact, it is better to fit:
-#' #norm_best = SDFC::NormalLaw$new()
-#' #norm_best$fit( Y , loc_cov = X[,1] , scale_cov = X[,2] )
+#' size = 2500
+#' t    = base::seq( 0 , 1 , length = size )
+#' X0    = t^2
+#' X1    = base::cos( 2 * base::pi * t )
+#' loc   = 1. + 2 * X0
+#' scale = 0.6 + 0.5 * X1
+#' Y    = stats::rnorm( n = size , mean = loc , sd = scale )
+#' 
+#' 
+#' ## Fit
+#' law = SDFC::NormalLaw$new( method = "MLE" ,  n_bootstrap = 10 )
+#' law$fit( Y , loc_cov = X0 , scale_cov = X1 )
+#' law$loc   ## Loc fitted
+#' law$scale ## Scale fitted
 #' @export
 NormalLaw = R6::R6Class( "NormalLaw" ,
 	
@@ -363,5 +368,5 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 	),
 	
 )
-
+##}}}
 

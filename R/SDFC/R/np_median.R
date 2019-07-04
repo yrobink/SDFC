@@ -84,7 +84,7 @@
 
 #' np_median
 #'
-#' Compute the quantile with covariates
+#' Compute the median with covariates (in fact just call np_quantile)
 #'
 #' @param Y  [vector] Dataset to fit
 #' @param X  [vector or NULL] Covariate
@@ -94,6 +94,14 @@
 #'
 #' @examples
 #' ## Data
+#' size = 2500
+#' t    = base::seq( 0 , 1 , length = size )
+#' X0    = t^2
+#' loc   = 1. + 2 * X0
+#' Y    = stats::rnorm( n = size , mean = loc , sd = 0.1 )
+#'
+#' med = np_median( Y , X = X0 )
+#' 
 #' @export
 np_median = function( Y , X = NULL , return_coef = FALSE )
 {

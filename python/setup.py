@@ -232,11 +232,7 @@ list_packages = [
 setup(
 	name = "SDFC" ,
 	description = "Statistical Distribution Fit with Covariates" ,
-<<<<<<< HEAD:python/setup.py
-	version = "0.4.0" ,
-=======
 	version = "0.4.1a1" ,
->>>>>>> 676e938ae264f2764abeac9ccb2828bb32f07739:python/setup.py
 	author = "Yoann Robin" ,
 	author_email = "yoann.robin.k@gmail.com" ,
 	license = "CeCILL-C" ,

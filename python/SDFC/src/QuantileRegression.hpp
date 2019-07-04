@@ -1,10 +1,4 @@
 
-<<<<<<< HEAD
-//=========================//
-// Yoann Robin             //
-// yoann.robin.k@gmail.com //
-//=========================//
-=======
 //==============================================================================//
 //==============================================================================//
 //                                                                              //
@@ -86,7 +80,6 @@
 //                                                                              //
 //==============================================================================//
 //==============================================================================//
->>>>>>> 676e938ae264f2764abeac9ccb2828bb32f07739
 
 #ifndef SDFC_NONPARAMETRIC_QUANTILEREGRESSION
 #define SDFC_NONPARAMETRIC_QUANTILEREGRESSION
@@ -195,20 +188,13 @@ struct QuantileRegression
 	// Accessors //
 	//===========//
 	
-<<<<<<< HEAD
-	void set_fit_params( size_type maxit , value_type tol , value_type beta )
-=======
 	void set_fit_params( size_type maxit , value_type tol , value_type beta ) //{{{
->>>>>>> 676e938ae264f2764abeac9ccb2828bb32f07739
 	{
 		m_frishNewton.m_maxit = maxit ;
 		m_frishNewton.m_tol   = tol ;
 		m_frishNewton.m_beta  = beta ;
 	}
-<<<<<<< HEAD
-=======
 	//}}}
->>>>>>> 676e938ae264f2764abeac9ccb2828bb32f07739
 	
 	void set_ltau( double ltau ) //{{{
 	{

@@ -88,7 +88,30 @@
 ##                                                                                                                    ##
 ########################################################################################################################
 
-dgev = function( x , loc = 0 , scale = 1 , shape = 0 , log = FALSE ) ##{{{
+
+## dgev {{{
+
+#' dgev
+#'
+#' Density function of Generalized Extreme Value distribution
+#'
+#' @param x      [vector] Vector of values
+#' @param loc    [vector] Location parameter
+#' @param scale  [vector] Scale parameter
+#' @param shape  [vector] Shape parameter
+#' @param log    [bool]   Return log of density if TRUE, default is FALSE
+#'
+#' @return [vector] Density of GEV at x
+#'
+#' @examples
+#' ## Data
+#' loc = 1
+#' scale = 0.5
+#' shape = -0.2
+#' x = base::seq( -5 , 5 , length = 1000 )
+#' y = dgev( x , loc = loc , scale = scale , shape = shape )
+#' @export
+dgev = function( x , loc = 0 , scale = 1 , shape = 0 , log = FALSE )
 {
 	size_x = length(x)
 	loc   = if( length(loc)   == size_x ) loc   else base::rep( loc[1]   , size_x ) 
@@ -126,7 +149,29 @@ dgev = function( x , loc = 0 , scale = 1 , shape = 0 , log = FALSE ) ##{{{
 }
 ##}}}
 
-pgev = function( q , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
+## pgev {{{
+
+#' pgev
+#'
+#' Cumulative distribution function (or survival function) of Generalized Extreme Value distribution
+#'
+#' @param q      [vector] Vector of quantiles
+#' @param loc    [vector] Location parameter
+#' @param scale  [vector] Scale parameter
+#' @param shape  [vector] Shape parameter
+#' @param lower.tail [bool] Return CDF if TRUE, else return survival function
+#'
+#' @return [vector] CDF (or SF) of GEV at x
+#'
+#' @examples
+#' ## Data
+#' loc = 1
+#' scale = 0.5
+#' shape = -0.2
+#' x = base::seq( -5 , 5 , length = 1000 )
+#' cdfx = pgev( x , loc = loc , scale = scale , shape = shape )
+#' @export
+pgev = function( q , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE )
 {
 	if( !lower.tail )
 	{
@@ -164,7 +209,29 @@ pgev = function( q , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
 }
 ##}}}
 
-qgev = function( p , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
+## qgev {{{
+
+#' qgev
+#'
+#' Inverse of CDF (or SF) function of Generalized Extreme Value distribution
+#'
+#' @param p      [vector] Vector of probabilities
+#' @param loc    [vector] Location parameter
+#' @param scale  [vector] Scale parameter
+#' @param shape  [vector] Shape parameter
+#' @param lower.tail [bool] Return inverse of CDF if TRUE, else return inverse of survival function
+#'
+#' @return [vector] Inverse of CDF or SF of GEV for probabilities p
+#'
+#' @examples
+#' ## Data
+#' loc = 1
+#' scale = 0.5
+#' shape = -0.2
+#' p = base::seq( 0.01 , 0.99 , length = 100 )
+#' q = qgev( p , loc = loc , scale = scale , shape = shape )
+#' @export
+qgev = function( p , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE )
 {
 	if( !lower.tail )
 	{
@@ -194,7 +261,28 @@ qgev = function( p , loc = 0 , scale = 1 , shape = 0 , lower.tail = TRUE ) ##{{{
 }
 ##}}}
 
-rgev = function( n = 1 , loc = 0 , scale = 1 , shape = 0 ) ##{{{
+## rgev {{{
+
+#' rgev
+#'
+#' Random value generator of Generalized Extreme Value distribution
+#'
+#' @param n      [int]    Numbers of values generated
+#' @param loc    [vector] Location parameter
+#' @param scale  [vector] Scale parameter
+#' @param shape  [vector] Shape parameter
+#' @param log    [bool]   Return log of density if TRUE, default is FALSE
+#'
+#' @return [vector] Random value following a GEV(loc,scale,shape)
+#'
+#' @examples
+#' ## Data
+#' loc = 1
+#' scale = 0.5
+#' shape = -0.2
+#' gev = rgev( 100 , loc = loc , scale = scale , shape = shape )
+#' @export
+rgev = function( n = 1 , loc = 0 , scale = 1 , shape = 0 )
 {
 	p = stats::runif( n = n )
 	return( qgev( p , loc , scale , shape ) )
@@ -210,48 +298,68 @@ rgev = function( n = 1 , loc = 0 , scale = 1 , shape = 0 ) ##{{{
 ########################################################################################################################
 
 
+## GEVLaw {{{
+
 #' GEVLaw (Generalized Extreme Value)
 #'
-#' Class to generate, fit, and use a generalized extreme values law.
+#' Class to fit a generalized extreme values law.
 #'
 #' @docType class
 #' @importFrom R6 R6Class
 #'
-#' @param loc  [vector]
-#'        Location parameters
-#' @param scale  [vector]
-#'        Scale parameters
-#' @param shape  [vector]
-#'        Shape parameters
-#' @param scale_cov  [matrix]
-#'        Scale covariate for fit
-#' @param shape_cov  [matrix]
-#'        Shape covariate for fit
-#' @param use_phi [bool]
-#'        Use exponential function as link function for scale
 #' @param method [string]
-#'        Optimization method, default "BFGS"
-#' @param verbose [bool]
-#'        Print warning and error message
+#'        Fit method, "moments", "lmoments", "quantiles" and "MLE" are available.
+#' @param link_fct_loc [SDFC::LinkFct]
+#'        Link function for loc parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
+#' @param link_fct_scale [SDFC::LinkFct]
+#'        Link function for scale parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
+#' @param link_fct_shape [SDFC::LinkFct]
+#'        Link function for shape parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
+#' @param n_bootstrap [int]
+#'        Number of bootstrap, default 0
+#' @param alpha [float]
+#'        Level of confidence interval, default 0.05
+#' @param loc_cov  [matrix or NULL ]
+#'        Location covariate for fit
+#' @param scale_cov  [matrix or NULL]
+#'        Scale covariate for fit
+#' @param shape_cov  [matrix or NULL]
+#'        Shape covariate for fit
+#' @param floc [vector or NULL]
+#'        Value of loc if it is not necessary to fit
+#' @param fscale [vector or NULL]
+#'        Value of scale if it is not necessary to fit
+#' @param fshape [vector or NULL]
+#'        Value of shape if it is not necessary to fit
 #'
 #' @return Object of \code{\link{R6Class}} 
 #' @format \code{\link{R6Class}} object.
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(loc,scale,shape,use_phi,method,verbose)}}{Initialize GEV law with code{GEVLaw}}
-#'   \item{\code{rvs(size,loc,scale,shape)}}{Random number generator}.
-#'   \item{\code{density(x,loc,scale,shape)}}{Density}.
-#'   \item{\code{cdf(Y,loc,scale,shape)}}{Cumulative distribution function.}.
-#'   \item{\code{icdf(p,loc,scale,shape)}}{Inverse of Cumulative distribution function.}.
-#'   \item{\code{sf(Y,loc,scale,shape)}}{Survival function.}.
-#'   \item{\code{isf(p,loc,scale,shape)}}{Inverse of survival function.}.
-#'   \item{\code{fit(Y,loc,scale_cov,shape_cov)}}{Fit the GEV law}.
+#'   \item{\code{new(method,link_fct_loc,link_fct_scale,link_fct_shape,n_bootstrap,alpha)}}{Initialize GEV law with code{GEVLaw}}
+#'   \item{\code{fit(Y,loc_cov,scale_cov,shape_cov,floc,fscale,fshape)}}{Fit the GEV law}.
 #' }
 #' @examples
 #' ## Data
+#' size  = 2500
+#' t = base::seq( 0 , 1 , length = size )
+#' X0 = t^2
+#' X2 = base::seq( -1 , 1 , length = size )
+#' loc   = 0.5 + 1.5 * X0
+#' scale = 0.1 + 0.1 * X0
+#' shape = 0.3 * X2
+#' 
+#' Y = SDFC::rgev( n = size , loc = loc , scale = scale , shape = shape )
+#' 
+#' ## Fit
+#' gev = GEVLaw$new( method = "MLE" , n_bootstrap = 10 )
+#' gev$fit( Y , loc_cov = X0  , scale_cov = X0 , shape_cov = X2 )
+#' gev$loc   ## Loc fitted
+#' gev$scale ## Scale fitted
+#' gev$shape ## Shape fitted
 #' @export
-GEVLaw = R6::R6Class( "GEVLaw" , ##{{{
+GEVLaw = R6::R6Class( "GEVLaw" , 
 	
 	inherit = AbstractLaw,
 	

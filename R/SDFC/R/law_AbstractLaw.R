@@ -100,7 +100,7 @@
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize normal law with code{AbstractLaw}}
+#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize abstract law with code{AbstractLaw}}
 #' }
 #' @examples
 #' ## Data

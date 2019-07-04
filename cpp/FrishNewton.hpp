@@ -1,10 +1,4 @@
 
-<<<<<<< HEAD
-//=========================//
-// Yoann Robin             //
-// yoann.robin.k@gmail.com //
-//=========================//
-=======
 //==============================================================================//
 //==============================================================================//
 //                                                                              //
@@ -99,7 +93,6 @@
 // https://cran.r-project.org/web/packages/quantreg/index.html                  //
 //==============================================================================//
 
->>>>>>> 676e938ae264f2764abeac9ccb2828bb32f07739
 
 #ifndef SDFC_NONPARAMETRIC_FRISHNEWTON
 #define SDFC_NONPARAMETRIC_FRISHNEWTON
@@ -120,6 +113,8 @@
 //=======//
 // Class //
 //=======//
+
+namespace SDFC {
 
 enum qrstate_t //{{{
 {
@@ -171,8 +166,8 @@ struct QuantileRegression ;
 
 class FrishNewton
 {
-	friend QuantileRegression ;
 	public:
+	friend QuantileRegression ;
 	
 	//=========//
 	// Typedef // 
@@ -278,7 +273,7 @@ class FrishNewton
 	} //}}}
 	
 	
-	private:
+	protected:
 	
 	//=========//
 	// Methods //
@@ -461,6 +456,7 @@ class FrishNewton
 
 } ;
 
+}
 
 #endif
 

@@ -1,3 +1,10 @@
 *.so
 *.o
+a.out
+*.exe
 .DS_Store
+notebook/.ipynb_checkpoints
+*.swp
+RcppExports.cpp
+NAMESPACE
+*.Rd

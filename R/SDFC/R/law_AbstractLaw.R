@@ -1,6 +1,4 @@
 
-# -*- coding: utf-8 -*-
-
 ##################################################################################
 ##################################################################################
 ##                                                                              ##
@@ -9,7 +7,7 @@
 ## yoann.robin.k@gmail.com                                                      ##
 ##                                                                              ##
 ## This software is a computer program that is part of the SDFC (Statistical    ##
-## Distribution Fitted with Covariates) library. This library makes it possible ##
+## Distribution Fit with Covariates) library. This library makes it possible    ##
 ## to regress the parameters of some statistical law with co-variates.          ##
 ##                                                                              ##
 ## This software is governed by the CeCILL-C license under French law and       ##
@@ -49,7 +47,7 @@
 ## yoann.robin.k@gmail.com                                                      ##
 ##                                                                              ##
 ## Ce logiciel est un programme informatique faisant partie de la librairie     ##
-## SDFC (Statistical Distribution Fitted with Covariates). Cette librairie      ##
+## SDFC (Statistical Distribution Fit with Covariates). Cette librairie         ##
 ## permet de calculer de regresser les parametres de lois statistiques selon    ##
 ## plusieurs co-variables                                                       ##
 ##                                                                              ##
@@ -83,49 +81,85 @@
 ##################################################################################
 ##################################################################################
 
-
-SDFC : Statistical Distribution Fit with Covariates
-===================================================
-
-This library makes it possible to fit some statistical distribution
-on Dataset, including Gaussian Law, Generalized Pareto Law and Quantile Regression.
-
-
-Python instruction
-------------------
-
-Requires: python3, numpy, scipy, Eigen (c++)
-
-For python, just use the command:
->> python3 setup.py install
-
-If the Eigen library is not find (needed for Quantile Regression), use:
-python3 setup.py install eigen="path-to-eigen, i.e; /usr/include or /usr/local/include/"
-
-
-R instruction
--------------
-
-Requires: R, devtools, roxygen2, Rcpp, RcppEigen
-
-I'm not really sure of how to build, but this sequence works (good luck):
->> roxygen2::roxygenize("SDFC") ## Return an error, but necessary to generate NAMSPACE file...
->> devtools::load_all("SDFC")
->> roxygen2::roxygenize("SDFC") ## Now, no errors
->> devtools::build("SDFC")      ## Generate the package
->> install.packages( "SDFC_version.tar.gz" )
-
-
-
-Note for Quantile Regression
-----------------------------
-
-The quantile regression is solved with the Frish-Newton algorithm, written in c++,
-depending of the Eigen c++ library. It is a re-written of the Frotran code of
-Koenker, available in the R package "quantreg", see
-
-https://cran.r-project.org/web/packages/quantreg/index.html
-
-
+#' AbstractLaw (Base class)
+#'
+#' Base class inherited by other laws, do not use it
+#'
+#' @docType class
+#' @importFrom R6 R6Class
+#'
+#' @param method [string]
+#'        Fit method
+#' @param n_bootstrap [integer]
+#'        Number of boostrap for confidence interval
+#' @param alpha [float]
+#'        Level of confidence interval
+#'
+#' @return Object of \code{\link{R6Class}} 
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize abstract law with code{AbstractLaw}}
+#' }
+#' @examples
+#' ## Data
+#' @export
+AbstractLaw = R6::R6Class( "AbstractLaw" ,
+	
+	public = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	method              = NULL,
+	coef_               = NULL,
+	n_bootstrap         = NULL,
+	coefs_bootstrap     = NULL,
+	confidence_interval = NULL,
+	alpha               = NULL,
+	
+	
+	#################
+	## Constructor ##
+	#################
+	
+	initialize = function( method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ) ##{{{
+	{
+		self$method      = method
+		self$n_bootstrap = n_bootstrap
+		self$alpha       = alpha
+		
+	}
+	##}}}
+	
+	
+	#############
+	## Methods ##
+	#############
+	
+	
+	),
+	
+	private = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	Y_       = NULL,
+	size_    = NULL,
+	lparams_ = NULL
+	
+	
+	#############
+	## Methods ##
+	#############
+	
+	
+	)
+	
+)
 
 

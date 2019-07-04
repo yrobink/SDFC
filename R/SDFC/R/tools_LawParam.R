@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-
+ 
 ##################################################################################
 ##################################################################################
 ##                                                                              ##
@@ -8,7 +7,7 @@
 ## yoann.robin.k@gmail.com                                                      ##
 ##                                                                              ##
 ## This software is a computer program that is part of the SDFC (Statistical    ##
-## Distribution Fitted with Covariates) library. This library makes it possible ##
+## Distribution Fit with Covariates) library. This library makes it possible    ##
 ## to regress the parameters of some statistical law with co-variates.          ##
 ##                                                                              ##
 ## This software is governed by the CeCILL-C license under French law and       ##
@@ -48,7 +47,7 @@
 ## yoann.robin.k@gmail.com                                                      ##
 ##                                                                              ##
 ## Ce logiciel est un programme informatique faisant partie de la librairie     ##
-## SDFC (Statistical Distribution Fitted with Covariates). Cette librairie      ##
+## SDFC (Statistical Distribution Fit with Covariates). Cette librairie         ##
 ## permet de calculer de regresser les parametres de lois statistiques selon    ##
 ## plusieurs co-variables                                                       ##
 ##                                                                              ##
@@ -82,172 +81,193 @@
 ##################################################################################
 ##################################################################################
 
-
-###############
-## Libraries ##
-###############
-
-import sys,os
-from setuptools import setup, Extension
-from setuptools.command.build_ext import build_ext
-import setuptools
+#############
+## Classes ##
+#############
 
 
-################
-## Eigen path ##
-################
+## LawParam 
 
-eigen_include = ""
-
-i_eigen = -1
-for i,arg in enumerate(sys.argv):
-	if arg[:5] == "eigen":
-		eigen_include = arg[6:]
-		i_eigen = i
-
-if i_eigen > -1:
-	del sys.argv[i_eigen]
-
-
-class get_pybind_include(object):##{{{
-	"""Helper class to determine the pybind11 include path
-	The purpose of this class is to postpone importing pybind11
-	until it is actually installed, so that the ``get_include()``
-	method can be invoked. """
+#' LawParam
+#'
+#' Class used to describe parameters of law (loc, scale, shape). Internal class, so do not use it
+#'
+#' @docType class
+#' @importFrom R6 R6Class
+#'
+#' @param linkFct [LinkFct] link function
+#' @param kind [str] Name of parameters (loc,scale... etc)
+#' @param X [vector or NULL] covariate
+#' @param fix_values [vector or NULL] fix the values of the param at fix_values
+#' @param size [integer or NULL] size of dataset to fit
+#' @param coef [vector] coefficients
+#' @param inter [vector] Intercept of the coefficients
+#'
+#' @return Object of \code{\link{R6Class}}
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new(linkFct,kind)}}{This method is used to create object of this class with \code{LawParam}}
+#'   \item{\code{init(X,fix_values,size)}}{This method is used to initialize}
+#'   \item{\code{not_fixed()}}{Return true if the param need to be estimate}
+#'   \item{\code{set_coef(coef)}}{Set coefficient}
+#'   \item{\code{set_intercept(inter)}}{Set intercept of coefficients}
+#'   \item{\code{design_wo1()}}{Return design matrix without intercept, NULL if no covariate}
+#'   \item{\code{update()}}{Update value of params}
+#'   \item{\code{value()}}{Return value BEFORE link function}
+#'   \item{\code{valueLf()}}{Return value AFTER link function}
+#'   \item{\code{valueGrLf()}}{Return value of gradient of link function}
+#' }
+#' @examples
+#'
+#' @export
+LawParam = R6::R6Class( "LawParam" ,
+	public = list(
 	
-	def __init__(self, user=False):
-		self.user = user
+	###############
+	## Arguments ##
+	###############
 	
-	def __str__(self):
-		import pybind11
-		return pybind11.get_include(self.user)
-##}}}
-
-def find_eigen( eigen_include = "" ):##{{{
-	if os.path.isdir( os.path.join( eigen_include , "Eigen" ) ):
-		return eigen_include
-	if os.path.isdir( os.path.join( eigen_include , "eigen3" , "Eigen" ) ):
-		return eigen_include
+	linkFct = NULL,
+	coef_   = NULL,
+	design_ = NULL,
+	size_   = 0,
+	kind    = NULL,
 	
-	possible_path = [ "/usr/include/" , "/usr/local/include/" ]
-	if os.environ.get("HOME") is not None:
-		possible_path.append( os.path.join( os.environ["HOME"] , ".local/include" ) )
 	
-	for path in possible_path:
-		eigen_include = os.path.join( path , "Eigen" )
-		if os.path.isdir( eigen_include ):
-			return path
-		eigen_include = os.path.join( path , "eigen3" , "Eigen" )
-		if os.path.isdir( eigen_include ):
-			return path
+	#################
+	## Constructor ##
+	#################
 	
-	return ""
-##}}}
-
-def has_flag(compiler, flagname):##{{{
-	"""Return a boolean indicating whether a flag name is supported on
-	the specified compiler.
-	"""
-	import tempfile
-	with tempfile.NamedTemporaryFile('w', suffix='.cpp') as f:
-		f.write('int main (int argc, char **argv) { return 0; }')
-		try:
-			compiler.compile([f.name], extra_postargs=[flagname])
-		except setuptools.distutils.errors.CompileError:
-			return False
-	return True
-##}}}
-
-def cpp_flag(compiler):##{{{
-	"""Return the -std=c++[11/14] compiler flag.
-	The c++14 is prefered over c++11 (when it is available).
-	"""
-	if has_flag(compiler, '-std=c++14'):
-		return '-std=c++14'
-	elif has_flag(compiler, '-std=c++11'):
-		return '-std=c++11'
-	else:
-		raise RuntimeError( 'Unsupported compiler -- at least C++11 support is needed!' )
-##}}}
-
-class BuildExt(build_ext):##{{{
-	"""A custom build extension for adding compiler-specific options."""
-	c_opts = {
-		'msvc': ['/EHsc'],
-		'unix': [],
+	initialize = function( linkFct = IdLinkFct$new() , kind = "Parameter" ) ##{{{
+	{
+		self$linkFct = linkFct
+		self$kind    = kind
+	},
+	##}}}
+	
+	init = function( X = NULL , fix_values = NULL , size = NULL )##{{{
+	{
+		private$not_fixed_ = is.null(fix_values)
+		if( !private$not_fixed_ )
+		{
+			fix_values = as.vector(fix_values)
+			if( length(fix_values) == 1 && !is.null(size) )
+			{
+				private$value_ = self$linkFct$inverse( base::rep( fix_values[1] , size ) )
+			}
+			else if( length(fix_values) > 1 )
+			{
+				private$value_ = self$linkFct$inverse( fix_values )
+			}
+			else
+			{
+				cat( "Error on fix values\n" )
+			}
+		}
+		else
+		{
+			if( is.null(X) && !is.null(size) )
+			{
+				self$coef_   = 1.
+				self$design_ = matrix( 1 , nrow = size , ncol = 1 )
+			}
+			else if( !is.null(X) )
+			{
+				if( !is.matrix(X) )
+					X = matrix( X , nrow = length(X) , ncol = 1 )
+				self$design_ = base::cbind( 1 , X )
+				self$coef_   = base::rep( 0 , base::ncol(self$design_) )
+			}
+			else
+			{
+				cat( "Error\n" )
+			}
+			
+			if( base::qr(self$design_)$rank < base::ncol(self$design_) )
+			{
+				self$design_ = matrix( 1 , nrow = base::nrow(self$design_) , ncol = 1 )
+				self$coef_   = 1
+			}
+			self$size_ = base::ncol( self$design_ )
+		}
+	},
+	##}}}
+	
+	not_fixed = function()##{{{
+	{
+		return(private$not_fixed_)
+	},
+	##}}}
+	
+	set_coef = function( coef_ ) ##{{{
+	{
+		if( private$not_fixed_ )
+		{
+			self$coef_ = as.vector(coef_)
+		}
+	},
+	##}}}
+	
+	set_intercept = function( inter ) ##{{{
+	{
+		if( private$not_fixed_ )
+		{
+			self$coef_[1] = as.double(inter[1])
+		}
+	},
+	##}}}
+	
+	design_wo1 = function() ##{{{
+	{
+		if( self$size_ == 1 )
+			return(NULL)
+		else
+			return(self$design_[,2:self$size_])
+	},
+	##}}}
+	
+	update = function() ##{{{
+	{
+		if( private$not_fixed_ )
+		{
+			private$value_ = as.vector( self$design_ %*% self$coef_ )
+		}
+	},
+	##}}}
+	
+	value = function() ##{{{
+	{
+		return( private$value_ )
+	},
+	##}}}
+	
+	valueLf = function()##{{{
+	{
+		return( as.vector( self$linkFct$eval( private$value_ ) ) )
+	},
+	##}}}
+	
+	valueGrLf = function() ##{{{
+	{
+		return( as.vector( self$linkFct$gradient( private$value_ ) ) )
 	}
+	##}}}
 	
-	if sys.platform == 'darwin':
-		c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
-	
-	def build_extensions(self):
-		ct = self.compiler.compiler_type
-		opts = self.c_opts.get(ct, [])
-		opts.append( "-O3" )
-		if ct == 'unix':
-			opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
-			opts.append(cpp_flag(self.compiler))
-			if has_flag(self.compiler, '-fvisibility=hidden'):
-				opts.append('-fvisibility=hidden')
-		elif ct == 'msvc':
-			opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
-		for ext in self.extensions:
-			ext.extra_compile_args = opts
-		build_ext.build_extensions(self)
-##}}}
-
-ext_modules = [
-	Extension(
-		'SDFC.NonParametric.__NonParametric_cpp',
-		['SDFC/src/NonParametric.cpp'],
-		include_dirs=[
-			# Path to pybind11 headers
-			find_eigen(eigen_include),
-			get_pybind_include(),
-			get_pybind_include(user=True)
-		],
-		language='c++',
-		depends = [
-			"SDFC/src/QuantileRegression.hpp",
-			"SDFC/src/FrishNewton.hpp"
-			]
 	),
-]
-
-
-
-
-
-#################
-## Compilation ##
-#################
-
-list_packages = [
-	"SDFC",
-	"SDFC.tools",
-	"SDFC.NonParametric" ,
-]
-
-
-setup(
-	name = "SDFC" ,
-	description = "Statistical Distribution Fit with Covariates" ,
-<<<<<<< HEAD:python/setup.py
-	version = "0.4.0" ,
-=======
-	version = "0.4.1a1" ,
->>>>>>> 676e938ae264f2764abeac9ccb2828bb32f07739:python/setup.py
-	author = "Yoann Robin" ,
-	author_email = "yoann.robin.k@gmail.com" ,
-	license = "CeCILL-C" ,
-	platforms = [ "linux" , "macosx" ] ,
-	requires = [ "numpy" , "scipy" , "matplotlib" ],
-	ext_modules = ext_modules,
-	install_requires = ['pybind11>=2.2'],
-	cmdclass = {'build_ext': BuildExt},
-	zip_safe = False,
-	packages = list_packages,
-	package_dir = { "SDFC" : "SDFC" }
+	
+	######################
+	## Private elements ##
+	######################
+	
+	private = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	value_     = NULL,
+	not_fixed_ = NULL
+	)
 )
-
-

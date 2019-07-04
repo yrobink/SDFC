@@ -1,4 +1,4 @@
-
+ 
 ##################################################################################
 ##################################################################################
 ##                                                                              ##
@@ -82,212 +82,57 @@
 ##################################################################################
 
 
-#' NormalLaw (Gaussian)
+#' np_var
 #'
-#' Class to fit a Normal law with covariates
+#' Compute the variance with covariates and link function
 #'
-#' @docType class
-#' @importFrom R6 R6Class
+#' @param Y  [vector] Dataset to fit
+#' @param X  [vector or NULL] Covariate
+#' @param m  [vector or NULL] mean already (or not) estimated. If NULL, m = base::mean(Y) is called
+#' @param linkFct  [SDFC::LinkFct] link function, default is identity
+#' @param return_coef  [bool] if TRUE return coefficients of the fit, else return variance
 #'
-#' @param loc  [vector]
-#'        Location parameters
-#' @param scale  [vector]
-#'        Scale parameters
-#' @param loc_cov  [matrix]
-#'        Location covariate for fit
-#' @param scale_cov  [matrix]
-#'        Scale covariate for fit
-#' @param use_phi [bool]
-#'        Use exponential function as link function for scale
-#' @param method [string]
-#'        Optimization method, default "BFGS"
-#' @param verbose [bool]
-#'        Print warning and error message
+#' @return [vector] Variance or coefficients of regression
 #'
-#' @return Object of \code{\link{R6Class}} 
-#' @format \code{\link{R6Class}} object.
-#'
-#' @section Methods:
-#' \describe{
-#'   \item{\code{new(use_phi,method,verbose)}}{Initialize normal law with code{NormalLaw}}
-#'   \item{\code{fit(Y,loc_cov,scale_cov)}}{Fit the Normal law}.
-#' }
 #' @examples
 #' ## Data
-#' size = 2000
-#' data = SDFC::Dataset2(size)
-#' t = data$t
-#' X = data$X
-#' Y = data$Y
-#' 
-#' ## Normal Law
-#' norm = SDFC::NormalLaw$new()
-#' norm$fit( Y , loc_cov = X , scale_cov = X )
-#' print(norm$loc_coef_) ## Location coef fitted
-#' print(norm$scale_coef_) ## Scale coef fitted
+#' size = 2500
+#' t    = base::seq( 0 , 1 , length = size )
+#' X0    = t^2
+#' X1    = base::cos( 2 * base::pi * t )
+#' loc   = 1. + 2 * X0
+#' scale = 0.6 + 0.5 * X1
+#' Y    = stats::rnorm( n = size , mean = loc , sd = scale )
 #'
-#' ## In fact, it is better to fit:
-#' norm_best = SDFC::NormalLaw$new()
-#' norm_best$fit( Y , loc_cov = X[,1] , scale_cov = X[,2] )
+#' m = np_mean( Y , X = X0 ) ## First fit mean
+#' v = np_var( Y , X = X1 , m = m ) ## Now variance
+#' 
 #' @export
-NormalLaw = R6::R6Class( "NormalLaw" ,
-	
-	public = list(
-	
-	use_phi      = NULL,
-	method       = NULL,
-	verbose      = NULL,
-	Y            = NULL,
-	size         = NULL,
-	Nlog2pi      = NULL,
-	loc          = NULL,
-	scale        = NULL,
-	loc_design   = NULL,
-	scale_design = NULL,
-	nloc         = NULL,
-	nscale       = NULL,
-	ncov         = NULL,
-	optim_result = NULL,
-	loc_coef_    = NULL,
-	scale_coef_  = NULL,
-	
-	
-	###############
-	## Arguments ##
-	###############
-	
-	
-	#################
-	## Constructor ##
-	#################
-	
-	initialize = function( use_phi = FALSE , method = "BFGS" , verbose = FALSE ) ##{{{
+np_var = function( Y , X = NULL , m = NULL , linkFct = SDFC::IdLinkFct$new() , return_coef = FALSE )
+{
+	out  = NULL
+	coef = NULL
+	m    = if( is.null(m) ) base::mean(Y) else as.vector(m)
+	if( is.null(X) )
 	{
-		self$use_phi = use_phi
-		self$method  = method
-		self$verbose = verbose
-	},
-	##}}}
-
-	fit = function( Y , loc_cov = NULL , scale_cov = NULL )##{{{
-	{
-		self$Y    = Y
-		self$size = base::length(Y)
-		self$Nlog2pi = self$size * base::log( 2 * base::pi ) / 2.
-		
-		## Design matrix
-		self$loc_design   = if( !is.null(loc_cov)   ) base::cbind( 1 , loc_cov)   else matrix( 1 , nrow = self$size , ncol = 1 )
-		self$scale_design = if( !is.null(scale_cov) ) base::cbind( 1 , scale_cov) else matrix( 1 , nrow = self$size , ncol = 1 )
-		
-		if( base::qr(self$loc_design)$rank < base::ncol(self$loc_design) )
-		{
-			if( self$verbose )
-			{
-				print( "SFDC::NormalLaw: singular design matrix for loc, co-variable coefficients are set to 0" )
-			}
-			self$loc_design = matrix( 1 , nrow = self$size , ncol = 1 )
-		}
-		if( base::qr(self$scale_design)$rank < base::ncol(self$scale_design) )
-		{
-			if( self$verbose )
-			{
-				print( "SFDC::NormalLaw: singular design matrix for scale, co-variable coefficients are set to 0" )
-			}
-			self$scale_design = matrix( 1 , nrow = self$size , ncol = 1 )
-		}
-		
-		self$nloc   = base::ncol(self$loc_design)
-		self$nscale = base::ncol(self$scale_design)
-		self$ncov   = self$nloc + self$nscale
-		
-		## Initial condition
-		param_init = self$find_init()
-		
-		## Optimization
-		self$optim_result = stats::optim( param_init , fn = self$optim_function , gr = self$gradient_optim_function , method = self$method )
-		
-		## Set result
-		self$loc_coef_   = self$optim_result$par[1:self$nloc]
-		self$scale_coef_ = self$optim_result$par[(self$nloc+1):self$ncov]
-		self$update_param( self$optim_result$par )
-	},
-	##}}}
-	
-	link = function( x ) ##{{{
-	{
-		if( self$use_phi )
-		{
-			return( base::exp(x) )
-		}
-		else
-		{
-			return(x)
-		}
-	},
-	##}}}
-	
-	link_inv = function( x ) ##{{{
-	{
-		if( self$use_phi )
-		{
-			return( base::log(x) )
-		}
-		else
-		{
-			return(x)
-		}
-	},
-	##}}}
-	
-	update_param = function( param ) ##{{{
-	{
-		self$loc   = self$loc_design %*% param[1:self$nloc]
-		self$scale = self$link( self$scale_design %*% param[(self$nloc+1):self$ncov] )
-	},
-	##}}}
-	
-	find_init = function() ##{{{
-	{
-		## Estimate mu
-		lm_res = stats::lm( self$Y ~ self$loc_design - 1)
-		init_loc = lm_res$coefficients[1:self$nloc]
-		init_scale = numeric(self$nscale)
-		init_scale[1] = stats::sd(self$Y)
-		return( base::c(init_loc,init_scale) )
-	},
-	##}}}
-	
-	negloglikelihood = function() ##{{{
-	{
-		if( !base::all( self$scale > 0 ) )
-		{
-			return(Inf)
-		}
-		
-		scale2 = self$scale^2
-		return( self$Nlog2pi + base::sum( base::log( scale2 ) ) / 2. + base::sum( ( self$Y - self$loc )^2 / scale2 ) / 2. )
-	},
-	##}}}
-	
-	optim_function = function( param )##{{{
-	{
-		self$update_param(param)
-		return( self$negloglikelihood() )
-	},
-	##}}}
-	
-	gradient_optim_function = function( param ) ##{{{
-	{
-		self$update_param(param)
-		
-		Yc = self$Y - self$loc
-		grad_loc   = - base::t(self$loc_design) %*% (Yc / self$scale^2)
-		grad_phi   = if( self$use_phi ) 1. else self$scale
-		grad_scale = base::t(self$scale_design) %*% ( 1. / grad_phi - (Yc / self$scale)^2 / grad_phi )
-		
-		return( base::c(grad_loc,grad_scale) )
+		out  = stats::var(Y-m)
+		coef = linkFct$inverse(out)
 	}
-	##}}}
+	else
+	{
+		XX   = base::cbind( 1 , X )
+		Yres = linkFct$inverse( (Y - m)^2 )
+		coef = as.vector(stats::lm( Yres ~ X )$coefficients)
+		out  = base::abs(linkFct$eval( XX %*% coef ))
+	}
+	
+	
+	if( return_coef )
+		return(coef)
+	else
+		return(out)
+}
 
-	)
-)
+
+
+

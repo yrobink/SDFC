@@ -1,4 +1,4 @@
-
+ 
 ##################################################################################
 ##################################################################################
 ##                                                                              ##
@@ -82,117 +82,54 @@
 ##################################################################################
 
 
-#' lmoments1
+#' np_std
 #'
-#' Compute the L-Moments of order 1 (just the mean...)
+#' Compute the standard deviation with covariates and link function
 #'
-#' @param Y  [vector] Dataset
+#' @param Y  [vector] Dataset to fit
+#' @param X  [vector or NULL] Covariate
+#' @param m  [vector or NULL] mean already (or not) estimated. If NULL, m = base::mean(Y) is called
+#' @param linkFct  [SDFC::LinkFct] link function, default is identity
+#' @param return_coef  [bool] if TRUE return coefficients of the fit, else return standard deviation
 #'
-#' @return [lmom1] L-Moments of order 1
-#'
-#' @examples
-#' ## Data
-#' size = 2000
-#' data = Dataset0(size)
-#' lmom1 = SDFC::lmoments1(data$Y)
-#' @export
-lmoments1 = function(Y)
-{
-	return( base::mean(Y) )
-}
-
-
-#' lmoments2
-#'
-#' Compute the L-Moments of order 2 (half mean of pairwise difference)
-#'
-#' @param Y  [vector] Dataset
-#'
-#' @return [lmom2] L-Moments of order 2
+#' @return [vector] Standard deviation or coefficients of regression
 #'
 #' @examples
 #' ## Data
-#' size = 2000
-#' data = Dataset0(size)
-#' lmom2 = SDFC::lmoments2(data$Y)
+#' size = 2500
+#' t    = base::seq( 0 , 1 , length = size )
+#' X0    = t^2
+#' X1    = base::cos( 2 * base::pi * t )
+#' loc   = 1. + 2 * X0
+#' scale = 0.6 + 0.5 * X1
+#' Y    = stats::rnorm( n = size , mean = loc , sd = scale )
+#'
+#' m = np_mean( Y , X = X0 ) ## First fit mean
+#' s = np_std( Y , X = X1 , m = m ) ## Now standard deviation
+#' 
 #' @export
-lmoments2 = function(Y)
+np_std = function( Y , X = NULL , m = NULL , linkFct = SDFC::IdLinkFct$new() , return_coef = FALSE )
 {
-	size = length(Y)
-	res = 0
+	var = SDFC::np_var( Y , X , m , linkFct )
+	out = base::sqrt( var )
 	
-	X = Y[order(Y)]
-	
-	for( i in 1:size )
+	if( return_coef )
 	{
-		res = res + ( base::choose( i - 1 , 1 ) - base::choose( size - i , 1 ) ) * X[i]
+	
+		if( is.null(X) )
+		{
+			return(linkFct$inverse(out))
+		}
+		else
+		{
+			YY = linkFct$inverse(out)
+			return( as.vector(stats::lm( YY ~ X )$coefficients) )
+		}
 	}
-	res = res / ( 2 * base::choose( size , 2 ) )
 	
-	return(res)
+	return(out)
 }
 
-
-#' lmoments3
-#'
-#' Compute the L-Moments of order 3 
-#'
-#' @param Y  [vector] Dataset
-#'
-#' @return [lmom3] L-Moments of order 3
-#'
-#' @examples
-#' ## Data
-#' size = 2000
-#' data = Dataset0(size)
-#' lmom2 = SDFC::lmoments3(data$Y)
-#' @export
-lmoments3 = function(Y)
-{
-	size = length(Y)
-	res = 0
-	
-	X = Y[order(Y)]
-	
-	for( i in 1:size )
-	{
-		res = res + ( base::choose( i - 1 , 2 ) - 2 * base::choose( i-1 , 1 ) * base::choose( size - i , 1 ) + base::choose( size - i , 2 ) ) * X[i]
-	}
-	res = res / ( 3 * base::choose( size , 3 ) )
-	
-	return(res)
-}
-
-
-
-#' lmoments
-#'
-#' Compute the L-Moments
-#'
-#' @param Y  [vector] Dataset
-#'
-#' @param order [int] order of moments
-#'
-#' @return [lmom] L-Moments
-#'
-#' @examples
-#' ## Data
-#' size = 2000
-#' data = Dataset0(size)
-#' lmom1 = SDFC::lmoments(data$Y,1)
-#' lmom2 = SDFC::lmoments(data$Y,2)
-#' lmom3 = SDFC::lmoments(data$Y,3)
-#' @export
-lmoments = function( Y , order )
-{
-	if( order == 1 )
-		return( SDFC::lmoments1(Y) )
-	if( order == 2 )
-		return( SDFC::lmoments2(Y) )
-	if( order == 3 )
-		return( SDFC::lmoments3(Y) )
-	return(NULL)
-}
 
 
 

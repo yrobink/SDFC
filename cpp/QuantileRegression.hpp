@@ -1,10 +1,4 @@
 
-<<<<<<< HEAD
-//=========================//
-// Yoann Robin             //
-// yoann.robin.k@gmail.com //
-//=========================//
-=======
 //==============================================================================//
 //==============================================================================//
 //                                                                              //
@@ -86,7 +80,6 @@
 //                                                                              //
 //==============================================================================//
 //==============================================================================//
->>>>>>> 676e938ae264f2764abeac9ccb2828bb32f07739
 
 #ifndef SDFC_NONPARAMETRIC_QUANTILEREGRESSION
 #define SDFC_NONPARAMETRIC_QUANTILEREGRESSION
@@ -99,7 +92,6 @@
 #include <limits>
 #include <cmath>
 #include <random>
-#include <pybind11/pybind11.h>
 #include <Eigen/Dense>
 #include <Eigen/Core>
 
@@ -110,14 +102,15 @@
 // namespaces //
 //============//
 
-namespace py = pybind11 ;
+namespace SDFC {
 
 //=======//
 // Class //
 //=======//
 
-struct QuantileRegression
+class QuantileRegression
 {
+	public:
 	//=========//
 	// Typedef // 
 	//=========//
@@ -153,19 +146,7 @@ struct QuantileRegression
 		m_ltau[0] = ltau ;
 	} //}}}
 	
-	QuantileRegression( py::list ltau ): //{{{
-		m_ltau(py::len(ltau)) ,
-		m_coef() ,
-		m_quantiles() ,
-		m_frishNewton( 0.5 , 50 , 1e-6 , 0.99995 ),
-		m_state(not_fitted)
-	{
-		int s = 0 ;
-		for( auto item : ltau )
-			m_ltau[s++] = item.cast<value_type>() ;
-	} //}}}
-	
-	QuantileRegression( Eigen::Ref<Vector> ltau ): //{{{
+	QuantileRegression( Vector& ltau ): //{{{
 		m_ltau(ltau) ,
 		m_coef() ,
 		m_quantiles() ,
@@ -180,8 +161,8 @@ struct QuantileRegression
 	{
 		std::string True("True"), False("False") ;
 		std::string _repr("") ;
-		_repr += "SDFC.NonParametric.QuantileRegression\n" ;
-		_repr += "=====================================\n" ;
+		_repr += "SDFC::QuantileRegression\n" ;
+		_repr += "========================\n" ;
 		_repr += "* Method    : Frish-Newton\n" ;
 		_repr += "* Fitted    : " + ( is_fitted()     ? True : False ) + "\n" ;
 		_repr += "* Success   : " + ( is_success()    ? True : False ) + "\n" ;
@@ -195,20 +176,13 @@ struct QuantileRegression
 	// Accessors //
 	//===========//
 	
-<<<<<<< HEAD
-	void set_fit_params( size_type maxit , value_type tol , value_type beta )
-=======
 	void set_fit_params( size_type maxit , value_type tol , value_type beta ) //{{{
->>>>>>> 676e938ae264f2764abeac9ccb2828bb32f07739
 	{
 		m_frishNewton.m_maxit = maxit ;
 		m_frishNewton.m_tol   = tol ;
 		m_frishNewton.m_beta  = beta ;
 	}
-<<<<<<< HEAD
-=======
 	//}}}
->>>>>>> 676e938ae264f2764abeac9ccb2828bb32f07739
 	
 	void set_ltau( double ltau ) //{{{
 	{
@@ -216,15 +190,7 @@ struct QuantileRegression
 		m_ltau[0] = ltau ;
 	} //}}}
 	
-	void set_ltau( py::list ltau ) //{{{
-	{
-		m_ltau.resize( py::len(ltau) ) ;
-		int s = 0 ;
-		for( auto item : ltau )
-			m_ltau[s++] = item.cast<value_type>() ;
-	} //}}}
-	
-	void set_ltau( Eigen::Ref<Vector> ltau ) //{{{
+	void set_ltau( Vector& ltau ) //{{{
 	{
 		m_ltau = ltau ;
 	} //}}}
@@ -268,22 +234,28 @@ struct QuantileRegression
 				break ;
 			m_coef.row(i) = m_frishNewton.m_coef ;
 		}
-		m_quantiles = predict() ;
+		evaluation() ;
 	} //}}}
 	
 	Matrix predict() //{{{
 	{
-		size_type n_tau = m_ltau.size() ;
-		Matrix& A(m_frishNewton.m_A) ;
-		Matrix Yq( A.rows() , n_tau ) ;
-		Yq = A * m_coef.transpose() ;
-		return Yq ;
+		return m_quantiles ;
 	} //}}}
 	
 	
 	//===========//
 	// Arguments //
 	//===========//
+	
+	protected:
+	
+	void evaluation() //{{{
+	{
+		size_type n_tau = m_ltau.size() ;
+		Matrix& A(m_frishNewton.m_A) ;
+		Matrix Yq( A.rows() , n_tau ) ;
+		m_quantiles = A * m_coef.transpose() ;
+	} //}}}
 	
 	//{{{
 	Array       m_ltau        ;
@@ -296,6 +268,8 @@ struct QuantileRegression
 	
 	
 };
+
+}
 
 #endif
 

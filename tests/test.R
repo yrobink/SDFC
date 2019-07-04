@@ -15,8 +15,8 @@ library(roxygen2)
 library(devtools)
 
 
-roxygenize("SDFC")
-load_all("SDFC")
+roxygenize("../R/SDFC")
+load_all("../R/SDFC")
 #check("SDFC")
 
 

@@ -369,9 +369,12 @@ GEVLaw = R6::R6Class( "GEVLaw" ,
 	## Arguments ##
 	###############
 	
-	loc          = NULL,
-	scale        = NULL,
-	shape        = NULL,
+	loc    = NULL,
+	scale  = NULL,
+	shape  = NULL,
+	loc_   = NULL,
+	scale_ = NULL,
+	shape_ = NULL,
 	
 	
 	#################
@@ -386,9 +389,9 @@ GEVLaw = R6::R6Class( "GEVLaw" ,
 		self$scale     = NULL
 		self$shape     = NULL
 		
-		private$loc_   = LawParam$new( linkFct = link_fct_loc   , kind = "loc"   )
-		private$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
-		private$shape_ = LawParam$new( linkFct = link_fct_shape , kind = "shape" )
+		self$loc_   = LawParam$new( linkFct = link_fct_loc   , kind = "loc"   )
+		self$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
+		self$shape_ = LawParam$new( linkFct = link_fct_shape , kind = "shape" )
 	},
 	##}}}
 	
@@ -442,9 +445,6 @@ GEVLaw = R6::R6Class( "GEVLaw" ,
 	## Arguments ##
 	###############
 	
-	loc_   = NULL,
-	scale_ = NULL,
-	shape_ = NULL,
 	
 	
 	###############
@@ -455,9 +455,9 @@ GEVLaw = R6::R6Class( "GEVLaw" ,
 	{
 		private$Y_    = as.vector(Y)
 		
-		private$loc_$init(   X = loc_cov   , fix_values = floc   , size = private$size_ )
-		private$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
-		private$shape_$init( X = shape_cov , fix_values = fshape , size = private$size_ )
+		self$loc_$init(   X = loc_cov   , fix_values = floc   , size = private$size_ )
+		self$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
+		self$shape_$init( X = shape_cov , fix_values = fshape , size = private$size_ )
 		
 		if( self$method == "moments" )
 		{
@@ -489,17 +489,17 @@ GEVLaw = R6::R6Class( "GEVLaw" ,
 		iscale = base::log(s)
 		ishape = 1e-8
 		
-		private$loc_$set_intercept(   private$loc_$linkFct$inverse( iloc )     )
-		private$scale_$set_intercept( private$scale_$linkFct$inverse( iscale ) )
-		private$shape_$set_intercept( private$shape_$linkFct$inverse( ishape ) )
+		self$loc_$set_intercept(   self$loc_$linkFct$inverse( iloc )     )
+		self$scale_$set_intercept( self$scale_$linkFct$inverse( iscale ) )
+		self$shape_$set_intercept( self$shape_$linkFct$inverse( ishape ) )
 		
 		
-		private$loc_$update()
-		private$scale_$update()
-		private$shape_$update()
-		self$loc   = private$loc_$valueLf()
-		self$scale = private$scale_$valueLf()
-		self$shape = private$shape_$valueLf()
+		self$loc_$update()
+		self$scale_$update()
+		self$shape_$update()
+		self$loc   = self$loc_$valueLf()
+		self$scale = self$scale_$valueLf()
+		self$shape = self$shape_$valueLf()
 	},
 	##}}}
 	
@@ -518,82 +518,82 @@ GEVLaw = R6::R6Class( "GEVLaw" ,
 		iloc   = lmom1 - iscale * (1 - g) / kappa
 		ishape = - kappa
 		
-		private$loc_$set_intercept(   private$loc_$linkFct$inverse( iloc )     )
-		private$scale_$set_intercept( private$scale_$linkFct$inverse( iscale ) )
-		private$shape_$set_intercept( private$shape_$linkFct$inverse( ishape ) )
+		self$loc_$set_intercept(   self$loc_$linkFct$inverse( iloc )     )
+		self$scale_$set_intercept( self$scale_$linkFct$inverse( iscale ) )
+		self$shape_$set_intercept( self$shape_$linkFct$inverse( ishape ) )
 		
-		private$loc_$update()
-		private$scale_$update()
-		private$shape_$update()
-		self$loc   = private$loc_$valueLf()
-		self$scale = private$scale_$valueLf()
-		self$shape = private$shape_$valueLf()
+		self$loc_$update()
+		self$scale_$update()
+		self$shape_$update()
+		self$loc   = self$loc_$valueLf()
+		self$scale = self$scale_$valueLf()
+		self$shape = self$shape_$valueLf()
 	},
 	##}}}
 	
 	fit_quantiles = function() ##{{{
 	{
 		## Fit the loc
-		if( private$loc_$not_fixed() )
+		if( self$loc_$not_fixed() )
 		{
-			if( private$loc_$size_ == 1 )
+			if( self$loc_$size_ == 1 )
 			{
-				private$loc_$set_intercept( private$loc_$linkFct$inverse( as.vector(stats::quantile( private$Y_ , probs = base::exp(-1) )) ) )
+				self$loc_$set_intercept( self$loc_$linkFct$inverse( as.vector(stats::quantile( private$Y_ , probs = base::exp(-1) )) ) )
 			}
 			else
 			{
-				loc = as.vector(np_quantile( private$Y_ , ltau = base::c(base::exp(-1)) , X = private$loc_$design_wo1() ))
-				private$loc_$set_coef( np_mean( loc , X = private$loc_$design_wo1() , linkFct = private$loc_$linkFct , return_coef = TRUE ) )
+				loc = as.vector(np_quantile( private$Y_ , ltau = base::c(base::exp(-1)) , X = self$loc_$design_wo1() ))
+				self$loc_$set_coef( np_mean( loc , X = self$loc_$design_wo1() , linkFct = self$loc_$linkFct , return_coef = TRUE ) )
 			}
 		}
-		private$loc_$update()
-		self$loc = private$loc_$valueLf()
+		self$loc_$update()
+		self$loc = self$loc_$valueLf()
 		
 		
 		## Fit the scale
-		if( private$scale_$not_fixed() )
+		if( self$scale_$not_fixed() )
 		{
 			probs = base::c( 0.25 , 0.5 , 0.75 )
 			coef  = - 1. / base::log( - base::log(probs) )
-			if( private$scale_$size_ == 1 )
+			if( self$scale_$size_ == 1 )
 			{
-				private$scale_$set_intercept( private$scale_$linkFct$inverse(base::mean( as.vector( stats::quantile( private$Y_ - self$loc , probs ) ) * coef )) )
+				self$scale_$set_intercept( self$scale_$linkFct$inverse(base::mean( as.vector( stats::quantile( private$Y_ - self$loc , probs ) ) * coef )) )
 			}
 			else
 			{
-				qreg = np_quantile( private$Y_ - self$loc , ltau = probs , X = private$scale_$design_wo1() )
+				qreg = np_quantile( private$Y_ - self$loc , ltau = probs , X = self$scale_$design_wo1() )
 				fscale = ( qreg %*% coef ) / length(probs)
-				private$scale_$set_coef( np_mean( fscale , X = private$scale_$design_wo1() , linkFct = private$scale_$linkFct , return_coef = TRUE ) )
+				self$scale_$set_coef( np_mean( fscale , X = self$scale_$design_wo1() , linkFct = self$scale_$linkFct , return_coef = TRUE ) )
 			}
 		}
-		private$scale_$update()
-		self$scale = private$scale_$valueLf()
+		self$scale_$update()
+		self$scale = self$scale_$valueLf()
 		
 		
 		## Fit the shape
-		if( private$shape_$not_fixed() )
+		if( self$shape_$not_fixed() )
 		{
 			p0 = 0.1
 			p1 = 0.9
 			llp0 = base::log( - base::log(p0) )
 			llp1 = base::log( - base::log(p1) )
-			if( private$shape_$size_ == 1 )
+			if( self$shape_$size_ == 1 )
 			{
 				q = stats::quantile( ( private$Y_ - self$loc ) / self$scale , base::c(p0,p1) )
 				kappa = q[1] / q[2]
 				sh = 2 * (llp0 - kappa * llp1 ) / ( llp0^2 - kappa * llp1^2 )
-				private$shape_$set_intercept( private$shape_$linkFct$inverse(sh) )
+				self$shape_$set_intercept( self$shape_$linkFct$inverse(sh) )
 			}
 			else
 			{
-				q = np_quantile( ( private$Y_ - self$loc ) / self$scale , ltau = base::c(p0,p1) , X = private$shape_$design_wo1() )
+				q = np_quantile( ( private$Y_ - self$loc ) / self$scale , ltau = base::c(p0,p1) , X = self$shape_$design_wo1() )
 				kappa = q[,1] / q[,2]
 				fshape = 2 * (llp0 - kappa * llp1 ) / ( llp0^2 - kappa * llp1^2 )
-				private$shape_$set_coef( np_mean( fshape , X = private$shape_$design_wo1() , linkFct = private$shape_$linkFct , return_coef = TRUE ) )
+				self$shape_$set_coef( np_mean( fshape , X = self$shape_$design_wo1() , linkFct = self$shape_$linkFct , return_coef = TRUE ) )
 			}
 		}
-		private$shape_$update()
-		self$shape = private$shape_$valueLf()
+		self$shape_$update()
+		self$shape = self$shape_$valueLf()
 	},
 	##}}}
 	
@@ -608,7 +608,7 @@ GEVLaw = R6::R6Class( "GEVLaw" ,
 		
 		if( !is.finite(nll) || !is.finite(gnll) )
 		{
-			private$shape_$set_coef( numeric( private$shape_$size_ ) )
+			self$shape_$set_coef( numeric( self$shape_$size_ ) )
 			param_init = private$concat_param()
 		}
 		
@@ -622,44 +622,44 @@ GEVLaw = R6::R6Class( "GEVLaw" ,
 		param_loc   = NULL
 		param_scale = NULL
 		param_shape = NULL
-		s0 = private$loc_$size_
-		s1 = private$scale_$size_
-		s2 = private$shape_$size_
+		s0 = self$loc_$size_
+		s1 = self$scale_$size_
+		s2 = self$shape_$size_
 		
-		if( private$loc_$not_fixed() && private$scale_$not_fixed() && private$shape_$not_fixed() )
+		if( self$loc_$not_fixed() && self$scale_$not_fixed() && self$shape_$not_fixed() )
 		{
 			param_loc   = param[1:s0]
 			param_scale = param[(s0+1):(s0+s1)]
 			param_shape = param[(s0+s1+1):(s0+s1+s2)]
 		}
-		else if( private$loc_$not_fixed() && private$scale_$not_fixed() )
+		else if( self$loc_$not_fixed() && self$scale_$not_fixed() )
 		{
-			s0 = private$loc_$size_
-			s1 = private$scale_$size_
+			s0 = self$loc_$size_
+			s1 = self$scale_$size_
 			param_loc   = param[1:s0]
 			param_scale = param[(s0+1):(s0+s1)]
 		}
-		else if( private$loc_$not_fixed() && private$shape_$not_fixed() )
+		else if( self$loc_$not_fixed() && self$shape_$not_fixed() )
 		{
-			s0 = private$loc_$size_
-			s1 = private$shape_$size_
+			s0 = self$loc_$size_
+			s1 = self$shape_$size_
 			param_loc   = param[1:s0]
 			param_shape = param[(s0+1):(s0+s2)]
 		}
-		else if( private$scale_$not_fixed() && private$shape_$not_fixed() )
+		else if( self$scale_$not_fixed() && self$shape_$not_fixed() )
 		{
 			param_scale = param[1:s1]
 			param_shape = param[(s1+1):(s1+s2)]
 		}
-		else if( private$loc_$not_fixed() )
+		else if( self$loc_$not_fixed() )
 		{
 			param_loc = param
 		}
-		else if( private$scale_$not_fixed() )
+		else if( self$scale_$not_fixed() )
 		{
 			param_scale = param
 		}
-		else if( private$shape_$not_fixed() )
+		else if( self$shape_$not_fixed() )
 		{
 			param_shape = param
 		}
@@ -671,39 +671,39 @@ GEVLaw = R6::R6Class( "GEVLaw" ,
 	concat_param = function()##{{{
 	{
 		param = NULL
-		param_loc   = if( private$loc_$not_fixed() )   private$loc_$coef_   else NULL
-		param_scale = if( private$scale_$not_fixed() ) private$scale_$coef_ else NULL
-		param_shape = if( private$shape_$not_fixed() ) private$shape_$coef_ else NULL
+		param_loc   = if( self$loc_$not_fixed() )   self$loc_$coef_   else NULL
+		param_scale = if( self$scale_$not_fixed() ) self$scale_$coef_ else NULL
+		param_shape = if( self$shape_$not_fixed() ) self$shape_$coef_ else NULL
 		
 		param = base::c( param_loc , param_scale , param_shape )
 
-#		if( private$loc_$not_fixed() && private$scale_$not_fixed() && private$shape_$not_fixed() )
+#		if( self$loc_$not_fixed() && self$scale_$not_fixed() && self$shape_$not_fixed() )
 #		{
-#			param = base::c( private$loc_$coef_ , private$scale_$coef_ , private$shape$coef_ )
+#			param = base::c( self$loc_$coef_ , self$scale_$coef_ , private$shape$coef_ )
 #		}
-#		else if( private$loc_$not_fixed() && private$scale_$not_fixed() )
+#		else if( self$loc_$not_fixed() && self$scale_$not_fixed() )
 #		{
-#			param = base::c( private$loc_$coef_ , private$scale_$coef_ )
+#			param = base::c( self$loc_$coef_ , self$scale_$coef_ )
 #		}
-#		else if( private$loc_$not_fixed() && private$shape_$not_fixed() )
+#		else if( self$loc_$not_fixed() && self$shape_$not_fixed() )
 #		{
-#			param = base::c( private$loc_$coef_ , private$shape$coef_ )
+#			param = base::c( self$loc_$coef_ , private$shape$coef_ )
 #		}
-#		else if( private$scale_$not_fixed() && private$shape_$not_fixed() )
+#		else if( self$scale_$not_fixed() && self$shape_$not_fixed() )
 #		{
-#			param = base::c( private$scale_$coef_ , private$shape$coef_ )
+#			param = base::c( self$scale_$coef_ , private$shape$coef_ )
 #		}
-#		else if( private$loc_$not_fixed() )
+#		else if( self$loc_$not_fixed() )
 #		{
-#			param = private$loc_$coef_
+#			param = self$loc_$coef_
 #		}
-#		else if( private$scale_$not_fixed() )
+#		else if( self$scale_$not_fixed() )
 #		{
-#			param = private$scale_$coef_
+#			param = self$scale_$coef_
 #		}
-#		else if( private$shape_$not_fixed() )
+#		else if( self$shape_$not_fixed() )
 #		{
-#			param = private$shape_$coef_
+#			param = self$shape_$coef_
 #		}
 		
 		return( param )
@@ -713,15 +713,15 @@ GEVLaw = R6::R6Class( "GEVLaw" ,
 	update_param = function( param ) ##{{{
 	{
 		param_sp = private$split_param(param)
-		private$loc_$set_coef(   param_sp$loc )
-		private$scale_$set_coef( param_sp$scale )
-		private$shape_$set_coef( param_sp$shape )
-		private$loc_$update()
-		private$scale_$update()
-		private$shape_$update()
-		self$loc   = private$loc_$valueLf()
-		self$scale = private$scale_$valueLf()
-		self$shape = private$shape_$valueLf()
+		self$loc_$set_coef(   param_sp$loc )
+		self$scale_$set_coef( param_sp$scale )
+		self$shape_$set_coef( param_sp$shape )
+		self$loc_$update()
+		self$scale_$update()
+		self$shape_$update()
+		self$loc   = self$loc_$valueLf()
+		self$scale = self$scale_$valueLf()
+		self$shape = self$shape_$valueLf()
 	},
 	##}}}
 	
@@ -786,22 +786,22 @@ GEVLaw = R6::R6Class( "GEVLaw" ,
 		
 		##
 		grad = base::c()
-		if( private$loc_$not_fixed() )
+		if( self$loc_$not_fixed() )
 		{
-			loc_vect = private$loc_$valueGrLf()   * ( Zamsi - 1 - self$shape ) / ( self$scale * Za1 )
-			grad_loc = base::t(private$loc_$design_) %*% loc_vect
+			loc_vect = self$loc_$valueGrLf()   * ( Zamsi - 1 - self$shape ) / ( self$scale * Za1 )
+			grad_loc = base::t(self$loc_$design_) %*% loc_vect
 			grad     = base::c(grad,grad_loc)
 		}
-		if( private$scale_$not_fixed() )
+		if( self$scale_$not_fixed() )
 		{
-			scale_vect = private$scale_$valueGrLf() * ( 1. + Z * ( Zamsi - 1 - self$shape ) / Za1 ) / self$scale
-			grad_scale = base::t(private$scale_$design_) %*% scale_vect
+			scale_vect = self$scale_$valueGrLf() * ( 1. + Z * ( Zamsi - 1 - self$shape ) / Za1 ) / self$scale
+			grad_scale = base::t(self$scale_$design_) %*% scale_vect
 			grad       = base::c(grad,grad_scale)
 		}
-		if( private$shape_$not_fixed() )
+		if( self$shape_$not_fixed() )
 		{
-			shape_vect = private$shape_$valueGrLf() * ( ( Zamsi - 1. ) * base::log(Za1) * ishape^2 + ( 1. + ishape - ishape * Zamsi ) * Z / Za1 )
-			grad_shape = base::t(private$shape_$design_) %*% shape_vect
+			shape_vect = self$shape_$valueGrLf() * ( ( Zamsi - 1. ) * base::log(Za1) * ishape^2 + ( 1. + ishape - ishape * Zamsi ) * Z / Za1 )
+			grad_shape = base::t(self$shape_$design_) %*% shape_vect
 			grad       = base::c(grad,grad_shape)
 		}
 		

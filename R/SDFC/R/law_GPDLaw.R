@@ -385,6 +385,8 @@ GPDLaw = R6::R6Class( "GPDLaw" ,
 	loc    = NULL,
 	scale  = NULL,
 	shape  = NULL,
+	scale_ = NULL,
+	shape_ = NULL,
 	
 	
 	#################
@@ -399,8 +401,8 @@ GPDLaw = R6::R6Class( "GPDLaw" ,
 		self$scale     = NULL
 		self$shape     = NULL
 		
-		private$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
-		private$shape_ = LawParam$new( linkFct = link_fct_shape , kind = "shape" )
+		self$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
+		self$shape_ = LawParam$new( linkFct = link_fct_shape , kind = "shape" )
 	},
 	##}}}
 	
@@ -451,8 +453,6 @@ GPDLaw = R6::R6Class( "GPDLaw" ,
 	## Arguments ##
 	###############
 	
-	scale_ = NULL,
-	shape_ = NULL,
 	
 	
 	#############
@@ -463,8 +463,8 @@ GPDLaw = R6::R6Class( "GPDLaw" ,
 	{
 		private$Y_ = as.vector(Y)
 		self$loc = if( length(loc) == private$size_) as.vector(loc) else as.vector( base::rep( loc[1] , private$size_ ) )
-		private$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
-		private$shape_$init( X = shape_cov , fix_values = fshape , size = private$size_ )
+		self$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
+		self$shape_$init( X = shape_cov , fix_values = fshape , size = private$size_ )
 		
 		if( self$method == "moments" )
 		{
@@ -489,16 +489,16 @@ GPDLaw = R6::R6Class( "GPDLaw" ,
 		idx_excess = (private$Y_ > self$loc)
 		excess = private$Y_[idx_excess] - self$loc[idx_excess]
 		
-		S = np_std( excess , private$scale_$design_wo1()[idx_excess,] , linkFct = private$scale_$linkFct , return_coef = TRUE )
-		private$scale_$set_coef( S )
-		private$shape_$set_intercept( private$shape_$linkFct$inverse(-1e-8) )
+		S = np_std( excess , self$scale_$design_wo1()[idx_excess,] , linkFct = self$scale_$linkFct , return_coef = TRUE )
+		self$scale_$set_coef( S )
+		self$shape_$set_intercept( self$shape_$linkFct$inverse(-1e-8) )
 		
 		
-		private$scale_$update()
-		private$shape_$update()
+		self$scale_$update()
+		self$shape_$update()
 		
-		self$scale = private$scale_$valueLf()
-		self$shape = private$shape_$valueLf()
+		self$scale = self$scale_$valueLf()
+		self$shape = self$shape_$valueLf()
 		
 	},
 	##}}}
@@ -514,20 +514,20 @@ GPDLaw = R6::R6Class( "GPDLaw" ,
 		scale_lm = if( scale_lm > 0 ) scale_lm else 1e-8
 		shape_lm = - ( itau - 2 )
 		
-		if( private$scale_$not_fixed() )
+		if( self$scale_$not_fixed() )
 		{
-			private$scale_$set_intercept( private$scale_$linkFct$inverse(scale_lm) )
+			self$scale_$set_intercept( self$scale_$linkFct$inverse(scale_lm) )
 		}
-		if( private$shape_$not_fixed() )
+		if( self$shape_$not_fixed() )
 		{
-			private$shape_$set_intercept( private$shape_$linkFct$inverse(shape_lm) )
+			self$shape_$set_intercept( self$shape_$linkFct$inverse(shape_lm) )
 		}
 		
-		private$scale_$update()
-		private$shape_$update()
+		self$scale_$update()
+		self$shape_$update()
 		
-		self$scale = private$scale_$valueLf()
-		self$shape = private$shape_$valueLf()
+		self$scale = self$scale_$valueLf()
+		self$shape = self$shape_$valueLf()
 	},
 	##}}}
 	
@@ -542,7 +542,7 @@ GPDLaw = R6::R6Class( "GPDLaw" ,
 		
 		if( !is.finite(nll) || !is.finite(gnll) )
 		{
-			private$shape_$set_coef( numeric( private$shape_$size_ ) )
+			self$shape_$set_coef( numeric( self$shape_$size_ ) )
 			param_init = private$concat_param()
 		}
 		
@@ -557,19 +557,19 @@ GPDLaw = R6::R6Class( "GPDLaw" ,
 	{
 		param_scale = NULL
 		param_shape = NULL
-		s1 = private$scale_$size_
-		s2 = private$shape_$size_
+		s1 = self$scale_$size_
+		s2 = self$shape_$size_
 		
-		if( private$scale_$not_fixed() && private$shape_$not_fixed() )
+		if( self$scale_$not_fixed() && self$shape_$not_fixed() )
 		{
 			param_scale = param[1:s1]
 			param_shape = param[(s1+1):(s1+s2)]
 		}
-		else if( private$scale_$not_fixed() )
+		else if( self$scale_$not_fixed() )
 		{
 			param_scale = param
 		}
-		else if( private$shape_$not_fixed() )
+		else if( self$shape_$not_fixed() )
 		{
 			param_shape = param
 		}
@@ -581,8 +581,8 @@ GPDLaw = R6::R6Class( "GPDLaw" ,
 	concat_param = function()##{{{
 	{
 		param = NULL
-		param_scale = if( private$scale_$not_fixed() ) private$scale_$coef_ else NULL
-		param_shape = if( private$shape_$not_fixed() ) private$shape_$coef_ else NULL
+		param_scale = if( self$scale_$not_fixed() ) self$scale_$coef_ else NULL
+		param_shape = if( self$shape_$not_fixed() ) self$shape_$coef_ else NULL
 		
 		param = base::c( param_scale , param_shape )
 		
@@ -593,12 +593,12 @@ GPDLaw = R6::R6Class( "GPDLaw" ,
 	update_param = function( param ) ##{{{
 	{
 		param_sp = private$split_param(param)
-		private$scale_$set_coef( param_sp$scale )
-		private$shape_$set_coef( param_sp$shape )
-		private$scale_$update()
-		private$shape_$update()
-		self$scale = private$scale_$valueLf()
-		self$shape = private$shape_$valueLf()
+		self$scale_$set_coef( param_sp$scale )
+		self$shape_$set_coef( param_sp$shape )
+		self$scale_$update()
+		self$shape_$update()
+		self$scale = self$scale_$valueLf()
+		self$shape = self$shape_$valueLf()
 	},
 	##}}}
 	
@@ -656,19 +656,19 @@ GPDLaw = R6::R6Class( "GPDLaw" ,
 		
 		grad = base::c()
 		
-		if( private$scale_$not_fixed() )
+		if( self$scale_$not_fixed() )
 		{
-			gr_scale   = private$scale_$valueGrLf()[idx]
-			grad_scale = base::t(private$scale_$design_[idx,]) %*% ( gr_scale * ( - exponent * shape * Z / ZZ / scale + 1. / scale ) )
+			gr_scale   = self$scale_$valueGrLf()[idx]
+			grad_scale = base::t(self$scale_$design_[idx,]) %*% ( gr_scale * ( - exponent * shape * Z / ZZ / scale + 1. / scale ) )
 			grad       = base::c( grad , grad_scale )
 		}
 		
-		if( private$shape_$not_fixed() )
+		if( self$shape_$not_fixed() )
 		{
-			gr_shape   = private$shape_$valueGrLf()[idx]
-			grad_shape = base::rep( NaN , private$shape_$size_ )
+			gr_shape   = self$shape_$valueGrLf()[idx]
+			grad_shape = base::rep( NaN , self$shape_$size_ )
 			if( base::all(ZZ > 0) )
-				grad_shape = base::t(private$shape_$design_[idx,]) %*% ( gr_shape * ( - base::log(ZZ) / shape^2 + exponent * Z / ZZ ) )
+				grad_shape = base::t(self$shape_$design_[idx,]) %*% ( gr_shape * ( - base::log(ZZ) / shape^2 + exponent * Z / ZZ ) )
 			grad       = base::c( grad , grad_shape )
 		}
 		

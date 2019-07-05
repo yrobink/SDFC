@@ -147,6 +147,8 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 	
 	loc      = NULL,
 	scale    = NULL,
+	loc_     = NULL,
+	scale_   = NULL,
 	
 	
 	#################
@@ -158,8 +160,8 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 		super$initialize( method , n_bootstrap , alpha )
 		self$loc       = NULL
 		self$scale     = NULL
-		private$loc_   = LawParam$new( linkFct = link_fct_loc   , kind = "loc"   )
-		private$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
+		self$loc_   = LawParam$new( linkFct = link_fct_loc   , kind = "loc"   )
+		self$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
 	},
 	##}}}
 	
@@ -212,8 +214,6 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 	## Arguments ##
 	###############
 	
-	loc_     = NULL,
-	scale_   = NULL,
 	
 	
 	#############
@@ -224,8 +224,8 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 	{
 		private$Y_    = as.vector(Y)
 		
-		private$loc_$init(   X = loc_cov   , fix_values = floc   , size = private$size_ )
-		private$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
+		self$loc_$init(   X = loc_cov   , fix_values = floc   , size = private$size_ )
+		self$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
 		
 		if( self$method == "moments" )
 		{
@@ -242,21 +242,21 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 	
 	fit_moments = function()##{{{
 	{
-		if( private$loc_$not_fixed() )
+		if( self$loc_$not_fixed() )
 		{
-			lX = private$loc_$design_wo1()
-			private$loc_$set_coef( np_mean( private$Y_ , lX , return_coef = TRUE , linkFct = private$loc_$linkFct ) )
-			private$loc_$update()
+			lX = self$loc_$design_wo1()
+			self$loc_$set_coef( np_mean( private$Y_ , lX , return_coef = TRUE , linkFct = self$loc_$linkFct ) )
+			self$loc_$update()
 		}
 		
-		if( private$scale_$not_fixed() )
+		if( self$scale_$not_fixed() )
 		{
-			sX = private$scale_$design_wo1()
-			private$scale_$set_coef( np_std( private$Y_ , sX , m = private$loc_$valueLf() , return_coef = TRUE , linkFct = private$scale_$linkFct ) )
-			private$scale_$update()
+			sX = self$scale_$design_wo1()
+			self$scale_$set_coef( np_std( private$Y_ , sX , m = self$loc_$valueLf() , return_coef = TRUE , linkFct = self$scale_$linkFct ) )
+			self$scale_$update()
 		}
-		self$loc   = private$loc_$valueLf()
-		self$scale = private$scale_$valueLf()
+		self$loc   = self$loc_$valueLf()
+		self$scale = self$scale_$valueLf()
 	},
 	##}}}
 	
@@ -274,17 +274,17 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 		param_loc   = NULL
 		param_scale = NULL
 		
-		if( private$loc_$not_fixed() )
+		if( self$loc_$not_fixed() )
 		{
-			param_loc   = param[1:private$loc_$size_]
-			if( private$scale_$not_fixed() )
+			param_loc   = param[1:self$loc_$size_]
+			if( self$scale_$not_fixed() )
 			{
-				param_scale = param[(private$loc_$size_+1):length(param)]
+				param_scale = param[(self$loc_$size_+1):length(param)]
 			}
 		}
-		else if( private$scale_$not_fixed() )
+		else if( self$scale_$not_fixed() )
 		{
-			param_scale = param[1:private$scale_$size_]
+			param_scale = param[1:self$scale_$size_]
 		}
 		
 		return( list( loc = param_loc , scale = param_scale ) )
@@ -294,17 +294,17 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 	concat_param = function()##{{{
 	{
 		param = NULL
-		if( private$loc_$not_fixed() && private$scale_$not_fixed() )
+		if( self$loc_$not_fixed() && self$scale_$not_fixed() )
 		{
-			param = base::c( private$loc_$coef_ , private$scale_$coef_ )
+			param = base::c( self$loc_$coef_ , self$scale_$coef_ )
 		}
-		else if( private$loc_$not_fixed() )
+		else if( self$loc_$not_fixed() )
 		{
-			param = private$loc_$coef_
+			param = self$loc_$coef_
 		}
-		else if( private$scale_$not_fixed() )
+		else if( self$scale_$not_fixed() )
 		{
-			param = private$scale_$coef_
+			param = self$scale_$coef_
 		}
 		return( param )
 	},
@@ -326,12 +326,12 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 	update_param = function( param ) ##{{{
 	{
 		param_sp = private$split_param(param)
-		private$loc_$set_coef(   param_sp$loc )
-		private$scale_$set_coef( param_sp$scale )
-		private$loc_$update()
-		private$scale_$update()
-		self$loc   = private$loc_$valueLf()
-		self$scale = private$scale_$valueLf()
+		self$loc_$set_coef(   param_sp$loc )
+		self$scale_$set_coef( param_sp$scale )
+		self$loc_$update()
+		self$scale_$update()
+		self$loc   = self$loc_$valueLf()
+		self$scale = self$scale_$valueLf()
 	},
 	##}}}
 	
@@ -349,14 +349,14 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 		Yc = private$Y_ - self$loc
 		grad = base::c()
 		
-		if( private$loc_$not_fixed() )
+		if( self$loc_$not_fixed() )
 		{
-			grad_loc = - base::t( private$loc_$design_  ) %*% ( Yc / self$scale^2 * private$loc_$valueGrLf() )
+			grad_loc = - base::t( self$loc_$design_  ) %*% ( Yc / self$scale^2 * self$loc_$valueGrLf() )
 			grad     = base::c( grad , grad_loc )
 		}
-		if( private$scale_$not_fixed() )
+		if( self$scale_$not_fixed() )
 		{
-			grad_scale = base::t( private$scale_$design_) %*% ( ( 1. / self$scale - Yc^2 / self$scale^3 ) * private$scale_$valueGrLf() )
+			grad_scale = base::t( self$scale_$design_) %*% ( ( 1. / self$scale - Yc^2 / self$scale^3 ) * self$scale_$valueGrLf() )
 			grad       = base::c( grad , grad_scale )
 		}
 		

@@ -337,6 +337,7 @@ class GEVLaw(AbstractLaw):
 			else:
 				qreg = quantile( self._Y - self.loc , qscale , self._scale.design_wo1() )
 				fscale = np.mean( qreg * coef , axis = 1 )
+				fscale[np.logical_not(fscale > 0)] = 0.1
 				self._scale.set_coef( mean( fscale , self._scale.design_wo1() , linkFct = self._scale.linkFct , return_coef = True ) )
 		self._scale.update()
 		self.scale = self._scale.valueLf()

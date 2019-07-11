@@ -216,7 +216,15 @@ class GammaLaw(AbstractLaw):
 		
 		self._fit( Y , scale_cov , shape_cov , fscale , fshape )
 	##}}}
-
+	
+	def predict_scale( self , scale_cov = None ):##{{{
+		return self._predict_param( self._scale , scale_cov )
+	##}}}
+	
+	def predict_shape( self , shape_cov = None ):##{{{
+		return self._predict_param( self._shape , shape_cov )
+	##}}}
+	
 	def _fit( self , Y , scale_cov = None , shape_cov = None , fscale = None , fshape = None ): ##{{{
 		self._Y    = np.ravel(Y)
 		self._size = Y.size

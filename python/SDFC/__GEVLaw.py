@@ -244,6 +244,18 @@ class GEVLaw(AbstractLaw):
 		
 	##}}}
 	
+	def predict_loc( self , loc_cov = None ):##{{{
+		return self._predict_param( self._loc , loc_cov )
+	##}}}
+	
+	def predict_scale( self , scale_cov = None ):##{{{
+		return self._predict_param( self._scale , scale_cov )
+	##}}}
+	
+	def predict_shape( self , shape_cov = None ):##{{{
+		return self._predict_param( self._shape , shape_cov )
+	##}}}
+	
 	def _fit( self , Y , loc_cov = None , scale_cov = None , shape_cov = None , floc = None , fscale = None , fshape = None ):##{{{
 		self._Y    = np.ravel(Y)
 		self._size = Y.size

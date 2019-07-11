@@ -226,6 +226,14 @@ class GPDLaw(AbstractLaw):
 		
 	##}}}
 	
+	def predict_scale( self , scale_cov = None ):##{{{
+		return self._predict_param( self._scale , scale_cov )
+	##}}}
+	
+	def predict_shape( self , shape_cov = None ):##{{{
+		return self._predict_param( self._shape , shape_cov )
+	##}}}
+	
 	def _fit( self , Y , loc , scale_cov , shape_cov , fscale , fshape ):##{{{
 		
 		self._Y    = np.ravel(Y)

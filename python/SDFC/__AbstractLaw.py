@@ -153,7 +153,13 @@ class AbstractLaw:
 	def __repr__(self):##{{{
 		return self.__str__()
 	##}}}
-
-
+	
+	def _predict_param( self , param , cov = None ): ##{{{
+		if cov is None or param.size == 1:
+			return param.valueLf()
+		if cov.ndim == 1:
+			cov = cov.reshape( (cov.size,1) )
+		return param.coef_[0] + np.dot( cov , param.coef_[1:] )
+	##}}}
 
 

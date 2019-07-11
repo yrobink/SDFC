@@ -199,6 +199,10 @@ class ExpLaw(AbstractLaw):
 		self._fit( Y , scale_cov )
 	##}}}
 	
+	def predict_scale( self , scale_cov = None ):##{{{
+		return self._predict_param( self._scale , scale_cov )
+	##}}}
+	
 	def _fit( self , Y , scale_cov = None ):##{{{
 		self._Y    = np.ravel(Y)
 		self._scale.init( X = scale_cov , fix_values = None , size = self._size )

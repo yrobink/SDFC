@@ -8,3 +8,6 @@ notebook/.ipynb_checkpoints
 RcppExports.cpp
 NAMESPACE
 *.Rd
+*.egg-info
+build
+dist

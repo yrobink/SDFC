@@ -424,7 +424,36 @@ if __name__ == "__main__":
 		test_qr()
 ##}}}
 	
-	test_gev()
+	size = 2000
+	t,X,_ = sdt.Dataset.normal_cst_scale(size)
+	
+	## Law
+	loc   = X + X**2
+	scale = 0.1 + 0.1 * X
+	Y = np.random.normal( loc = loc , scale = scale )
+	
+	## Fit
+	law = sd.NormalLaw()
+	Z = np.vstack( (X,X**2) ).T
+	law.fit( Y , loc_cov = Z , scale_cov = X )
+	
+	new_loc   = law.predict_loc( loc_cov = np.vstack( (-X,X**2) ).T )
+	new_scale = law.predict_scale( scale_cov = X**2 )
+	Yn = np.random.normal( loc = new_loc , scale = new_scale )
+	
+	## Plot
+	nrow,ncol = 2,1
+	fig = plt.figure( figsize = ( 5 * ncol , 3 * nrow ) )
+	fig.suptitle( "Normal Law" )
+	
+	ax = fig.add_subplot( nrow , ncol , 1 )
+	ax.plot( t , X , color = "red"  , linestyle = "-" , marker = ""  )
+	ax.plot( t , Y , color = "blue" , linestyle = ""  , marker = "." , alpha = 0.5 )
+	
+	ax = fig.add_subplot( nrow , ncol , 2 )
+	ax.plot( t , new_loc , color = "red"  , linestyle = "-" , marker = ""  )
+	ax.plot( t , Yn , color = "blue" , linestyle = ""  , marker = "." , alpha = 0.5 )
+	plt.show()
 	
 	print("Done")
 

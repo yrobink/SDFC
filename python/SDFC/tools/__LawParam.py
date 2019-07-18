@@ -113,7 +113,7 @@ class LawParam:
 		p.coef_ = np.copy(self.coef_) if self.coef_ is not None else None
 		p.design_ = np.copy(self.design_) if self.design_ is not None else None
 		p.size = self.size
-		p._value = np.copy(self.value_) if self.value_ is not None else None
+		p._value = np.copy(self._value) if self._value is not None else None
 		p._not_fixed = self._not_fixed
 		return p
 	##}}}

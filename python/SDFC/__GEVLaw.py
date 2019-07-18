@@ -244,15 +244,59 @@ class GEVLaw(AbstractLaw):
 		
 	##}}}
 	
+	def bootstrap_law( self , i ):
+		"""
+		"""
+		return
+	
 	def predict_loc( self , loc_cov = None ):##{{{
+		"""
+		Return location parameter with a new co-variates
+		
+		Arguments
+		---------
+		loc_cov : np.array or None
+			Covariate
+		
+		Return
+		------
+		loc : np.array
+			Location parameters
+		"""
 		return self._predict_param( self._loc , loc_cov )
 	##}}}
 	
 	def predict_scale( self , scale_cov = None ):##{{{
+		"""
+		Return scale parameter with a new co-variates
+		
+		Arguments
+		---------
+		scale_cov : np.array or None
+			Covariate
+		
+		Return
+		------
+		scale : np.array
+			Location parameters
+		"""
 		return self._predict_param( self._scale , scale_cov )
 	##}}}
 	
 	def predict_shape( self , shape_cov = None ):##{{{
+		"""
+		Return shape parameter with a new co-variates
+		
+		Arguments
+		---------
+		shape_cov : np.array or None
+			Covariate
+		
+		Return
+		------
+		shape : np.array
+			Location parameters
+		"""
 		return self._predict_param( self._shape , shape_cov )
 	##}}}
 	

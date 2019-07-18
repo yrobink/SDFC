@@ -396,34 +396,7 @@ def test_qr():##{{{
 	plt.show()
 ##}}}
 
-
-#############
-## Classes ##
-#############
-
-
-
-##########
-## main ##
-##########
-
-if __name__ == "__main__":
-	
-	print(sd.__version__)
-	## Parameters
-	run_classic = False
-	
-	## Classic test##{{{
-	if run_classic:
-		test_np()
-		test_normal()
-		test_exp()
-		test_gamma()
-		test_gpd()
-		test_gev()
-		test_qr()
-##}}}
-	
+def test_predict():##{{{
 	size = 2000
 	t,X,_ = sdt.Dataset.normal_cst_scale(size)
 	
@@ -454,6 +427,55 @@ if __name__ == "__main__":
 	ax.plot( t , new_loc , color = "red"  , linestyle = "-" , marker = ""  )
 	ax.plot( t , Yn , color = "blue" , linestyle = ""  , marker = "." , alpha = 0.5 )
 	plt.show()
+##}}}
+
+
+#############
+## Classes ##
+#############
+
+
+
+##########
+## main ##
+##########
+
+if __name__ == "__main__":
+	
+	print(sd.__version__)
+	## Parameters
+	run_classic = False
+	
+	## Classic test##{{{
+	if run_classic:
+		test_np()
+		test_normal()
+		test_exp()
+		test_gamma()
+		test_gpd()
+		test_gev()
+		test_qr()
+##}}}
+	
+
+	test_gev()
+#	loc   = 0
+#	scale = 1
+#	shape = -0.5
+#	X = sc.genextreme.rvs( size = 10000 , loc = loc , scale = scale , c = - shape )
+#	
+#	gev = sd.GEVLaw()
+#	gev.fit(X)
+#	print(gev.coef_)
+#	print(gev.upper_bound())
+#	print(gev.optim_result)
+#	
+#	X[0] = 1e2
+#	gev2 = sd.GEVLaw()
+#	gev2.fit(X)
+#	print(gev2.coef_)
+#	print(gev2.lower_bound())
+#	print(gev2.optim_result)
 	
 	print("Done")
 

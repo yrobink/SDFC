@@ -409,10 +409,17 @@ class GEVLaw(AbstractLaw):
 			self._Y = Y
 			llh = self._negloglikelihood()
 			glh = self._gradient_optim_function( self._concat_param() )
+			nit = 0
 			while not np.isfinite(llh) or not np.all(np.isfinite(glh)):
 				self._shape.coef_[0] *= 0.95
 				llh = self._negloglikelihood()
 				glh = self._gradient_optim_function( self._concat_param() )
+				nit += 1
+				if nit == 100:
+					self._shape.coef_[0] *= -1
+				if nit == 200:
+					break
+
 		
 		## Optimization
 		param_init = self._concat_param()

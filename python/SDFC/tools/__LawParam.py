@@ -108,6 +108,16 @@ class LawParam:
 		self.kind       = kind
 	##}}}
 	
+	def copy(self):##{{{
+		p = LawParam( self.linkFct , self.kind )
+		p.coef_ = np.copy(self.coef_) if self.coef_ is not None else None
+		p.design_ = np.copy(self.design_) if self.design_ is not None else None
+		p.size = self.size
+		p._value = np.copy(self.value_) if self.value_ is not None else None
+		p._not_fixed = self._not_fixed
+		return p
+	##}}}
+	
 	def init( self , X = None , fix_values = None , size = None ): ##{{{
 		self._not_fixed = fix_values is None
 		if fix_values is not None:

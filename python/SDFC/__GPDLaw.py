@@ -226,6 +226,33 @@ class GPDLaw(AbstractLaw):
 		
 	##}}}
 	
+	def bootstrap_law( self , i ):##{{{
+		"""
+		Return a GPDLaw with coef from bootstrap
+		
+		Arguments
+		---------
+		i : integer
+			Number of bootstrap
+		
+		Return
+		------
+		law : SDFC.GPDLaw
+			A GPDLaw, None if n_bootstrap = 0
+		"""
+		if n_bootstrap == 0:
+			return None
+		law = GPDLaw( self.method , alpha = self.alpha )
+		law._scale = self._scale.copy()
+		law._shape = self._shape.copy()
+		scale,shape = self._split_param( self.coefs_bootstrap[i,:] )
+		law._scale.set_coef( scale )
+		law._shape.set_coef( shape )
+		law.coef_ = law._concat_param()
+		law._update_param( law.coef_ )
+		return law
+	##}}}
+	
 	def predict_scale( self , scale_cov = None ):##{{{
 		"""
 		Return scale parameter with a new co-variates

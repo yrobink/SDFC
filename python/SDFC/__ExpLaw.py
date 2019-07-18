@@ -199,6 +199,30 @@ class ExpLaw(AbstractLaw):
 		self._fit( Y , scale_cov )
 	##}}}
 	
+	def bootstrap_law( self , i ):##{{{
+		"""
+		Return an ExpLaw with coef from bootstrap
+		
+		Arguments
+		---------
+		i : integer
+			Number of bootstrap
+		
+		Return
+		------
+		law : SDFC.ExpLaw
+			A ExpLaw, None if n_bootstrap = 0
+		"""
+		if n_bootstrap == 0:
+			return None
+		law = ExpLaw( self.method , alpha = self.alpha )
+		law._scale = self._scale.copy()
+		law._scale.set_coef( self._scale.coef_ )
+		law.coef_ = law._concat_param()
+		law._update_param( law.coef_ )
+		return law
+	##}}}
+	
 	def predict_scale( self , scale_cov = None ):##{{{
 		"""
 		Return scale parameter with a new co-variates

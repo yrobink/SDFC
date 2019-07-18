@@ -244,10 +244,34 @@ class GEVLaw(AbstractLaw):
 		
 	##}}}
 	
-	def bootstrap_law( self , i ):
+	def bootstrap_law( self , i ):##{{{
 		"""
+		Return a GEVLaw with coef from bootstrap
+		
+		Arguments
+		---------
+		i : integer
+			Number of bootstrap
+		
+		Return
+		------
+		law : SDFC.GEVLaw
+			A GEVLaw, None if n_bootstrap = 0
 		"""
-		return
+		if n_bootstrap == 0:
+			return None
+		law = GEVLaw( self.method , alpha = self.alpha )
+		law._loc   = self._loc.copy()
+		law._scale = self._scale.copy()
+		law._shape = self._shape.copy()
+		loc,scale,shape = self._split_param( self.coefs_bootstrap[i,:] )
+		law._loc.set_coef( loc )
+		law._scale.set_coef( scale )
+		law._shape.set_coef( shape )
+		law.coef_ = law._concat_param()
+		law._update_param( law.coef_ )
+		return law
+	##}}}
 	
 	def predict_loc( self , loc_cov = None ):##{{{
 		"""

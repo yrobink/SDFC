@@ -256,6 +256,24 @@ class GEVLaw(AbstractLaw):
 		return self._predict_param( self._shape , shape_cov )
 	##}}}
 	
+	def upper_bound(self):##{{{
+		b    = np.zeros_like(self.loc)
+		idx  = self.shape < 0
+		idxc = np.logical_not(idx)
+		b[idx]  = self.loc[idx] - self.scale[idx] / self.shape[idx]
+		b[idxc] = np.Inf
+		return b
+	##}}}
+	
+	def lower_bound(self):##{{{
+		b    = np.zeros_like(self.loc)
+		idx  = self.shape > 0
+		idxc = np.logical_not(idx)
+		b[idx]  = self.loc[idx] - self.scale[idx] / self.shape[idx]
+		b[idxc] = np.Inf
+		return b
+	##}}}
+	
 	def _fit( self , Y , loc_cov = None , scale_cov = None , shape_cov = None , floc = None , fscale = None , fshape = None ):##{{{
 		self._Y    = np.ravel(Y)
 		self._size = Y.size
@@ -376,44 +394,25 @@ class GEVLaw(AbstractLaw):
 	def _fit_mle( self ):##{{{
 		
 		## Initial condition
-#		self._fit_moments()
-#		init_loc_mm   = self._loc.coef_.copy()
-#		init_scale_mm = self._scale.coef_.copy()
-#		init_shape_mm = self._shape.coef_.copy()
-#		lle_mm = self._negloglikelihood()
-#		
-#		self._fit_lmoments()
-#		init_loc_lm   = self._loc.coef_.copy()
-#		init_scale_lm = self._scale.coef_.copy()
-#		init_shape_lm = self._shape.coef_.copy()
-#		lle_lm = self._negloglikelihood()
-		
 		self._fit_quantiles()
-#		init_loc_q   = self._loc.coef_.copy()
-#		init_scale_q = self._scale.coef_.copy()
-#		init_shape_q = self._shape.coef_.copy()
-#		lle_q  = self._negloglikelihood()
-		
-		
-		## Keep best
-#		if np.isfinite(lle_mm) or np.isfinite(lle_lm) or np.isfinite(lle_q):
-#			if lle_mm < lle_lm and lle_mm < lle_q:
-#				self._loc.set_coef( init_loc_mm )
-#				self._scale.set_coef( init_scale_mm )
-#				self._shape.set_coef( init_shape_mm )
-#			elif lle_lm < lle_mm and lle_lm < lle_q:
-#				self._loc.set_coef( init_loc_lm )
-#				self._scale.set_coef( init_scale_lm )
-#				self._shape.set_coef( init_shape_lm )
-#			else:
-#				self._loc.set_coef( init_loc_q )
-#				self._scale.set_coef( init_scale_q )
-#				self._shape.set_coef( init_shape_q )
-#		else:
-#			self._loc.set_intercept(   self._loc.linkFct.inverse(0.) )
-#			self._scale.set_intercept( self._scale.linkFct.inverse(1.) )
-#			self._shape.set_intercept( self._shape.linkFct.inverse(1e-2) )
-		
+		llh = self._negloglikelihood()
+		glh = self._gradient_optim_function( self._concat_param() )
+		if not np.isfinite(llh) or not np.all(np.isfinite(glh)):
+			## If likelihood not exist, change shape for a shape close to 0
+			Y = self._Y.copy()
+			loc   = self._loc.coef_
+			scale = self._scale.coef_
+			self._Y = ( Y - self.loc ) / self.scale
+			self._fit_lmoments() ## Use lmoments to find the sign of the shape
+			self._loc.set_coef(loc)
+			self._scale.set_coef(scale)
+			self._Y = Y
+			llh = self._negloglikelihood()
+			glh = self._gradient_optim_function( self._concat_param() )
+			while not np.isfinite(llh) or not np.all(np.isfinite(glh)):
+				self._shape.coef_[0] *= 0.95
+				llh = self._negloglikelihood()
+				glh = self._gradient_optim_function( self._concat_param() )
 		
 		## Optimization
 		param_init = self._concat_param()

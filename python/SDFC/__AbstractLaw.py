@@ -141,6 +141,8 @@ class AbstractLaw:
 		self.confidence_interval = None
 		self.alpha               = alpha
 		
+		self._debug = []
+		
 	##}}}
 	
 	def __str__(self):##{{{
@@ -161,7 +163,7 @@ class AbstractLaw:
 			return np.repeat( param.valueLf()[0] , cov.size )
 		if cov.ndim == 1:
 			cov = cov.reshape( (cov.size,1) )
-		return param.coef_[0] + np.dot( cov , param.coef_[1:] )
+		return param.linkFct( param.coef_[0] + np.dot( cov , param.coef_[1:] ) )
 	##}}}
 
 

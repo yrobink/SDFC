@@ -131,7 +131,7 @@ class GEVLaw(AbstractLaw):
 		Level of confidence interval
 	"""
 	
-	def __init__( self , method = "MLE" , link_fct_loc = IdLinkFct() , link_fct_scale = IdLinkFct() , link_fct_shape = IdLinkFct() , n_bootstrap = 0 , alpha = 0.05 ):##{{{
+	def __init__( self , method = "MLE" , link_fct_loc = IdLinkFct() , link_fct_scale = IdLinkFct() , link_fct_shape = IdLinkFct() , bootstrap_keep_max = False , n_bootstrap = 0 , alpha = 0.05 ):##{{{
 		"""
 		Initialization of GEVLaw
 		
@@ -145,6 +145,8 @@ class GEVLaw(AbstractLaw):
 			Link function for scale, default is SDFC.tools.IdLinkFct(). Interesting option is SDFC.tools.ExpLinkFct().
 		link_fct_shape : a class herited from SDFC.tools.LinkFct
 			Link function for shape, default is IdLinkFct(). Interesting option is SDFC.tools.LogitLinkFct( -0.5 , 0.5 ).
+		bootstrap_keep_max: bool
+			If max value is kept during bootstrap, default False.
 		n_bootstrap    : integer
 			Numbers of bootstrap for confidence interval, default = 0 (no bootstrap)
 		alpha          : float
@@ -161,6 +163,8 @@ class GEVLaw(AbstractLaw):
 		self._loc   = LawParam( linkFct = link_fct_loc   , kind = "loc"   )
 		self._scale = LawParam( linkFct = link_fct_scale , kind = "scale" )
 		self._shape = LawParam( linkFct = link_fct_shape , kind = "shape" )
+		
+		self._bootstrap_keep_max = bootstrap_keep_max
 		
 		self._lparams = [self._loc,self._scale,self._shape]
 	##}}}
@@ -223,9 +227,11 @@ class GEVLaw(AbstractLaw):
 			if np.isscalar(fshape):
 				fshape = np.array([fshape]).ravel()
 			
-			
+			idx_max = np.argmax(Y)
 			for i in range(self.n_bootstrap):
 				idx = np.random.choice( self._size , self._size )
+				if self._bootstrap_keep_max and idx_max not in idx:
+					idx[np.random.choice(self._size)] = idx_max
 				Y_bs         = Y[idx]
 				loc_cov_bs   = None   if loc_cov   is None else loc_cov[idx,:]
 				scale_cov_bs = None   if scale_cov is None else scale_cov[idx,:]
@@ -258,7 +264,7 @@ class GEVLaw(AbstractLaw):
 		law : SDFC.GEVLaw
 			A GEVLaw, None if n_bootstrap = 0
 		"""
-		if n_bootstrap == 0:
+		if self.n_bootstrap == 0:
 			return None
 		law = GEVLaw( self.method , alpha = self.alpha )
 		law._loc   = self._loc.copy()
@@ -468,31 +474,39 @@ class GEVLaw(AbstractLaw):
 		if not np.isfinite(llh) or not np.all(np.isfinite(glh)):
 			## If likelihood not exist, change shape for a shape close to 0
 			Y = self._Y.copy()
-			loc   = self._loc.coef_
-			scale = self._scale.coef_
-			self._Y = ( Y - self.loc ) / self.scale
+			loc   = np.copy( self._loc.coef_ )
+			scale = np.copy( self._scale.coef_ )
+			self._Y = ( self._Y - self.loc ) / self.scale
 			self._fit_lmoments() ## Use lmoments to find the sign of the shape
 			self._loc.set_coef(loc)
 			self._scale.set_coef(scale)
 			self._Y = Y
-			llh = self._negloglikelihood()
-			glh = self._gradient_optim_function( self._concat_param() )
+			param = self._concat_param()
+			llh = self._optim_function(param)
+			glh = self._gradient_optim_function( param )
 			nit = 0
 			while not np.isfinite(llh) or not np.all(np.isfinite(glh)):
 				self._shape.coef_[0] *= 0.95
-				llh = self._negloglikelihood()
-				glh = self._gradient_optim_function( self._concat_param() )
-				nit += 1
 				if nit == 100:
 					self._shape.coef_[0] *= -1
 				if nit == 200:
+					self._shape.coef_[0] = 0.
 					break
-
+				param = self._concat_param()
+				llh = self._optim_function(param)
+				glh = self._gradient_optim_function( param )
+				nit += 1
+		
 		
 		## Optimization
 		param_init = self._concat_param()
+		
 		self.optim_result = sco.minimize( self._optim_function , param_init , jac = self._gradient_optim_function , method = "BFGS" )
 		self._update_param( self.optim_result.x )
+	##}}}
+	
+	def _fit_amle( self ):##{{{
+		pass
 	##}}}
 	
 	def _split_param( self , param ):##{{{
@@ -542,21 +556,7 @@ class GEVLaw(AbstractLaw):
 		param_shape = self._shape.coef_ if self._shape.not_fixed() else np.array([])
 		
 		param = np.hstack( (param_loc,param_scale,param_shape) )
-
-#		if self._loc.not_fixed() and self._scale.not_fixed() and self._shape.not_fixed():
-#			param = np.hstack( (self._loc.coef_,self._scale.coef_,self._shape.coef_) )
-#		elif self._loc.not_fixed() and self._scale.not_fixed():
-#			param = np.hstack( (self._loc.coef_,self._scale.coef_) )
-#		elif self._loc.not_fixed() and self._shape.not_fixed():
-#			param = np.hstack( (self._loc.coef_,self._shape.coef_) )
-#		elif self._scale.not_fixed() and self._shape.not_fixed():
-#			param = np.hstack( (self._scale.coef_,self._shape.coef_) )
-#		elif self._loc.not_fixed():
-#			param = self._loc.coef_
-#		elif self._scale.not_fixed():
-#			param = self._scale.coef_
-#		elif self._shape.not_fixed():
-#			param = self._shape.coef_
+		
 		return param
 	##}}}
 	
@@ -568,15 +568,16 @@ class GEVLaw(AbstractLaw):
 		## Fuck exponential case
 		zero_shape = ( np.abs(self.shape) < 1e-10 )
 		if np.any(zero_shape):
-			self.shape[zero_shape] = -1e-10
+			self.shape[zero_shape] = 1e-10
 		
 		##
 		Z = 1 + self.shape * ( self._Y - self.loc ) / self.scale
 		
-		if np.any(Z <= 0):
+		if not np.all(Z > 0):
 			return np.inf
 		
 		res = np.sum( ( 1. + 1. / self.shape ) * np.log(Z) + np.power( Z , - 1. / self.shape ) + np.log(self.scale) )
+		
 		
 		return res if np.isfinite(res) else np.inf
 	##}}}
@@ -615,8 +616,12 @@ class GEVLaw(AbstractLaw):
 	def _gradient_optim_function( self , param ): ##{{{
 		self._update_param(param)
 		
+		zero_shape = ( np.abs(self.shape) < 1e-10 )
+		if np.any(zero_shape):
+			self.shape[zero_shape] = 1e-10
+		
 		## Impossible
-		if np.any( 1. + self.shape * ( self._Y - self.loc ) / self.scale <= 0 ):
+		if not np.all( 1. + self.shape * ( self._Y - self.loc ) / self.scale > 0 ):
 			return np.zeros( param.size ) + np.nan
 		
 		## Usefull values

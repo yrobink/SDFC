@@ -104,7 +104,7 @@ def median( Y , X = None , return_coef = False ):
 		Parameters
 		----------
 		Y       : np.array
-			Dataset to fit the mean
+			Dataset to fit the median
 		X       : np.array or None
 			Covariate(s)
 		return_coef : bool

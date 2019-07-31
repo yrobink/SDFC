@@ -103,7 +103,7 @@ def quantile( Y , ltau , X = None , return_coef = False ):
 		Parameters
 		----------
 		Y       : np.array
-			Dataset to fit the mean
+			Dataset to fit the quantile
 		ltau    : np.array
 			The quantile to fit, between 0 and 1
 		X       : np.array or None

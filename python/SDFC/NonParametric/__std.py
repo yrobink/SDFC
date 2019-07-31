@@ -107,7 +107,7 @@ def std( Y , X = None , m = None , linkFct = IdLinkFct() , return_coef = False )
 		Parameters
 		----------
 		Y       : np.array
-			Dataset to fit the mean
+			Dataset to fit the standard deviation
 		X       : np.array or None
 			Covariate(s)
 		m       : np.array or float or None

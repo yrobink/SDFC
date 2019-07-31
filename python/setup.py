@@ -93,21 +93,25 @@ from setuptools.command.build_ext import build_ext
 import setuptools
 
 
-################
-## Eigen path ##
-################
+#####################
+## User Eigen path ##
+#####################
 
-eigen_include = ""
+eigen_usr_include = ""
 
 i_eigen = -1
 for i,arg in enumerate(sys.argv):
 	if arg[:5] == "eigen":
-		eigen_include = arg[6:]
+		eigen_usr_include = arg[6:]
 		i_eigen = i
 
 if i_eigen > -1:
 	del sys.argv[i_eigen]
 
+
+################################################################
+## Some class and function to compile with Eigen and pybind11 ##
+################################################################
 
 class get_pybind_include(object):##{{{
 	"""Helper class to determine the pybind11 include path
@@ -123,23 +127,22 @@ class get_pybind_include(object):##{{{
 		return pybind11.get_include(self.user)
 ##}}}
 
-def find_eigen( eigen_include = "" ):##{{{
-	if os.path.isdir( os.path.join( eigen_include , "Eigen" ) ):
-		return eigen_include
-	if os.path.isdir( os.path.join( eigen_include , "eigen3" , "Eigen" ) ):
-		return eigen_include
+def get_eigen_include( propose_path = "" ):##{{{
 	
-	possible_path = [ "/usr/include/" , "/usr/local/include/" ]
+	possible_path = [ propose_path , "/usr/include/" , "/usr/local/include/" ]
 	if os.environ.get("HOME") is not None:
 		possible_path.append( os.path.join( os.environ["HOME"] , ".local/include" ) )
 	
 	for path in possible_path:
+		
+		
 		eigen_include = os.path.join( path , "Eigen" )
 		if os.path.isdir( eigen_include ):
 			return path
+		
 		eigen_include = os.path.join( path , "eigen3" , "Eigen" )
 		if os.path.isdir( eigen_include ):
-			return path
+			return os.path.join( path , "eigen3" )
 	
 	return ""
 ##}}}
@@ -196,13 +199,21 @@ class BuildExt(build_ext):##{{{
 		build_ext.build_extensions(self)
 ##}}}
 
+
+##########################
+## Extension to compile ##
+##########################
+
+
+
+
 ext_modules = [
 	Extension(
 		'SDFC.NonParametric.__NonParametric_cpp',
 		['SDFC/src/NonParametric.cpp'],
 		include_dirs=[
 			# Path to pybind11 headers
-			find_eigen(eigen_include),
+			get_eigen_include(eigen_usr_include),
 			get_pybind_include(),
 			get_pybind_include(user=True)
 		],
@@ -232,7 +243,7 @@ list_packages = [
 setup(
 	name = "SDFC" ,
 	description = "Statistical Distribution Fit with Covariates" ,
-	version = "0.4.2a4" ,
+	version = "0.4.2" ,
 	author = "Yoann Robin" ,
 	author_email = "yoann.robin.k@gmail.com" ,
 	license = "CeCILL-C" ,

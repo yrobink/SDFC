@@ -444,7 +444,7 @@ if __name__ == "__main__":
 	
 	print(sd.__version__)
 	## Parameters
-	run_classic = False
+	run_classic = True
 	
 	## Classic test##{{{
 	if run_classic:

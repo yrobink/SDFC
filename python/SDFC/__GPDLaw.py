@@ -405,14 +405,7 @@ class GPDLaw(AbstractLaw):
 	##}}}
 	
 	def _concat_param( self ):##{{{
-		param = None
-		if self._scale.not_fixed() and self._shape.not_fixed():
-			param = np.hstack( (self._scale.coef_,self._shape.coef_) )
-		elif self._scale.not_fixed():
-			param = self._scale.coef_
-		elif self._shape.not_fixed():
-			param = self._shape.coef_
-		return param
+		return self._gen_concat_param( [self._scale,self._shape] )
 	##}}}
 	
 	def _negloglikelihood( self ): ##{{{
@@ -451,8 +444,8 @@ class GPDLaw(AbstractLaw):
 		self._shape.update()
 		
 		## Set scale and shape
-		self.scale = self._scale.valueLf()
-		self.shape = self._shape.valueLf()
+		self.scale = np.ravel( self._scale.valueLf() )
+		self.shape = np.ravel( self._shape.valueLf() )
 	##}}}
 	
 	def _optim_function( self , param ):##{{{

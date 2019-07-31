@@ -452,13 +452,12 @@ if __name__ == "__main__":
 		test_normal()
 		test_exp()
 		test_gamma()
-		test_gpd()
-		test_gev()
-		test_qr()
+#		test_gpd()
+#		test_gev()
+#		test_qr()
 ##}}}
 	
 
-	test_gev()
 #	loc   = 0
 #	scale = 1
 #	shape = -0.5

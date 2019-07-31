@@ -165,5 +165,14 @@ class AbstractLaw:
 			cov = cov.reshape( (cov.size,1) )
 		return param.linkFct( param.coef_[0] + np.dot( cov , param.coef_[1:] ) )
 	##}}}
+	
+	def _gen_concat_param( self , lp ):##{{{
+		param = np.array([])
+		for p in lp:
+			if p.not_fixed():
+				param = np.hstack( (param,p.coef_.ravel()) )
+		return param
+	##}}}
+
 
 

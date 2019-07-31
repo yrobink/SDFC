@@ -96,7 +96,7 @@ from SDFC.tools.__LinkFct     import IdLinkFct
 ## Functions ##
 ###############
 
-def cov( Y0 , Y1 , X = None , m0 = None , m1 = None , linkFct = sdt.IdLinkFct() , return_coef = False ):
+def cov( Y0 , Y1 , X = None , m0 = None , m1 = None , linkFct = IdLinkFct() , return_coef = False ):
 	"""
 		SDFC.NonParametric.cov
 		======================

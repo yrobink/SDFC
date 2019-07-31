@@ -281,7 +281,7 @@ class ExpLaw(AbstractLaw):
 		self._scale.set_coef( param )
 		self._scale.update()
 		
-		self.scale = self._scale.valueLf()
+		self.scale = np.ravel( self._scale.valueLf() )
 	##}}}
 	
 	def _optim_function( self , param ):##{{{

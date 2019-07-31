@@ -340,14 +340,7 @@ class NormalLaw(AbstractLaw):
 	##}}}
 	
 	def _concat_param( self ):##{{{
-		param = None
-		if self._loc.not_fixed() and self._scale.not_fixed():
-			param = np.hstack( (self._loc.coef_,self._scale.coef_) )
-		elif self._loc.not_fixed():
-			param = self._loc.coef_
-		elif self._scale.not_fixed():
-			param = self._scale.coef_
-		return param
+		return self._gen_concat_param( [self._loc,self._scale] )
 	##}}}
 	
 	def _negloglikelihood( self ): ##{{{
@@ -362,8 +355,8 @@ class NormalLaw(AbstractLaw):
 		self._loc.update()
 		self._scale.update()
 		
-		self.loc   = self._loc.valueLf()
-		self.scale = self._scale.valueLf()
+		self.loc   = np.ravel( self._loc.valueLf()   )
+		self.scale = np.ravel( self._scale.valueLf() )
 	##}}}
 	
 	def _optim_function( self , param ):##{{{
@@ -375,7 +368,6 @@ class NormalLaw(AbstractLaw):
 		self._update_param(param)
 		
 		grad = np.array( [] )
-		
 		Yc = self._Y - self.loc
 		if self._loc.not_fixed():
 			grad_loc   = - self._loc.design_.T @ (Yc / self.scale**2 * self._loc.valueGrLf() )

@@ -113,7 +113,7 @@ def plot_confidences_intervals( law , ax , color = "red" ):##{{{
 	if law.confidence_interval is None or law.coef_ is None:
 		return
 	
-	coef   = law.coef_
+	coef   = law.coef_.ravel()
 	n_coef = law.coef_.size
 	
 	i = 0

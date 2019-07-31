@@ -86,11 +86,60 @@
 ## Libraries ##
 ###############
 
-from SDFC.NonParametric.__mean               import mean
-from SDFC.NonParametric.__median             import median
-from SDFC.NonParametric.__std                import std
-from SDFC.NonParametric.__cov                import cov
-from SDFC.NonParametric.__quantile           import quantile
-from SDFC.NonParametric.__lmoments           import lmoments
-from SDFC.NonParametric.__NonParametric_cpp  import QuantileRegression
+import numpy        as np
+import scipy.linalg as scl
+
+from SDFC.tools.__LinkFct     import IdLinkFct
+
+
+###############
+## Functions ##
+###############
+
+def cov( Y0 , Y1 , X = None , m0 = None , m1 = None , linkFct = sdt.IdLinkFct() , return_coef = False ):
+	"""
+		SDFC.NonParametric.cov
+		======================
+		
+		Estimate covariance given a covariate (or not)
+		
+		Parameters
+		----------
+		Y0      : np.array
+			Dataset0 to fit the covariance between Y0 and Y1 
+		Y1      : np.array
+			Dataset1 to fit the covariance between Y0 and Y1 
+		X       : np.array or None
+			Covariate(s)
+		m0      : np.array or float or None
+			mean of Y0. If None, m0 = np.mean(Y0)
+		m1      : np.array or float or None
+			mean of Y1. If None, m1 = np.mean(Y1)
+		linkFct : class based on SDFC.tools.LinkFct
+			Link function, default is identity
+		return_coef : bool
+			If true, return coefficients with covariates, else return covariance fitted
+		
+		Returns
+		-------
+		The covariance
+	"""
+	out,coef = None,None
+	if X is None:
+		out  = np.cov( np.hstack( (Y0.ravel(),Y1.ravel()) ).T)
+		coef = linkFct.inverse(out)
+	else:
+		m0 = np.mean( Y0 ) if m0 is None else np.array( [m0] ).ravel()
+		m1 = np.mean( Y1 ) if m1 is None else np.array( [m1] ).ravel()
+		
+		Yres = ( Y0.ravel() - m0 ) * ( Y1.ravel() - m1 )
+		size = X.shape[0]
+		if X.ndim == 1:
+			X = X.reshape( (size,1) )
+		design = np.hstack( ( np.ones( (size,1) ) , X ) )
+		coef,_,_,_ = scl.lstsq( design , linkFct.inverse( Yres ) )
+		out = linkFct( design @ coef )
+	
+	return coef if return_coef else out
+
 

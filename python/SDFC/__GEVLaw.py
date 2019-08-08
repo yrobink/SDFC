@@ -555,7 +555,7 @@ class GEVLaw(AbstractLaw):
 	
 	def _negloglikelihood( self ): ##{{{
 		## Impossible scale
-		if np.any( self.scale <= 0 ):
+		if not np.all( self.scale > 0 ):
 			return np.inf
 		
 		## Fuck exponential case
@@ -614,7 +614,7 @@ class GEVLaw(AbstractLaw):
 			self.shape[zero_shape] = 1e-10
 		
 		## Impossible
-		if not np.all( 1. + self.shape * ( self._Y - self.loc ) / self.scale > 0 ):
+		if not np.all(self.scale > 0) or not np.all( 1. + self.shape * ( self._Y - self.loc ) / self.scale > 0 ):
 			return np.zeros( param.size ) + np.nan
 		
 		## Usefull values

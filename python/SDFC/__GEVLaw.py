@@ -486,11 +486,11 @@ class GEVLaw(AbstractLaw):
 			glh = self._gradient_optim_function( param )
 			nit = 0
 			while not np.isfinite(llh) or not np.all(np.isfinite(glh)):
-				self._shape.coef_[0] *= 0.95
+				self._shape.coef_[0] = self._shape.linkFct.inverse( self._shape.linkFct(self._shape.coef_[0]) * 0.95 )
 				if nit == 100:
-					self._shape.coef_[0] *= -1
+					self._shape.coef_[0] = self._shape.linkFct.inverse( - self._shape.linkFct(self._shape.coef_[0]) )
 				if nit == 200:
-					self._shape.coef_[0] = 0.
+					self._shape.coef_[0] = self._shape.linkFct.inverse( 0 )
 					break
 				param = self._concat_param()
 				llh = self._optim_function(param)

@@ -195,9 +195,62 @@ class MultivariateNormalLaw(AbstractLaw):
 		fcov     : None or numpy.ndarray
 			If not None, fix the value of covariance matrix parameter (so not fitted)
 		"""
-		self.d    = Y.shape[1]
-		self._idx = np.triu_indices(self.d)
+		self.d     = Y.shape[1]
+		self._idx  = np.triu_indices(self.d)
+		self._size = Y.shape[0]
+		
+		if self.n_bootstrap > 0:
+			self.coefs_bootstrap = []
+			if mean_cov is not None and mean_cov.ndim == 1: mean_cov = mean_cov.reshape( (mean_cov.size,1) )
+			if cov_cov  is not None and cov_cov.ndim == 1:  cov_cov  = cov_cov.reshape(  (cov_cov.size,1) )
+			
+			if fmean is not None and fmean.ndim == 1: fmean = fmean.reshape( (fmean.size,1) )
+			if fcov  is not None and fcov.ndim == 1:  fcov  = fcov.reshape(  (fcov.size,1) )
+			
+			for i in range(self.n_bootstrap):
+				idx = np.random.choice( self._size , self._size )
+				Y_bs         = Y[idx,:]
+				mean_cov_bs  = None  if mean_cov is None else mean_cov[idx,:]
+				cov_cov_bs   = None  if cov_cov  is None else cov_cov[idx,:]
+				fmean_bs     = fmean if fmean    is None or fmean.size == self.d else fmean[idx,:]
+				fcov_bs      = fcov  if fcov     is None or fcov.size  == self.d else fcov[idx,:]
+				
+				self._fit( Y_bs , mean_cov_bs , cov_cov_bs , fmean_bs , fcov_bs )
+				self.coefs_bootstrap.append( self.coef_ )
+			
+			self.coefs_bootstrap = np.array( self.coefs_bootstrap )
+			self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
+		
+		
 		self._fit( Y , mean_cov , cov_cov , fmean , fcov )
+	##}}}
+	
+	def bootstrap_law( self , i ):##{{{
+		"""
+		Return a MultivariateNormalLaw with coef from bootstrap
+		
+		Arguments
+		---------
+		i : integer
+			Number of bootstrap
+		
+		Return
+		------
+		law : SDFC.MultivariateNormalLaw
+			A MultivariateNormalLaw, None if n_bootstrap = 0
+		"""
+		if self.n_bootstrap == 0:
+			return None
+		law = MultivariateNormalLaw( self.method , alpha = self.alpha )
+		law._mean   = self._mean.copy()
+		law._cov = self._cov.copy()
+		law._lparams = [law._mean,law._cov]
+		pmean,pcov = self._split_param( self.coefs_bootstrap[i,:] )
+		law._mean.set_coef( pmean )
+		law._cov.set_coef( pcov )
+		law.coef_ = law._concat_param()
+		law._update_param( law.coef_ )
+		return law
 	##}}}
 	
 	def predict_mean( self , mean_cov = None ):##{{{

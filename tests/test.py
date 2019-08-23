@@ -14,6 +14,7 @@ import pickle as pk
 import multiprocessing as mp
 
 import numpy as np
+import sklearn.datasets as skd
 import pandas as pd
 import scipy.stats as sc
 import scipy.optimize as sco
@@ -50,6 +51,17 @@ def generic_data(size):##{{{
 	return t,X
 ##}}}
 
+def kernel( dX , X , Y ):##{{{
+	kde = sc.gaussian_kde( dX.T )
+	XY = np.vstack([X.ravel(), Y.ravel()])
+	Z = kde(XY).reshape(X.shape)
+	return Z
+##}}}
+
+
+###########
+## Tests ##
+###########
 
 def test_np( plot = True ):##{{{
 	print( "Test non-parametric..." , end = "\r" )
@@ -483,16 +495,130 @@ def test_predict( plot = True ):##{{{
 ##}}}
 
 
-def run_all_tests( plot = False ):##{{{
-		test_np(plot)
-		test_normal(plot)
-		test_exp(plot)
-		test_gamma(plot)
-		test_gpd(plot)
-		test_gev(plot)
-		test_qr(plot)
-		test_predict(plot)
+def test_MultivarNormalLaw_stationary( plot = True ):##{{{
+	print( "Test MultivariateNormalLaw stationary..." , end = "\r" )
+	
+	try:
+		mean = np.array( [5,5] )
+		cov  = skd.make_spd_matrix(2)
+		size = 2000
+		Y    = np.random.multivariate_normal( mean = mean , cov = cov , size = size )
+		
+		
+		## Fit
+		method = "moments"
+		mnorm = sd.MultivariateNormalLaw( method = method )
+		mnorm.fit(Y)
+		Yb = np.random.multivariate_normal( mean = mnorm.mean[0,:] , cov = mnorm.cov[0,:,:] , size = size )
+		cove = mnorm.cov[0,:,:]
+		
+		if plot:
+			## Kernel
+			xymin   = min(Y.min(),Yb.min())
+			xymax   = max(Y.max(),Yb.max())
+			XX,YY = np.mgrid[xymin:xymax:100j,xymin:xymax:100j]
+			ZY  = kernel( Y  , XX , YY )
+			ZYb = kernel( Yb , XX , YY )
+			
+			
+			## Plot
+			cmap0 = plt.cm.Blues
+			cmap1 = plt.cm.Reds
+			
+			fig = plt.figure( figsize = (8,8) )
+			
+			ax = fig.add_subplot( 1 , 1, 1 )
+			ax.contourf( XX , YY , ZY  , cmap = cmap0 )
+			ax.contour(  XX , YY , ZYb , cmap = cmap1 )
+			ax.plot( Y[:,0] , Y[:,1] , linestyle = "" , marker = "." , color = "black" )
+			
+			plt.tight_layout()
+			plt.show()
+		print( "Test MultivariateNormalLaw stationary (Done)" )
+	except:
+		print( "Test MultivariateNormalLaw stationary (Fail)" )
 ##}}}
+
+def test_MultivarNormalLaw_nonstationary( plot = True ):##{{{
+	print( "Test MultivariateNormalLaw non-stationary..." , end = "\r" )
+	
+	try:
+		## Data
+		size = 2000
+		t    = np.linspace( 0 , 1 , size )
+		X    = t**2 + 0.1
+		mean = np.array( [X,-X] ).T
+		cov0 = skd.make_spd_matrix(2)
+		cov = np.array( [ cov0 * x for x in X ] )
+		Y    = np.array( [ np.random.multivariate_normal( mean = mean[i,:] , cov = cov[i,:,] , size = 1 ) for i in range(size) ] ).squeeze()
+		
+		
+		## Fit
+		method = "moments"
+		mnorm = sd.MultivariateNormalLaw( method = method )
+		mnorm.fit( Y , mean_cov = X , cov_cov = X )
+		
+		## Generate dataset at some time step
+		ndata = 4
+		ltime = np.array( (size-1) * np.linspace( 0 , 1 , ndata ) , dtype = np.int )
+		Yn = np.array( [ np.random.multivariate_normal( mean = mean[i,:]       , cov = cov[i,:,]       , size = size ) for i in ltime ] ).squeeze()
+		Ye = np.array( [ np.random.multivariate_normal( mean = mnorm.mean[i,:] , cov = mnorm.cov[i,:,] , size = size ) for i in ltime ] ).squeeze()
+		
+		if plot:
+			## Kernels
+			Zn,Ze = [],[]
+			XX = [None for _ in range(ndata)]
+			YY = [None for _ in range(ndata)]
+			
+			
+			for i in range(ndata):
+				xymin = min( Yn[i,:,:].min() , Ye[i,:,:].min() )
+				xymax = max( Yn[i,:,:].max() , Ye[i,:,:].max() )
+				XX[i],YY[i] = np.mgrid[xymin:xymax:100j,xymin:xymax:100j]
+				Zn.append( kernel( Yn[i,:,:] , XX[i] , YY[i] ) )
+				Ze.append( kernel( Ye[i,:,:] , XX[i] , YY[i] ) )
+			
+			
+			## Plot
+			cmap0 = plt.cm.Blues
+			cmap1 = plt.cm.inferno
+			
+			nrow,ncol = 2,2
+			
+			fig = plt.figure()
+			
+			for i in range(ndata):
+				ax = fig.add_subplot( nrow , ncol , i + 1 , aspect = "equal" )
+				ax.contourf( XX[i] , YY[i] , Zn[i] , cmap = cmap0 , extent = [xymin,xymax,xymin,xymax] )
+				ax.contour(  XX[i] , YY[i] , Ze[i] , cmap = cmap1 )
+				ax.plot( Yn[i,:,0] , Yn[i,:,1] , linestyle = "" , marker = "." , color = "black" , markersize = 1 )
+				ax.plot( Ye[i,:,0] , Ye[i,:,1] , linestyle = "" , marker = "." , color = "red" , markersize = 1 )
+			
+			plt.tight_layout()
+			plt.show()
+		print( "Test MultivariateNormalLaw non-stationary (Done)" )
+	except:
+		print( "Test MultivariateNormalLaw non-stationary (Fail)" )
+##}}}
+
+
+def run_all_tests( plot = False ):##{{{
+	test_np(plot)
+	test_normal(plot)
+	test_exp(plot)
+	test_gamma(plot)
+	test_gpd(plot)
+	test_gev(plot)
+	test_qr(plot)
+	test_predict(plot)
+	test_MultivarNormalLaw_stationary(plot)
+	test_MultivarNormalLaw_nonstationary(plot)
+##}}}
+
+
+
+
+
 
 
 #############
@@ -508,29 +634,11 @@ def run_all_tests( plot = False ):##{{{
 if __name__ == "__main__":
 	
 	print(sd.__version__)
-	
 	run_all_tests()
 	
 	
-##{{{
-#	loc   = 0
-#	scale = 1
-#	shape = -0.5
-#	X = sc.genextreme.rvs( size = 10000 , loc = loc , scale = scale , c = - shape )
-#	
-#	gev = sd.GEVLaw()
-#	gev.fit(X)
-#	print(gev.coef_)
-#	print(gev.upper_bound())
-#	print(gev.optim_result)
-#	
-#	X[0] = 1e2
-#	gev2 = sd.GEVLaw()
-#	gev2.fit(X)
-#	print(gev2.coef_)
-#	print(gev2.lower_bound())
-#	print(gev2.optim_result)
-##}}}	
+	
+	
 	print("Done")
 
 

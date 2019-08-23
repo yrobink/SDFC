@@ -173,6 +173,28 @@ class AbstractLaw:
 				param = np.hstack( (param,p.coef_.ravel()) )
 		return param
 	##}}}
-
+	
+	def _concat_param( self ):##{{{
+		param = np.array([])
+		for p in self._lparams:
+			if p.not_fixed():
+				param = np.hstack( (param,p.coef_.ravel()) )
+		return param
+	##}}}
+	
+	def _split_param( self , param ):##{{{
+		tparams = []
+		a,b = 0,0
+		for p in self._lparams:
+			if not p.not_fixed():
+				tparams.append(None)
+			else:
+				b = a + p.size
+				tparams.append( param[a:b] )
+				a = b
+		
+		return tparams
+		
+	##}}}
 
 

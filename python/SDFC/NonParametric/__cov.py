@@ -126,7 +126,7 @@ def cov( Y0 , Y1 , X = None , m0 = None , m1 = None , linkFct = IdLinkFct() , re
 	"""
 	out,coef = None,None
 	if X is None:
-		out  = np.cov( np.hstack( (Y0.ravel(),Y1.ravel()) ).T)
+		out  = np.cov( np.stack( (Y0.ravel(),Y1.ravel()) ) )[0,1]
 		coef = linkFct.inverse(out)
 	else:
 		m0 = np.mean( Y0 ) if m0 is None else np.array( [m0] ).ravel()

@@ -507,7 +507,7 @@ def test_MultivarNormalLaw_stationary( plot = True ):##{{{
 		
 		## Fit
 		method = "moments"
-		mnorm = sd.MultivariateNormalLaw( method = method )
+		mnorm = sd.MultivariateNormalLaw( method = method , n_bootstrap = 10 )
 		mnorm.fit(Y)
 		Yb = np.random.multivariate_normal( mean = mnorm.mean[0,:] , cov = mnorm.cov[0,:,:] , size = size )
 		cove = mnorm.cov[0,:,:]
@@ -634,10 +634,22 @@ def run_all_tests( plot = False ):##{{{
 if __name__ == "__main__":
 	
 	print(sd.__version__)
-	run_all_tests()
+#	run_all_tests()
 	
 	
+	test_MultivarNormalLaw_stationary(False)
 	
+	mean = np.array( [5,5] )
+	cov  = skd.make_spd_matrix(2)
+	size = 2000
+	Y    = np.random.multivariate_normal( mean = mean , cov = cov , size = size )
+	
+	
+	## Fit
+	method = "moments"
+	mnorm = sd.MultivariateNormalLaw( method = method , n_bootstrap = 10 )
+	mnorm.fit( Y )
+	law = mnorm.bootstrap_law(2)
 	
 	print("Done")
 

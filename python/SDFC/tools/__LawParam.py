@@ -104,6 +104,7 @@ class LawParam:##{{{
 		self.design_    = None
 		self.size       = 0
 		self.dim        = 0
+		self.shape      = None
 		self._transform = None
 		self._value     = None
 		self._not_fixed = None
@@ -111,11 +112,14 @@ class LawParam:##{{{
 	##}}}
 	
 	def copy(self):##{{{
-		p = LawParam( self.linkFct , self.kind )
-		p.coef_ = np.copy(self.coef_) if self.coef_ is not None else None
-		p.design_ = np.copy(self.design_) if self.design_ is not None else None
-		p.size = self.size
-		p._value = np.copy(self._value) if self._value is not None else None
+		p            = LawParam( self.linkFct , self.kind )
+		p.coef_      = np.copy(self.coef_)   if self.coef_   is not None else None
+		p.design_    = np.copy(self.design_) if self.design_ is not None else None
+		p.size       = self.size
+		p.dim        = self.dim
+		p.shape      = self.shape
+		p._transform = self._transform
+		p._value     = np.copy(self._value)  if self._value  is not None else None
 		p._not_fixed = self._not_fixed
 		return p
 	##}}}

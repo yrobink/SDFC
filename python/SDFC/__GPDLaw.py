@@ -319,10 +319,7 @@ class GPDLaw(AbstractLaw):
 			self._scale.set_coef( std( excess , sX , m = 0 , return_coef = True , linkFct = self._scale.linkFct ) )
 		self._shape.set_intercept( self._shape.linkFct.inverse( -1e-8 ) )
 		
-		self._scale.update()
-		self._shape.update()
-		self.scale = self._scale.valueLf()
-		self.shape = self._shape.valueLf()
+		self._update_param( self._concat_param() )
 	##}}}
 	
 	def _fit_lmoments( self ): ##{{{
@@ -355,11 +352,7 @@ class GPDLaw(AbstractLaw):
 			itau     = lmo1 / lmo2
 			self._shape.set_intercept( self._shape.linkFct.inverse( 2 - itau ) )
 		
-		
-		self._scale.update()
-		self._shape.update()
-		self.scale = self._scale.valueLf()
-		self.shape = self._shape.valueLf()
+		self._update_param( self._concat_param() )
 		
 	##}}}
 	
@@ -384,39 +377,21 @@ class GPDLaw(AbstractLaw):
 			self._scale.set_intercept( self._scale.linkFct.inverse(1.)   )
 			self._shape.set_intercept( self._shape.linkFct.inverse(1e-2) )
 		
-		
 		param_init = self._concat_param()
 		self.optim_result = sco.minimize( self._optim_function , param_init , jac = self._gradient_optim_function , method = "BFGS" )
 		self._update_param( self.optim_result.x )
 	##}}}
 	
-#	def _split_param( self , param ):##{{{
-#		param_scale = None
-#		param_shape = None
-#		
-#		if self._scale.not_fixed():
-#			param_scale = param[:self._scale.size]
-#			if self._shape.not_fixed():
-#				param_shape = param[self._scale.size:]
-#		elif self._shape.not_fixed():
-#			param_shape = param[:self._shape.size]
-#		
-#		return param_scale,param_shape
-#	##}}}
-#	
-#	def _concat_param( self ):##{{{
-#		return self._gen_concat_param( [self._scale,self._shape] )
-#	##}}}
-	
 	def _negloglikelihood( self ): ##{{{
 		## Impossible scale
-		if np.any( self.scale <= 0 ):
+		if not np.all( self.scale > 0 ):
 			return np.inf
 		
 		## Fuck exponential case
 		zero_shape = ( np.abs(self.shape) < 1e-10 )
 		if np.any(zero_shape):
 			self.shape[zero_shape] = -1e-10
+		
 		
 		##
 		idx_excess = (self._Y > self.loc)
@@ -425,7 +400,7 @@ class GPDLaw(AbstractLaw):
 		shape = self.shape[idx_excess]
 		Z = 1. + shape * ( self._Y[idx_excess] - loc ) / scale
 		
-		if np.any(Z <= 0):
+		if not np.all(Z > 0):
 			return np.inf
 		
 		res = np.sum( np.log( scale ) + np.log(Z) * ( 1 + 1. / shape ) )
@@ -436,6 +411,7 @@ class GPDLaw(AbstractLaw):
 	def _update_param( self , param ):##{{{
 		
 		param_scale,param_shape = self._split_param(param)
+		
 		
 		## Extract coefficients from param
 		self._scale.set_coef( param_scale )
@@ -470,6 +446,7 @@ class GPDLaw(AbstractLaw):
 		
 		if self._scale.not_fixed():
 			gr_scale   = self._scale.valueGrLf()[idx_excess]
+			A = ( - exponent * shape * Z / ZZ / scale + 1. / scale )
 			grad_scale = self._scale.design_[idx_excess,:].T @ ( gr_scale * ( - exponent * shape * Z / ZZ / scale + 1. / scale ) )
 			grad       = np.hstack( (grad,grad_scale) )
 		

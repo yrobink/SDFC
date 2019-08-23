@@ -382,13 +382,7 @@ class GEVLaw(AbstractLaw):
 		self._scale.set_intercept( self._scale.linkFct.inverse( iscale ) )
 		self._shape.set_intercept( self._shape.linkFct.inverse( ishape ) )
 		
-		
-		self._loc.update()
-		self._scale.update()
-		self._shape.update()
-		self.loc   = self._loc.valueLf()
-		self.scale = self._scale.valueLf()
-		self.shape = self._shape.valueLf()
+		self._update_param( self._concat_param() )
 		
 	##}}}
 	
@@ -410,13 +404,7 @@ class GEVLaw(AbstractLaw):
 		self._scale.set_intercept( self._scale.linkFct.inverse( iscale ) )
 		self._shape.set_intercept( self._shape.linkFct.inverse( ishape ) )
 		
-		self._loc.update()
-		self._scale.update()
-		self._shape.update()
-		self.loc   = self._loc.valueLf()
-		self.scale = self._scale.valueLf()
-		self.shape = self._shape.valueLf()
-		
+		self._update_param( self._concat_param() )
 	##}}}
 	
 	def _fit_quantiles( self ):##{{{
@@ -428,7 +416,7 @@ class GEVLaw(AbstractLaw):
 				loc = quantile( self._Y , [np.exp(-1)] , self._loc.design_wo1() )
 				self._loc.coef_ = mean( loc , self._loc.design_wo1() , linkFct = self._loc.linkFct , return_coef = True ).ravel()
 		self._loc.update()
-		self.loc = self._loc.valueLf()
+		self.loc = np.ravel( self._loc.valueLf() )
 		
 		
 		## Fit scale
@@ -443,7 +431,7 @@ class GEVLaw(AbstractLaw):
 				fscale[np.logical_not(fscale > 0)] = 0.1
 				self._scale.set_coef( mean( fscale , self._scale.design_wo1() , linkFct = self._scale.linkFct , return_coef = True ) )
 		self._scale.update()
-		self.scale = self._scale.valueLf()
+		self.scale = np.ravel( self._scale.valueLf() )
 		
 		## Fit shape
 		if self._shape.not_fixed():
@@ -461,7 +449,7 @@ class GEVLaw(AbstractLaw):
 				
 				self._shape.set_coef( mean( shape , self._shape.design_wo1() , linkFct = self._shape.linkFct , return_coef = True ) )
 		self._shape.update()
-		self.shape = self._shape.valueLf()
+		self.shape = np.ravel( self._shape.valueLf() )
 		
 	##}}}
 	

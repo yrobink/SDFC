@@ -237,7 +237,7 @@ class NormalLaw(AbstractLaw):
 		law : SDFC.NormalLaw
 			A NormalLaw, None if n_bootstrap = 0
 		"""
-		if n_bootstrap == 0:
+		if self.n_bootstrap == 0:
 			return None
 		law = NormalLaw( self.method , alpha = self.alpha )
 		law._loc   = self._loc.copy()

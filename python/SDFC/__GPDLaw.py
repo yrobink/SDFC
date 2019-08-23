@@ -240,7 +240,7 @@ class GPDLaw(AbstractLaw):
 		law : SDFC.GPDLaw
 			A GPDLaw, None if n_bootstrap = 0
 		"""
-		if n_bootstrap == 0:
+		if self.n_bootstrap == 0:
 			return None
 		law = GPDLaw( self.method , alpha = self.alpha )
 		law._scale = self._scale.copy()

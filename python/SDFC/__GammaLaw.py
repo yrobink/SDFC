@@ -231,7 +231,7 @@ class GammaLaw(AbstractLaw):
 		law : SDFC.GammaLaw
 			A GammaLaw, None if n_bootstrap = 0
 		"""
-		if n_bootstrap == 0:
+		if self.n_bootstrap == 0:
 			return None
 		law = GammaLaw( self.method , alpha = self.alpha )
 		law._scale = self._scale.copy()

@@ -213,7 +213,7 @@ class ExpLaw(AbstractLaw):
 		law : SDFC.ExpLaw
 			A ExpLaw, None if n_bootstrap = 0
 		"""
-		if n_bootstrap == 0:
+		if self.n_bootstrap == 0:
 			return None
 		law = ExpLaw( self.method , alpha = self.alpha )
 		law._scale = self._scale.copy()

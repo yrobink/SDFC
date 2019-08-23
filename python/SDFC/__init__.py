@@ -95,4 +95,5 @@ from SDFC.__GammaLaw    import GammaLaw
 from SDFC.__GPDLaw      import GPDLaw
 from SDFC.__GEVLaw      import GEVLaw
 
+from SDFC.__MultivariateNormalLaw import MultivariateNormalLaw
 

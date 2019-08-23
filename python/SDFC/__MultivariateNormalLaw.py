@@ -95,26 +95,69 @@ from SDFC.__AbstractLaw        import AbstractLaw
 from SDFC.tools.__LawParam     import LawParam
 from SDFC.tools.__LinkFct      import IdLinkFct
 from SDFC.NonParametric.__mean import mean
-from SDFC.NonParametric.__std  import std
+from SDFC.NonParametric.__cov  import cov
 
 
 #############
 ## Classes ##
 #############
 
-class MultivariateNormalLaw:
+class MultivariateNormalLaw(AbstractLaw):
+	"""
+	SDFC.MultivariateNormalLaw
+	==========================
 	
-	def __init__( self , method = "MLE" ):##{{{
+	Fit parameters of a Multivariate Normal law, possibly with co-variable
+	
+	Attributes
+	----------
+	method : string
+		method used to fit
+	mean   : numpy.ndarray
+		Mean(s) fitted
+	cov    : numpy.ndarray
+		Covariance(s) matrix(ces) fitted
+	coef_  : numpy.ndarray
+		Coefficients fitted
+	n_bootstrap: integer
+		Numbers of bootstrap for confidence interval
+	coefs_bootstrap: numpy.ndarray
+		coef_ for each bootstrap
+	confidence interval: numpy.ndarray[ shape = (2,coef_.size) ]
+		Confidence interval, first line is the alpha/2 quantile, and second line the 1 - alpha/2 quantile
+	alpha          : float
+		Level of confidence interval
+	"""
+	
+	def __init__( self , method = "MLE" , link_fct_mean = IdLinkFct() , link_fct_cov = IdLinkFct() , n_bootstrap = 0 , alpha = 0.05 ):##{{{
+		"""
+		Initialization of MultivariateNormalLaw
+		
+		Parameters
+		----------
+		method         : string
+			Method called to fit parameters, options are "moments" and "MLE" (Maximum Likelihood estimation)
+		link_fct_mean  : a class herited from SDFC.tools.LinkFct
+			Link function for mean, default is IdLinkFct()
+		link_fct_cov   : a class herited from SDFC.tools.LinkFct
+			Link function for covariance matrix, default is SDFC.tools.IdLinkFct().
+		n_bootstrap    : integer
+			Numbers of bootstrap for confidence interval, default = 0 (no bootstrap)
+		alpha          : float
+			Level of confidence interval, default = 0.05
+		
+		"""
+		
+		AbstractLaw.__init__( self , method , n_bootstrap , alpha )
+		
 		self.d      = -1
-		self._Y     = None
-		self.method = method
+		self._idx   = None
 		
 		self.mean  = None
 		self.cov   = None
-		self._mean = LawParam( kind = "mean" )
-		self._cov  = LawParam( kind = "cov" )
-		
-		self.coef_ = None
+		self._mean = LawParam( linkFct = link_fct_mean , kind = "mean" )
+		self._cov  = LawParam( linkFct = link_fct_cov  , kind = "cov" )
+		self._lparams = [self._mean,self._cov]
 		
 		self.optim_result = None
 	##}}}
@@ -134,69 +177,80 @@ class MultivariateNormalLaw:
 		return self.__str__()
 	##}}}
 	
-	def fit( self , Y , mean_cov = None , cov_cov = None ):##{{{
-		self._Y   = Y
+	def fit( self , Y , mean_cov = None , cov_cov = None , fmean = None , fcov = None ):##{{{
+		"""
+		Fit function for MultivariateNormalLaw
+		
+		Arguments
+		---------
+		
+		Y        : numpy.ndarray
+			Data to fit
+		mean_cov : None or numpy.ndarray
+			Co-variates of mean in columns.
+		cov_cov  : None or numpy.ndarray
+			Co-variates of covariance matrix in columns.
+		fmean    : None or numpy.ndarray
+			If not None, fix the value of mean parameter (so not fitted)
+		fcov     : None or numpy.ndarray
+			If not None, fix the value of covariance matrix parameter (so not fitted)
+		"""
 		self.d    = Y.shape[1]
 		self._idx = np.triu_indices(self.d)
-		
-		self._mean.init( X = mean_cov , dim = self.d , size = self._Y.shape[0] )
-		self._cov.init(  X = cov_cov  , dim = int(self.d + self.d * (self.d - 1) / 2) , size = self._Y.shape[0] , transform = self._cov_transform )
-		
-		if self.method == "moments":
-			self._fit_moments()
-		else:
-			self._fit_mle()
-		
-		self.coef_ = self._concat_param()
+		self._fit( Y , mean_cov , cov_cov , fmean , fcov )
 	##}}}
 	
 	def predict_mean( self , mean_cov = None ):##{{{
+		"""
+		Return mean parameter with a new co-variates
+		
+		Arguments
+		---------
+		mean_cov : np.array or None
+			Covariate
+		
+		Return
+		------
+		mean : np.array
+			mean parameters
+		"""
 		return self._predict_param( self._mean , mean_cov )
 	##}}}
 	
 	def predict_cov( self , cov_cov = None ):##{{{
+		"""
+		Return covariance matrix parameter with a new co-variates
+		
+		Arguments
+		---------
+		cov_cov : np.array or None
+			Covariate
+		
+		Return
+		------
+		cov : np.array
+			Covariance matrix parameters
+		"""
 		return self._predict_param( self._cov , cov_cov )
 	##}}}
 	
-	def _predict_param( self , param , cov ):##{{{
-		if cov is None or param.shape[0] == 1:
+	def _predict_param( self , param , covar ):##{{{
+		if covar is None or param.shape[0] == 1:
 			return param.valueLf()
 		else:
-			if cov.ndim == 1: cov = cov.reshape( (cov.size,1) )
-			design = np.hstack( (np.ones((cov.shape[0],1)),cov) )
-			return param._transform( design @ param.coef_[:design.shape[1]] )
+			if covar.ndim == 1: covar = covar.reshape( (covar.size,1) )
+			design = np.hstack( (np.ones((covar.shape[0],1)),covar) )
+			return param.linkFct( param._transform( design @ param.coef_[:design.shape[1]] ) )
 	##}}}
 	
 	def _cov_transform( self , M ):##{{{
-		cov = np.zeros( (M.shape[0],self.d,self.d) )
+		ecov = np.zeros( (M.shape[0],self.d,self.d) )
 		cov_tmp = np.zeros((self.d,self.d))
 		for i in range(M.shape[0]):
 			cov_tmp[self._idx]   = M[i,:]
 			cov_tmp.T[self._idx] = M[i,:]
-			cov[i,:,:] = cov_tmp
-		return cov
-	##}}}
-	
-	def _split_param( self , param ):##{{{
-		param_mean = None
-		param_cov  = None
-		
-		if self._mean.not_fixed():
-			param_mean   = param[:self._mean.size]
-			if self._cov.not_fixed():
-				param_cov = param[self._mean.size:]
-		elif self._cov.not_fixed():
-			param_cov = param
-		
-		return param_mean,param_cov
-	##}}}
-	
-	def _concat_param( self ):##{{{
-		param = np.array([])
-		for p in [self._mean,self._cov]:
-			if p.not_fixed():
-				param = np.hstack( (param,p.coef_.ravel()) )
-		return param
+			ecov[i,:,:] = cov_tmp
+		return ecov
 	##}}}
 	
 	def _update_param( self , param ):##{{{
@@ -216,7 +270,7 @@ class MultivariateNormalLaw:
 			lX = self._mean.design_wo1()
 			coef_mean = np.zeros_like( self._mean.coef_ )
 			for i in range(self.d):
-				coef_mean[:,i] = sdnp.mean( self._Y[:,i] , lX , return_coef = True )
+				coef_mean[:,i] = mean( self._Y[:,i] , lX , linkFct = self._mean.linkFct , return_coef = True )
 			self._mean.set_coef( coef_mean )
 			self._mean.update()
 			self.mean = self._mean.valueLf()
@@ -226,7 +280,7 @@ class MultivariateNormalLaw:
 			coef_cov = np.zeros( (self.d,self.d,self._cov.shape[0]) )
 			for i in range(self.d):
 				for j in range(i,self.d):
-					coef_cov[i,j,:] = sdnp_cov( self._Y[:,i] , self._Y[:,j] , X = lX , m0 = self.mean[:,i] , m1 = self.mean[:,j] , return_coef = True )
+					coef_cov[i,j,:] = cov( self._Y[:,i] , self._Y[:,j] , X = lX , m0 = self.mean[:,i] , m1 = self.mean[:,j] , linkFct = self._cov.linkFct , return_coef = True )
 			for k,ij in enumerate(zip(*self._idx)):
 				i,j = ij
 				self._cov.coef_[:,k] = coef_cov[i,j,:]
@@ -241,14 +295,25 @@ class MultivariateNormalLaw:
 		self._update_param( self.optim_result.x )
 	##}}}
 	
+	def _fit( self , Y , mean_cov , cov_cov , fmean , fcov ):##{{{
+		self._Y   = Y
+		self._mean.init( X = mean_cov , fix_values = fmean , dim = self.d                         , size = self._Y.shape[0] )
+		self._cov.init(  X = cov_cov  , fix_values = fcov  , dim = int(self.d * (self.d + 1) / 2) , size = self._Y.shape[0] , transform = self._cov_transform )
+		
+		if self.method == "moments":
+			self._fit_moments()
+		else:
+			self._fit_mle()
+		
+		self.coef_ = self._concat_param()
+	##}}}
+	
 	def _negloglikelihood( self ):##{{{
 		
 		detCov = np.array( [np.linalg.det(self.cov[i,:,:]) for i in range(self.cov.shape[0])] )
 		
 		if not np.all(detCov > 0):
 			return np.Inf
-		
-		icov = np.linalg.inv(self.cov)
 		
 		res = np.sum( np.log(detCov) )
 		for i in range(self._Y.shape[0]):
@@ -276,5 +341,4 @@ class MultivariateNormalLaw:
 		
 		return grad
 	##}}}
-
 

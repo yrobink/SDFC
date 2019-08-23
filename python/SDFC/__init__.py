@@ -86,7 +86,7 @@
 ## Libraries ##
 ###############
 
-__version__ = "0.5.0a0"
+__version__ = "0.5.0a1"
 
 from SDFC.__AbstractLaw import AbstractLaw
 from SDFC.__NormalLaw   import NormalLaw

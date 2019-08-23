@@ -509,49 +509,49 @@ class GEVLaw(AbstractLaw):
 		pass
 	##}}}
 	
-	def _split_param( self , param ):##{{{
-		param_loc   = None
-		param_scale = None
-		param_shape = None
-		
-		
-		if self._loc.not_fixed() and self._scale.not_fixed() and self._shape.not_fixed():
-			param_loc   = param[:self._loc.size]
-			param_scale = param[self._loc.size:(self._loc.size+self._scale.size)]
-			param_shape = param[(self._loc.size+self._scale.size):]
-		elif self._loc.not_fixed() and self._scale.not_fixed():
-			param_loc   = param[:self._loc.size]
-			param_scale = param[self._loc.size:]
-			param_shape = None
-		elif self._scale.not_fixed() and self._shape.not_fixed():
-			param_loc   = None
-			param_scale = param[:self._scale.size]
-			param_shape = param[self._scale.size:]
-		elif self._loc.not_fixed() and self._shape.not_fixed():
-			param_loc   = param[:self._loc.size]
-			param_scale = None
-			param_shape = param[self._loc.size:]
-		elif self._loc.not_fixed():
-			param_loc   = param
-			param_scale = None
-			param_shape = None
-			pass
-		elif self._scale.not_fixed():
-			param_loc   = None
-			param_scale = param
-			param_shape = None
-			pass
-		elif self._shape.not_fixed():
-			param_loc   = None
-			param_scale = None
-			param_shape = param
-		
-		return param_loc,param_scale,param_shape
-	##}}}
-	
-	def _concat_param( self ):##{{{
-		return self._gen_concat_param( [self.loc,self._scale,self._shape] )
-	##}}}
+#	def _split_param( self , param ):##{{{
+#		param_loc   = None
+#		param_scale = None
+#		param_shape = None
+#		
+#		
+#		if self._loc.not_fixed() and self._scale.not_fixed() and self._shape.not_fixed():
+#			param_loc   = param[:self._loc.size]
+#			param_scale = param[self._loc.size:(self._loc.size+self._scale.size)]
+#			param_shape = param[(self._loc.size+self._scale.size):]
+#		elif self._loc.not_fixed() and self._scale.not_fixed():
+#			param_loc   = param[:self._loc.size]
+#			param_scale = param[self._loc.size:]
+#			param_shape = None
+#		elif self._scale.not_fixed() and self._shape.not_fixed():
+#			param_loc   = None
+#			param_scale = param[:self._scale.size]
+#			param_shape = param[self._scale.size:]
+#		elif self._loc.not_fixed() and self._shape.not_fixed():
+#			param_loc   = param[:self._loc.size]
+#			param_scale = None
+#			param_shape = param[self._loc.size:]
+#		elif self._loc.not_fixed():
+#			param_loc   = param
+#			param_scale = None
+#			param_shape = None
+#			pass
+#		elif self._scale.not_fixed():
+#			param_loc   = None
+#			param_scale = param
+#			param_shape = None
+#			pass
+#		elif self._shape.not_fixed():
+#			param_loc   = None
+#			param_scale = None
+#			param_shape = param
+#		
+#		return param_loc,param_scale,param_shape
+#	##}}}
+#	
+#	def _concat_param( self ):##{{{
+#		return self._gen_concat_param( [self.loc,self._scale,self._shape] )
+#	##}}}
 	
 	def _negloglikelihood( self ): ##{{{
 		## Impossible scale

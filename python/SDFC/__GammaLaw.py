@@ -362,24 +362,6 @@ class GammaLaw(AbstractLaw):
 		self._update_param( self.optim_result.x )
 	##}}}
 	
-	def _split_param( self , param ):##{{{
-		param_scale = None
-		param_shape = None
-		
-		if self._scale.not_fixed():
-			param_scale = param[:self._scale.size]
-			if self._shape.not_fixed():
-				param_shape = param[self._scale.size:]
-		elif self._shape.not_fixed():
-			param_shape = param[:self._shape.size]
-		
-		return param_scale,param_shape
-	##}}}
-	
-	def _concat_param( self ):##{{{
-		return self._gen_concat_param( [self._scale,self._shape] )
-	##}}}
-	
 	def _negloglikelihood( self ): ##{{{
 		if not np.all(self.scale > 0) or not np.all(self.shape > 0) or not np.all(self._Y > 0):
 			return np.Inf

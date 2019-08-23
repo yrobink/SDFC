@@ -325,24 +325,6 @@ class NormalLaw(AbstractLaw):
 		
 	##}}}
 	
-	def _split_param( self , param ):##{{{
-		param_loc   = None
-		param_scale = None
-		
-		if self._loc.not_fixed():
-			param_loc   = param[:self._loc.size]
-			if self._scale.not_fixed():
-				param_scale = param[self._loc.size:]
-		elif self._scale.not_fixed():
-			param_scale = param[:self._scale.size]
-		
-		return param_loc,param_scale
-	##}}}
-	
-	def _concat_param( self ):##{{{
-		return self._gen_concat_param( [self._loc,self._scale] )
-	##}}}
-	
 	def _negloglikelihood( self ): ##{{{
 		scale2 = np.power( self.scale , 2 )
 		return np.Inf if not np.all( self.scale > 0 ) else np.sum( np.log( scale2 ) ) / 2. + np.sum( np.power( self._Y - self.loc , 2 ) / scale2 ) / 2.

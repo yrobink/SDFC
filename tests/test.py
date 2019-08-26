@@ -55,7 +55,7 @@ def test_law( sdlaw , gen , size = 2500 , has_loc = True , has_scale = True , ha
 	
 	law = sdlaw( n_bootstrap = 100 )
 	name_law = str(law).split("\n")[0]
-	print("Test of {}".format(name_law) )
+	print("Test of {}".format(str(sdlaw).split(".")[-1][:-2]) )
 	
 	## Generic co-variates
 	t,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
@@ -466,7 +466,7 @@ def run_all_tests( size = 2500 , plot = False ):##{{{
 if __name__ == "__main__":
 	
 	print(sd.__version__)
-	run_all_tests( plot = False )
+#	run_all_tests( plot = False )
 	
 	
 	print("Done")

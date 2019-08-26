@@ -37,7 +37,7 @@ if( length(args) > 0 )
 
 ## Building
 ##=========
-cdsk = ""
+sdfc = ""
 if( build )
 {
 	if( verbose ) cat( "Generation of Rd files with roxygen" )
@@ -47,7 +47,7 @@ if( build )
 	if( verbose ) cat( "Generation of Rd files for cpp with roxygen" )
 	roxygen2::roxygenize("SDFC")
 	if( verbose ) cat( "Final build" )
-	cdsk = devtools::build("SDFC")
+	sdfc = devtools::build("SDFC")
 }
 
 
@@ -66,10 +66,10 @@ if( check )
 if( install )
 {
 	if( verbose ) cat( "Installation" )
-	if( cdsk == "" )
+	if( sdfc == "" )
 	{
 		files = base::list.files()
-		cdsk = ""
+		sdfc = ""
 		
 		for( f in files )
 		{
@@ -79,18 +79,18 @@ if( install )
 				f_split = base::rev(f_split)
 				if( f_split[1] == "gz" && f_split[2] == "tar" )
 				{
-					cdsk = f
+					sdfc = f
 				}
 			}
 		}
 	}
-	if( cdsk == "" )
+	if( sdfc == "" )
 	{
 		cat( "Error, SDFC not build, so can not be install" )
 	}
 	else
 	{
-		install.packages(cdsk)
+		install.packages(sdfc)
 	}
 }
 

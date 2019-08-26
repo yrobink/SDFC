@@ -11,13 +11,82 @@ base::rm( list = base::ls() )
 ## Libraries ##
 ###############
 
-library(roxygen2)
+library(R6)
 library(devtools)
 
+devtools::load_all("../R/SDFC")
 
-roxygenize("../R/SDFC")
-load_all("../R/SDFC")
-#check("SDFC")
+
+###########################
+## Useful plot functions ##
+###########################
+
+PlotTools = R6::R6Class( "PlotTools" , ##{{{
+	
+	
+	public = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	os = NULL,
+	
+	
+	#################
+	## Constructor ##
+	#################
+	
+	initialize = function()
+	{
+		self$os = self$get_os()
+	},
+	
+	
+	#############
+	## Methods ##
+	#############
+	
+	get_os = function()
+	{
+		sysinf = base::Sys.info()
+		if( !is.null(sysinf) )
+		{
+			os = sysinf['sysname']
+			if( os == 'Darwin' ) os = "osx"
+		}
+		else
+		{
+			## mystery machine
+			os = .Platform$OS.type
+			if( base::grepl( "^darwin"   , R.version$os ) ) os = "osx"
+			if( base::grepl( "linux-gnu" , R.version$os ) ) os = "linux"
+		}
+		invisible(tolower(os))
+	},
+	
+	new_screen = function()
+	{
+		if( self$os == "osx" )
+		{
+			grDevices::quartz()
+		}
+		if( self$os == "linux" )
+		{
+			grDevices::X11()
+		}
+	},
+	
+	wait = function()
+	{
+		while( base::names(grDevices::dev.cur()) !='null device' ) base::Sys.sleep(1)
+	}
+	
+	)
+)
+##}}}
+
+plt = PlotTools$new()
 
 
 ###############
@@ -38,6 +107,7 @@ test_normal = function() ##{{{
 	law = SDFC::NormalLaw$new( method = "MLE" ,  n_bootstrap = 10 )
 	law$fit( Y , loc_cov = X0 , scale_cov = X1 )
 	
+	plt$new_screen()
 	graphics::par( mfrow = base::c( 2 , 2 ) )
 	
 	## Subplot 1
@@ -73,6 +143,7 @@ test_gev = function() ##{{{
 	#gev$fit( Y , loc_cov = X0  , fscale    = scale , shape_cov = X2 )
 	#gev$fit( Y , loc_cov = X0  , scale_cov = X0    , fshape    = shape )
 	
+	plt$new_screen()
 	graphics::par( mfrow = base::c( 2 , 2 ) )
 	
 	plot( t , Y , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
@@ -102,6 +173,7 @@ test_gpd = function()##{{{
 	gpd$fit( Y , loc = loc , scale_cov = X0 , shape_cov = X2 )
 	
 	
+	plt$new_screen()
 	graphics::par( mfrow = base::c( 2 , 2 ) )
 	
 	plot( t , Y , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
@@ -133,6 +205,7 @@ test_qr = function() ##{{{
 	
 	
 	## Plot
+	plt$new_screen()
 	graphics::par( mfrow = base::c(1,1) )
 	graphics::plot( t , Y , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
 	for( i in 1:100 )
@@ -142,12 +215,24 @@ test_qr = function() ##{{{
 }
 ##}}}
 
+run_all_tests = function()##{{{
+{
+	test_normal()
+	test_gev()
+	test_gpd()
+	test_qr()
+}
+##}}}
+
+
 ##########
 ## main ##
 ##########
 
-test_normal()
-test_gev()
-test_gpd()
-test_qr()
+run_all_tests()
+
+
+
+plt$wait()
+print("Done")
 

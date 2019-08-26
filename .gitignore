@@ -11,3 +11,4 @@ NAMESPACE
 *.egg-info
 build
 dist
+R/*.tar.gz

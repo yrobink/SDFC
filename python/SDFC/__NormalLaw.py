@@ -243,6 +243,7 @@ class NormalLaw(AbstractLaw):
 		law._loc   = self._loc.copy()
 		law._scale = self._scale.copy()
 		loc,scale = self._split_param( self.coefs_bootstrap[i,:] )
+		law._lparams = [law._loc,law._scale]
 		law._loc.set_coef( loc )
 		law._scale.set_coef( scale )
 		law.coef_ = law._concat_param()

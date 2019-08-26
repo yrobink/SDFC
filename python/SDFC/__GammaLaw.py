@@ -236,6 +236,7 @@ class GammaLaw(AbstractLaw):
 		law = GammaLaw( self.method , alpha = self.alpha )
 		law._scale = self._scale.copy()
 		law._shape = self._shape.copy()
+		law._lparams = [law._scale,law._shape]
 		scale,shape = self._split_param( self.coefs_bootstrap[i,:] )
 		law._scale.set_coef( scale )
 		law._shape.set_coef( shape )

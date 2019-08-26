@@ -270,6 +270,7 @@ class GEVLaw(AbstractLaw):
 		law._loc   = self._loc.copy()
 		law._scale = self._scale.copy()
 		law._shape = self._shape.copy()
+		law._lparams = [law._loc,law._scale,law._shape]
 		loc,scale,shape = self._split_param( self.coefs_bootstrap[i,:] )
 		law._loc.set_coef( loc )
 		law._scale.set_coef( scale )

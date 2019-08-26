@@ -217,6 +217,7 @@ class ExpLaw(AbstractLaw):
 			return None
 		law = ExpLaw( self.method , alpha = self.alpha )
 		law._scale = self._scale.copy()
+		law._lparams = [law._scale]
 		law._scale.set_coef( self._scale.coef_ )
 		law.coef_ = law._concat_param()
 		law._update_param( law.coef_ )

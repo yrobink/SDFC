@@ -87,6 +87,7 @@
 ###############
 
 import numpy as np
+import texttable as tt
 
 
 ###########
@@ -154,6 +155,31 @@ class AbstractLaw:
 	
 	def __repr__(self):##{{{
 		return self.__str__()
+	##}}}
+	
+	def _to_str( self ):##{{{
+		tab = tt.Texttable( max_width = 0 )
+		
+		## Header
+		header = [ str(type(self)).split(".")[-1][:-2] + " ({})".format(self.method) , "Link function" , "Is fix" , "coef" ]
+		if self.confidence_interval is not None:
+			header += [ "Quantile {}".format(self.alpha/2) , "Quantile {}".format( 1 - self.alpha / 2 ) ]
+		tab.header( header )
+		
+		## Loop on params
+		a = 0
+		for p in self._lparams:
+			coef = None if p.coef_ is None else str(p.coef_.squeeze().round(3).tolist())
+			row = [ p.kind , str(p.linkFct).split(".")[-1] , str(not p._not_fixed) , coef ]
+			if self.confidence_interval is not None:
+				if p._not_fixed:
+					b = a + p.size
+					row += [ self.confidence_interval[i,a:b].squeeze().round(3).tolist() for i in range(2) ]
+					a = b
+				else:
+					row += [ str(None) , str(None) ]
+			tab.add_row( row )
+		return tab.draw() + "\n"
 	##}}}
 	
 	def _predict_param( self , param , cov = None ): ##{{{

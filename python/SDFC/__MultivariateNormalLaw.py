@@ -164,7 +164,7 @@ class MultivariateNormalLaw(AbstractLaw):
 	
 	def __str__(self):##{{{
 		val  = "SDFC.MultivariateNormalLaw\n"
-		val += "--------------\n"
+		val += "--------------------------\n"
 		val += "* fit_method : {}\n".format(self.method)
 		val += "* link_mean  : {}\n".format(str(self._mean.linkFct))
 		val += "* link_cov   : {}\n".format(str(self._cov.linkFct))
@@ -204,16 +204,16 @@ class MultivariateNormalLaw(AbstractLaw):
 			if mean_cov is not None and mean_cov.ndim == 1: mean_cov = mean_cov.reshape( (mean_cov.size,1) )
 			if cov_cov  is not None and cov_cov.ndim == 1:  cov_cov  = cov_cov.reshape(  (cov_cov.size,1) )
 			
-			if fmean is not None and fmean.ndim == 1: fmean = fmean.reshape( (fmean.size,1) )
-			if fcov  is not None and fcov.ndim == 1:  fcov  = fcov.reshape(  (fcov.size,1) )
+			if fmean is not None and fmean.ndim == 1: fmean = fmean.reshape( (1,fmean.size) )
+			if fcov  is not None and fcov.ndim == 1:  fcov  = fcov.reshape(  (1,fcov.shape[0],fcov.shape[1]) )
 			
 			for i in range(self.n_bootstrap):
 				idx = np.random.choice( self._size , self._size )
 				Y_bs         = Y[idx,:]
 				mean_cov_bs  = None  if mean_cov is None else mean_cov[idx,:]
 				cov_cov_bs   = None  if cov_cov  is None else cov_cov[idx,:]
-				fmean_bs     = fmean if fmean    is None or fmean.size == self.d else fmean[idx,:]
-				fcov_bs      = fcov  if fcov     is None or fcov.size  == self.d else fcov[idx,:]
+				fmean_bs     = fmean if fmean    is None or fmean.size == self.d    else fmean[idx,:]
+				fcov_bs      = fcov  if fcov     is None or fcov.size  == self.d**2 else fcov[idx,:,:]
 				
 				self._fit( Y_bs , mean_cov_bs , cov_cov_bs , fmean_bs , fcov_bs )
 				self.coefs_bootstrap.append( self.coef_ )
@@ -325,8 +325,8 @@ class MultivariateNormalLaw(AbstractLaw):
 			for i in range(self.d):
 				coef_mean[:,i] = mean( self._Y[:,i] , lX , linkFct = self._mean.linkFct , return_coef = True )
 			self._mean.set_coef( coef_mean )
-			self._mean.update()
-			self.mean = self._mean.valueLf()
+		self._mean.update()
+		self.mean = self._mean.valueLf()
 		
 		if self._cov.not_fixed():
 			lX = self._cov.design_wo1()

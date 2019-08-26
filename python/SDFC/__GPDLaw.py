@@ -156,14 +156,7 @@ class GPDLaw(AbstractLaw):
 	##}}}
 	
 	def __str__(self):##{{{
-		val  = "SDFC.GPDLaw\n"
-		val += "-----------\n"
-		val += "* fit_method : {}\n".format(self.method)
-		val += "* link_scale : {}\n".format(str(self._scale.linkFct))
-		val += "* link_shape : {}\n".format(str(self._shape.linkFct))
-		val += "* coef_      : {}\n".format(self.coef_)
-		
-		return val
+		return self._to_str()
 	##}}}
 	
 	def __repr__(self):##{{{

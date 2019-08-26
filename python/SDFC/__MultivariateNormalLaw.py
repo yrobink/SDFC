@@ -163,14 +163,7 @@ class MultivariateNormalLaw(AbstractLaw):
 	##}}}
 	
 	def __str__(self):##{{{
-		val  = "SDFC.MultivariateNormalLaw\n"
-		val += "--------------------------\n"
-		val += "* fit_method : {}\n".format(self.method)
-		val += "* link_mean  : {}\n".format(str(self._mean.linkFct))
-		val += "* link_cov   : {}\n".format(str(self._cov.linkFct))
-		val += "* coef_      : {}\n".format(self.coef_)
-		
-		return val
+		return self._to_str()
 	##}}}
 	
 	def __repr__(self):##{{{

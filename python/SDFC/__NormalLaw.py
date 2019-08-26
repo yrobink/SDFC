@@ -158,14 +158,7 @@ class NormalLaw(AbstractLaw):
 	##}}}
 	
 	def __str__(self):##{{{
-		val  = "SDFC.NormalLaw\n"
-		val += "--------------\n"
-		val += "* fit_method : {}\n".format(self.method)
-		val += "* link_loc   : {}\n".format(str(self._loc.linkFct))
-		val += "* link_scale : {}\n".format(str(self._scale.linkFct))
-		val += "* coef_      : {}\n".format(self.coef_)
-		
-		return val
+		return self._to_str()
 	##}}}
 	
 	def __repr__(self):##{{{

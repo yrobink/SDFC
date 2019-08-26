@@ -101,7 +101,7 @@
 #include "FrishNewton.hpp"
 
 
-RCPP_MODULE(yada){
+RCPP_MODULE(SDFC_cpp){
 	// Classes
 	
 	Rcpp::class_<QuantileRegression::FrishNewton>("FrishNewton")

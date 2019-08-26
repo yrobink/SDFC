@@ -120,6 +120,7 @@ namespace QuantileRegression
 // Class(es) //
 //===========//
 
+//' @export
 class FrishNewton //{{{
 {
 	public:

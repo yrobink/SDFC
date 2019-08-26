@@ -96,3 +96,8 @@
 #'
 #' @export
 NULL
+
+
+loadModule("SDFC_cpp", TRUE)
+
+

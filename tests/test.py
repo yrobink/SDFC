@@ -220,54 +220,6 @@ def test_quantile_regression( size = 2500 , plot = True ):##{{{
 		plt.show()
 ##}}}
 
-def test_np( plot = True ):##{{{
-	print( "Test non-parametric..." , end = "\r" )
-	try:
-		## Data
-		size = 2000
-		t,X = generic_data(size)
-		
-		loc   = X
-		scale = 0.1 * X + 0.1
-		Y = np.random.normal( loc = X , scale = scale )
-		
-		## Stats
-		m   = sdnp.mean( Y , X )
-		s   = sdnp.std( Y , X , m = m , linkFct = sdt.ExpLinkFct() )
-		med = sdnp.median( Y , X )
-		
-		if plot:
-			## Plot
-			nrow,ncol = 2,2
-			fig = plt.figure()
-			fig.suptitle( "Non parametric" )
-			
-			ax = fig.add_subplot( nrow , ncol , 1 )
-			ax.plot( t , X , color = "red"  , linestyle = "-" , marker = ""  )
-			ax.plot( t , Y , color = "blue" , linestyle = ""  , marker = "." )
-			ylim = ax.get_ylim()
-			
-			ax = fig.add_subplot( nrow , ncol , 2 )
-			ax.plot( t , m     , color = "red"    , linestyle = "-"  , marker = "" , label = "mean" )
-			ax.plot( t , m - s , color = "red"    , linestyle = "--" , marker = "" , label = "std" )
-			ax.plot( t , m + s , color = "red"    , linestyle = "--" , marker = "" , label = "std" )
-			ax.plot( t , med   , color = "green"  , linestyle = "-"  , marker = "" , label = "median" )
-			ax.set_ylim(ylim)
-			ax.legend( loc = "upper left" )
-			
-			ax = fig.add_subplot( nrow , ncol , 3 )
-			ax.plot( loc , m , color = "blue" , linestyle = "" , marker = "." )
-			
-			ax = fig.add_subplot( nrow , ncol , 4 )
-			ax.plot( scale , s , color = "blue" , linestyle = "" , marker = "." )
-			
-			plt.tight_layout()
-			plt.show()
-		print( "Test non-parametric (Done)" )
-	except:
-		print( "Test non-parametric (Fail)" )
-##}}}
-
 
 ## Multivariate tests
 ##===================
@@ -445,7 +397,6 @@ def run_all_tests( size = 2500 , plot = False ):##{{{
 	
 	## Test non parametric
 	test_quantile_regression( size = size , plot = plot )
-#	test_np(plot)
 	
 	## Test multivariate
 	test_MultivariateNormalLaw( size = size , plot = plot )
@@ -466,8 +417,7 @@ def run_all_tests( size = 2500 , plot = False ):##{{{
 if __name__ == "__main__":
 	
 	print(sd.__version__)
-#	run_all_tests( plot = False )
-	
+	run_all_tests( plot = False )
 	
 	print("Done")
 

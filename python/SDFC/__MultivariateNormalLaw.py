@@ -214,7 +214,6 @@ class MultivariateNormalLaw(AbstractLaw):
 			self.coefs_bootstrap = np.array( self.coefs_bootstrap )
 			self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
 		
-		
 		self._fit( Y , mean_cov , cov_cov , fmean , fcov )
 	##}}}
 	
@@ -345,7 +344,6 @@ class MultivariateNormalLaw(AbstractLaw):
 		self._Y   = Y
 		self._mean.init( X = mean_cov , fix_values = fmean , dim = self.d                         , size = self._Y.shape[0] )
 		self._cov.init(  X = cov_cov  , fix_values = fcov  , dim = int(self.d * (self.d + 1) / 2) , size = self._Y.shape[0] , transform = self._cov_transform )
-		
 		if self.method == "moments":
 			self._fit_moments()
 		else:

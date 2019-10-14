@@ -193,9 +193,6 @@ class LawParam:##{{{
 	
 	def update(self):##{{{
 		if self._not_fixed:
-#			print("LawParam.design.shape={}".format(self.design_.shape))
-#			print("LawParam.coef.shape={}".format(self.coef_.shape))
-#			print("LawParam.coef={}".format(self.coef_))
 			self._value = self._transform( self.design_ @ self.coef_ )
 	##}}}
 	

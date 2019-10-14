@@ -131,8 +131,8 @@ class LawParam:##{{{
 		if fix_values is not None:
 			if dim == 1:
 				fix_values = np.array( [fix_values] ).reshape(-1,dim)
-			print(fix_values.shape)
-			print(size)
+				if fix_values.size == 1:
+					fix_values = np.repeat( fix_values[0,0] , X.size ).reshape(-1,dim)
 			self._value = self.linkFct.inverse(fix_values)
 		else:
 			if X is None and size is not None:

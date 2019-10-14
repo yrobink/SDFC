@@ -187,34 +187,32 @@ class GPDLaw(AbstractLaw):
 		self._size = Y.size
 		
 		if self.n_bootstrap > 0:
+			Y = Y.reshape(-1,1)
 			self.coefs_bootstrap = []
 			if scale_cov is not None and scale_cov.ndim == 1:
 				scale_cov = scale_cov.reshape( (scale_cov.size,1) )
 			if shape_cov is not None and shape_cov.ndim == 1:
 				shape_cov = shape_cov.reshape( (shape_cov.size,1) )
 			if np.isscalar(fscale):
-				fscale = np.array([fscale]).ravel()
+				fscale = np.array([fscale]).reshape(-1,1)
 			if np.isscalar(fshape):
-				fshape = np.array([fshape]).ravel()
+				fshape = np.array([fshape]).reshape(-1,1)
 			
-			loc    = np.array( [loc] ).ravel()
-			if loc.size == 1: loc = np.repeat( loc , self._size )
-			
+			loc    = np.array( [loc] ).reshape(-1,1)
+			if loc.size == 1: loc = np.repeat( loc[0,0] , self._size ).reshape(-1,1)
 			for i in range(self.n_bootstrap):
 				idx = np.random.choice( self._size , self._size )
-				Y_bs         = Y[idx]
-				loc_bs       = loc[idx] 
+				Y_bs         = Y[idx,:]
+				loc_bs       = loc[idx,:] 
 				scale_cov_bs = None   if scale_cov is None else scale_cov[idx,:]
 				shape_cov_bs = None   if shape_cov is None else shape_cov[idx,:]
-				fscale_bs    = fscale if fscale    is None or fscale.size == 1 else fscale[idx]
-				fshape_bs    = fshape if fshape    is None or fshape.size == 1 else fshape[idx]
-				
+				fscale_bs    = fscale if fscale    is None or fscale.size == 1 else fscale[idx,:]
+				fshape_bs    = fshape if fshape    is None or fshape.size == 1 else fshape[idx,:]
 				self._fit( Y_bs , loc_bs , scale_cov_bs , shape_cov_bs , fscale_bs , fshape_bs )
 				self.coefs_bootstrap.append( self.coef_ )
 			
 			self.coefs_bootstrap = np.array( self.coefs_bootstrap )
 			self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
-		
 		self._fit( Y , loc , scale_cov , shape_cov , fscale , fshape )
 		
 	##}}}
@@ -283,15 +281,14 @@ class GPDLaw(AbstractLaw):
 	
 	def _fit( self , Y , loc , scale_cov , shape_cov , fscale , fshape ):##{{{
 		
-		self._Y    = np.ravel(Y)
+		self._Y    = Y.reshape(-1,1)
 		self._size = Y.size
 		
-		self.loc    = np.array( [loc] ).ravel()
-		if self.loc.size == 1: self.loc = np.repeat( loc , self._size )
+		self.loc    = np.array( [loc] ).reshape(-1,1)
+		if self.loc.size == 1: self.loc = np.repeat( loc[0,0] , self._size ).reshape(-1,1)
 		self._scale.init( X = scale_cov , fix_values = fscale , size = self._size )
 		self._shape.init( X = shape_cov , fix_values = fshape , size = self._size )
 		self._lparams = [self._scale,self._shape]
-		
 		if self.method == "moments":
 			self._fit_moments()
 		elif self.method == "lmoments":
@@ -306,8 +303,7 @@ class GPDLaw(AbstractLaw):
 		
 		## Center data
 		idx_excess = (self._Y > self.loc)
-		excess = self._Y[idx_excess] - self.loc[idx_excess]
-		
+		excess = (self._Y[idx_excess] - self.loc[idx_excess]).reshape(-1,1)
 		if self._scale.not_fixed():
 			sX = self._scale.design_wo1()
 			self._scale.set_coef( std( excess , sX , m = 0 , return_coef = True , linkFct = self._scale.linkFct ) )
@@ -388,15 +384,14 @@ class GPDLaw(AbstractLaw):
 		
 		
 		##
-		idx_excess = (self._Y > self.loc)
-		loc   = self.loc[idx_excess]
-		scale = self.scale[idx_excess]
-		shape = self.shape[idx_excess]
+		idx_excess = (self._Y > self.loc).squeeze()
+		loc   = self.loc[idx_excess,:]
+		scale = self.scale[idx_excess,:]
+		shape = self.shape[idx_excess,:]
 		Z = 1. + shape * ( self._Y[idx_excess] - loc ) / scale
 		
 		if not np.all(Z > 0):
 			return np.inf
-		
 		res = np.sum( np.log( scale ) + np.log(Z) * ( 1 + 1. / shape ) )
 		
 		return res if np.isfinite(res) else np.inf
@@ -414,8 +409,8 @@ class GPDLaw(AbstractLaw):
 		self._shape.update()
 		
 		## Set scale and shape
-		self.scale = np.ravel( self._scale.valueLf() )
-		self.shape = np.ravel( self._shape.valueLf() )
+		self.scale = self._scale.valueLf()
+		self.shape = self._shape.valueLf()
 	##}}}
 	
 	def _optim_function( self , param ):##{{{
@@ -427,28 +422,28 @@ class GPDLaw(AbstractLaw):
 		
 		self._update_param(param)
 		
-		idx_excess = ( self._Y > self.loc )
-		Y      = self._Y[idx_excess]
-		loc    = self.loc[idx_excess]
-		scale  = self.scale[idx_excess]
-		shape  = self.shape[idx_excess]
+		idx_excess = ( self._Y > self.loc ).squeeze()
+		Y      = self._Y[idx_excess,:]
+		loc    = self.loc[idx_excess,:]
+		scale  = self.scale[idx_excess,:]
+		shape  = self.shape[idx_excess,:]
 		Z        = ( Y - loc ) / scale
 		ZZ       = 1. + shape * Z
 		exponent = 1. + 1. / shape
 		
+		
 		grad = np.array([])
 		
 		if self._scale.not_fixed():
-			gr_scale   = self._scale.valueGrLf()[idx_excess]
-			A = ( - exponent * shape * Z / ZZ / scale + 1. / scale )
-			grad_scale = self._scale.design_[idx_excess,:].T @ ( gr_scale * ( - exponent * shape * Z / ZZ / scale + 1. / scale ) )
-			grad       = np.hstack( (grad,grad_scale) )
-		
+			gr_scale   = self._scale.valueGrLf()[idx_excess,:]
+			A = gr_scale * ( - exponent * shape * Z / ZZ / scale + 1. / scale )
+			B = self._scale.design_[idx_excess,:].T
+			grad_scale =  B @ A
+			grad       = np.hstack( (grad,grad_scale.squeeze()) )
 		if self._shape.not_fixed():
-			gr_shape   = self._shape.valueGrLf()[idx_excess]
+			gr_shape   = self._shape.valueGrLf()[idx_excess,:].reshape(-1,1)
 			grad_shape = self._shape.design_[idx_excess,:].T @ ( gr_shape * ( - np.log(ZZ) / shape**2 + exponent * Z / ZZ ) ) if np.all( ZZ > 0 ) else np.repeat(np.nan,self._shape.size)
-			grad       = np.hstack( (grad,grad_shape) )
-		
+			grad       = np.hstack( (grad,grad_shape.squeeze()) )
 		return grad
 	##}}}
 

@@ -231,7 +231,6 @@ class GEVLaw(AbstractLaw):
 				floc_bs      = floc   if floc      is None or floc.size == 1   else floc[idx]
 				fscale_bs    = fscale if fscale    is None or fscale.size == 1 else fscale[idx]
 				fshape_bs    = fshape if fshape    is None or fshape.size == 1 else fshape[idx]
-				
 				self._fit( Y_bs , loc_cov_bs , scale_cov_bs , shape_cov_bs , floc_bs , fscale_bs , fshape_bs )
 				self.coefs_bootstrap.append( self.coef_ )
 			
@@ -342,13 +341,12 @@ class GEVLaw(AbstractLaw):
 	##}}}
 	
 	def _fit( self , Y , loc_cov = None , scale_cov = None , shape_cov = None , floc = None , fscale = None , fshape = None ):##{{{
-		self._Y    = np.ravel(Y)
+		self._Y    = Y.reshape(-1,1)
 		self._size = Y.size
 		
 		self._loc.init(   X = loc_cov   , fix_values = floc   , size = self._size )
 		self._scale.init( X = scale_cov , fix_values = fscale , size = self._size )
 		self._shape.init( X = shape_cov , fix_values = fshape , size = self._size )
-		
 		
 		if self.method == "moments":
 			self._fit_moments()
@@ -407,24 +405,23 @@ class GEVLaw(AbstractLaw):
 				self._loc.coef_[0] = self._loc.linkFct.inverse( quantile( self._Y , [np.exp(-1)] , return_coef = True ) )
 			else:
 				loc = quantile( self._Y , [np.exp(-1)] , self._loc.design_wo1() )
-				self._loc.coef_ = mean( loc , self._loc.design_wo1() , linkFct = self._loc.linkFct , return_coef = True ).ravel()
+				self._loc.set_coef( mean( loc , self._loc.design_wo1() , linkFct = self._loc.linkFct , return_coef = True ) )
 		self._loc.update()
-		self.loc = np.ravel( self._loc.valueLf() )
-		
+		self.loc = self._loc.valueLf()
 		
 		## Fit scale
 		if self._scale.not_fixed():
 			qscale = np.array([0.25,0.5,0.75])
 			coef   = -1. / np.log( - np.log(qscale) )
 			if self._scale.size == 1:
-				self._scale.coef_[0] = self._scale.linkFct.inverse( np.mean( np.percentile( self._Y - self.loc , 100 * qscale ) * coef ) )
+				self._scale.set_intercept( self._scale.linkFct.inverse( np.mean( np.percentile( self._Y - self.loc , 100 * qscale ) * coef ) ) )
 			else:
 				qreg = quantile( self._Y - self.loc , qscale , self._scale.design_wo1() )
-				fscale = np.mean( qreg * coef , axis = 1 )
+				fscale = np.mean( qreg * coef , axis = 1 ).reshape(-1,1)
 				fscale[np.logical_not(fscale > 0)] = 0.1
 				self._scale.set_coef( mean( fscale , self._scale.design_wo1() , linkFct = self._scale.linkFct , return_coef = True ) )
 		self._scale.update()
-		self.scale = np.ravel( self._scale.valueLf() )
+		self.scale = self._scale.valueLf()
 		
 		## Fit shape
 		if self._shape.not_fixed():
@@ -438,11 +435,10 @@ class GEVLaw(AbstractLaw):
 				qval = quantile( (self._Y - self.loc) / self.scale , [p0,p1] , self._shape.design_wo1() )
 				kappa = qval[:,0] / qval[:,1]
 				llp0,llp1 = np.log( - np.log( p0 ) ) , np.log( - np.log( p1 ) )
-				shape = 2 * (llp0 - kappa * llp1 ) / ( llp0**2 - kappa * llp1**2 )
-				
+				shape = ( 2 * (llp0 - kappa * llp1 ) / ( llp0**2 - kappa * llp1**2 ) ).reshape(-1,1)
 				self._shape.set_coef( mean( shape , self._shape.design_wo1() , linkFct = self._shape.linkFct , return_coef = True ) )
 		self._shape.update()
-		self.shape = np.ravel( self._shape.valueLf() )
+		self.shape = self._shape.valueLf()
 		
 	##}}}
 	
@@ -490,50 +486,6 @@ class GEVLaw(AbstractLaw):
 		pass
 	##}}}
 	
-#	def _split_param( self , param ):##{{{
-#		param_loc   = None
-#		param_scale = None
-#		param_shape = None
-#		
-#		
-#		if self._loc.not_fixed() and self._scale.not_fixed() and self._shape.not_fixed():
-#			param_loc   = param[:self._loc.size]
-#			param_scale = param[self._loc.size:(self._loc.size+self._scale.size)]
-#			param_shape = param[(self._loc.size+self._scale.size):]
-#		elif self._loc.not_fixed() and self._scale.not_fixed():
-#			param_loc   = param[:self._loc.size]
-#			param_scale = param[self._loc.size:]
-#			param_shape = None
-#		elif self._scale.not_fixed() and self._shape.not_fixed():
-#			param_loc   = None
-#			param_scale = param[:self._scale.size]
-#			param_shape = param[self._scale.size:]
-#		elif self._loc.not_fixed() and self._shape.not_fixed():
-#			param_loc   = param[:self._loc.size]
-#			param_scale = None
-#			param_shape = param[self._loc.size:]
-#		elif self._loc.not_fixed():
-#			param_loc   = param
-#			param_scale = None
-#			param_shape = None
-#			pass
-#		elif self._scale.not_fixed():
-#			param_loc   = None
-#			param_scale = param
-#			param_shape = None
-#			pass
-#		elif self._shape.not_fixed():
-#			param_loc   = None
-#			param_scale = None
-#			param_shape = param
-#		
-#		return param_loc,param_scale,param_shape
-#	##}}}
-#	
-#	def _concat_param( self ):##{{{
-#		return self._gen_concat_param( [self.loc,self._scale,self._shape] )
-#	##}}}
-	
 	def _negloglikelihood( self ): ##{{{
 		## Impossible scale
 		if not np.all( self.scale > 0 ):
@@ -569,9 +521,9 @@ class GEVLaw(AbstractLaw):
 		self._shape.update()
 		
 		## Set scale and shape
-		self.loc   = np.ravel( self._loc.valueLf()   ) 
-		self.scale = np.ravel( self._scale.valueLf() ) 
-		self.shape = np.ravel( self._shape.valueLf() ) 
+		self.loc   = self._loc.valueLf()   
+		self.scale = self._scale.valueLf() 
+		self.shape = self._shape.valueLf() 
 	##}}}
 	
 	def _optim_function( self , param ):##{{{
@@ -610,15 +562,15 @@ class GEVLaw(AbstractLaw):
 		if self._loc.not_fixed():
 			loc_vect   = self._loc.valueGrLf()   * ( Zamsi - 1 - self.shape ) / ( self.scale * Za1 )
 			grad_loc   = np.dot( self._loc.design_.T   , loc_vect   )
-			grad = np.hstack( (grad,grad_loc) )
+			grad = np.hstack( (grad,grad_loc.squeeze()) )
 		if self._scale.not_fixed():
 			scale_vect = self._scale.valueGrLf() * ( 1. + Z * ( Zamsi - 1 - self.shape ) / Za1 ) / self.scale
 			grad_scale = np.dot( self._scale.design_.T , scale_vect )
-			grad = np.hstack( (grad,grad_scale) )
+			grad = np.hstack( (grad,grad_scale.squeeze()) )
 		if self._shape.not_fixed():
 			shape_vect = self._shape.valueGrLf() * ( ( Zamsi - 1. ) * np.log(Za1) * ishape**2 + ( 1. + ishape - ishape * Zamsi ) * Z / Za1 )
 			grad_shape = np.dot( self._shape.design_.T , shape_vect )
-			grad = np.hstack( (grad,grad_shape) )
+			grad = np.hstack( (grad,grad_shape.squeeze()) )
 		
 		return grad
 		

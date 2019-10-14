@@ -129,17 +129,11 @@ class LawParam:##{{{
 		self.dim        = dim
 		self._transform = transform
 		if fix_values is not None:
-			fix_values = np.array( [fix_values] ).squeeze()
-			if fix_values.ndim == 1 and dim > 1:
-				fix_values = fix_values.reshape( (int(fix_values.size / dim),dim) )
-			if fix_values.size == dim and size is not None:
-				self._value = self.linkFct.inverse( np.zeros( (size,dim) ) + fix_values )
-				if dim == 1:
-					self._value = self._value.ravel()
-			elif fix_values.size > dim:
-				self._value = self.linkFct.inverse( fix_values )
-			else:
-				print( "Error" )
+			if dim == 1:
+				fix_values = np.array( [fix_values] ).reshape(-1,dim)
+			print(fix_values.shape)
+			print(size)
+			self._value = self.linkFct.inverse(fix_values)
 		else:
 			if X is None and size is not None:
 				self.coef_   = np.zeros( (1,dim) )
@@ -210,7 +204,8 @@ class LawParam:##{{{
 	##}}}
 	
 	def valueLf( self ):##{{{
-		return self.linkFct( self._value )
+		out = self.linkFct( self._value )
+		return out
 	##}}}
 	
 	def valueGrLf( self ):##{{{

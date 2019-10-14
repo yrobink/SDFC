@@ -236,7 +236,7 @@ class ExpLaw(AbstractLaw):
 	##}}}
 	
 	def _fit( self , Y , scale_cov = None ):##{{{
-		self._Y    = np.ravel(Y)
+		self._Y    = Y.reshape(-1,1)
 		self._scale.init( X = scale_cov , fix_values = None , size = self._size )
 		
 		if self.method == "moments":
@@ -276,7 +276,7 @@ class ExpLaw(AbstractLaw):
 		self._scale.set_coef( param )
 		self._scale.update()
 		
-		self.scale = np.ravel( self._scale.valueLf() )
+		self.scale = self._scale.valueLf()
 	##}}}
 	
 	def _optim_function( self , param ):##{{{
@@ -291,6 +291,6 @@ class ExpLaw(AbstractLaw):
 		if np.all(self.scale > 0):
 			grad_scale = self._scale.design_.T @ ( ( 1. / self.scale - self._Y / self.scale**2 ) * self._scale.valueGrLf() )
 		
-		return grad_scale
+		return grad_scale.squeeze()
 	##}}}
 

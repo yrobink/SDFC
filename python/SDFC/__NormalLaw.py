@@ -279,9 +279,8 @@ class NormalLaw(AbstractLaw):
 	##}}}
 	
 	def _fit( self , Y , loc_cov = None , scale_cov = None , floc = None , fscale = None ): ##{{{
-		self._Y    = np.ravel(Y)
+		self._Y    = Y.reshape(-1,1)
 		self._size = Y.size
-		
 		self._loc.init(   X = loc_cov   , fix_values = floc   , size = self._size )
 		self._scale.init( X = scale_cov , fix_values = fscale , size = self._size )
 		
@@ -305,7 +304,6 @@ class NormalLaw(AbstractLaw):
 			sX = self._scale.design_wo1()
 			self._scale.set_coef( std(  self._Y , sX , m = self._loc.valueLf() , return_coef = True , linkFct = self._scale.linkFct ) )
 			self._scale.update()
-		
 		self.loc   = self._loc.valueLf()
 		self.scale = self._scale.valueLf()
 	##}}}
@@ -331,8 +329,8 @@ class NormalLaw(AbstractLaw):
 		self._loc.update()
 		self._scale.update()
 		
-		self.loc   = np.ravel( self._loc.valueLf()   )
-		self.scale = np.ravel( self._scale.valueLf() )
+		self.loc   = self._loc.valueLf()
+		self.scale = self._scale.valueLf()
 	##}}}
 	
 	def _optim_function( self , param ):##{{{
@@ -342,16 +340,14 @@ class NormalLaw(AbstractLaw):
 	
 	def _gradient_optim_function( self , param ): ##{{{
 		self._update_param(param)
-		
 		grad = np.array( [] )
 		Yc = self._Y - self.loc
 		if self._loc.not_fixed():
 			grad_loc   = - self._loc.design_.T @ (Yc / self.scale**2 * self._loc.valueGrLf() )
-			grad = np.hstack( (grad,grad_loc) )
+			grad = np.hstack( (grad,grad_loc.squeeze()) )
 		if self._scale.not_fixed():
 			grad_scale = self._scale.design_.T @ ( ( 1. / self.scale - Yc**2 / self.scale**3 ) * self._scale.valueGrLf() )
-			grad = np.hstack( (grad,grad_scale) )
-		
+			grad = np.hstack( (grad,grad_scale.squeeze()) )
 		return grad
 	##}}}
 

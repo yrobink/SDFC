@@ -179,7 +179,7 @@ class IdLinkFct(LinkFct): ##{{{
 		return x
 	
 	def gradient( self , x ):
-		return np.ones( x.size )
+		return np.ones( x.shape )
 	
 	def inverse( self , x ):
 		return x

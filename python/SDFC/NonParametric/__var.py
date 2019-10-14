@@ -125,12 +125,11 @@ def var( Y , X = None , m = None , linkFct = IdLinkFct() , return_coef = False )
 		out  = np.var(Y)
 		coef = linkFct.inverse(out)
 	else:
-		m = np.mean(Y) if m is None else np.array( [m] ).ravel()
-		
-		Yres = ( Y.ravel() - m )**2
+		m = np.mean( Y , axis = 0 ) if m is None else np.array( [m] ).reshape(-1,1)
+		Yres = ( Y - m )**2
 		size = X.shape[0]
 		if X.ndim == 1:
-			X = X.reshape( (size,1) )
+			X = X.reshape(-1,1)
 		design = np.hstack( ( np.ones( (size,1) ) , X ) )
 		coef,_,_,_ = scl.lstsq( design , linkFct.inverse( Yres ) )
 		out = np.abs( linkFct( design @ coef ) )

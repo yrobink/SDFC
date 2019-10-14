@@ -200,7 +200,6 @@ class GammaLaw(AbstractLaw):
 				shape_cov_bs = None   if shape_cov is None else shape_cov[idx,:]
 				fscale_bs    = fscale if fscale    is None or fscale.size == 1 else fscale[idx]
 				fshape_bs    = fshape if fshape    is None or fshape.size == 1 else fshape[idx]
-				
 				self._fit( Y_bs , scale_cov_bs , shape_cov_bs , fscale_bs , fshape_bs )
 				self.coefs_bootstrap.append( self.coef_ )
 			
@@ -273,7 +272,7 @@ class GammaLaw(AbstractLaw):
 	##}}}
 	
 	def _fit( self , Y , scale_cov = None , shape_cov = None , fscale = None , fshape = None ): ##{{{
-		self._Y    = np.ravel(Y)
+		self._Y    = Y.reshape(-1,1)
 		self._size = Y.size
 		
 		self._scale.init( X = scale_cov , fix_values = fscale , size = self._size )
@@ -298,7 +297,6 @@ class GammaLaw(AbstractLaw):
 					vX = np.hstack( (vX,np.reshape( self._scale.design_[:,i]**2 * self._shape.design_[:,j] , (self._size,1) ) ) )
 			m = mean( self._Y , mX )
 			v = var(  self._Y , vX )
-			
 			
 			idx  = np.logical_or( np.abs(m) < 1e-8 , v < 1e-8 )
 			cidx = np.logical_not(idx)
@@ -348,7 +346,6 @@ class GammaLaw(AbstractLaw):
 	##}}}
 	
 	def _fit_mle(self):##{{{
-		
 		self._fit_moments()
 		
 		param_init = self._concat_param()
@@ -369,11 +366,11 @@ class GammaLaw(AbstractLaw):
 		
 		self._scale.set_coef( param_scale )
 		self._scale.update()
-		self.scale = np.ravel( self._scale.valueLf() )
+		self.scale = self._scale.valueLf()
 		
 		self._shape.set_coef( param_shape )
 		self._shape.update()
-		self.shape = np.ravel( self._shape.valueLf() )
+		self.shape = self._shape.valueLf()
 	##}}}
 	
 	def _optim_function( self , param ):##{{{
@@ -388,10 +385,10 @@ class GammaLaw(AbstractLaw):
 		if np.all(self.scale > 0) and np.all(self.shape > 0) and np.all(self._Y > 0):
 			if self._scale.not_fixed():
 				grad_scale = self._scale.design_.T @ ( ( self.shape / self.scale - self._Y / self.scale**2 ) * self._scale.valueGrLf() )
-				grad = np.hstack( (grad,grad_scale) )
+				grad = np.hstack( (grad,grad_scale.squeeze()) )
 			if self._shape.not_fixed():
 				grad_shape = self._shape.design_.T @ ( ( scp.digamma(self.shape) + np.log(self.scale) - np.log(self._Y) ) * self._shape.valueGrLf() )
-				grad = np.hstack( (grad,grad_shape) )
+				grad = np.hstack( (grad,grad_shape.squeeze()) )
 		else:
 			grad = np.zeros( param.size ) + np.nan
 		return grad

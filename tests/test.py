@@ -236,6 +236,7 @@ def test_MultivariateNormalLaw( size = 2500 , plot = False ):##{{{
 	
 	print( "Test of MultivariateNormalLaw" )
 	
+	method = "moments"
 	## Stationary data
 	mean_s = np.array( [5,5] )
 	cov_s  = skd.make_spd_matrix(2)
@@ -244,7 +245,6 @@ def test_MultivariateNormalLaw( size = 2500 , plot = False ):##{{{
 	
 	## Fit stationary
 	try:
-		method = "moments"
 		mnorm_s = sd.MultivariateNormalLaw( method = method , n_bootstrap = 10 )
 		mnorm_s.fit(Y_s)
 		print( "......OK   (Stationary fit)" )
@@ -288,7 +288,6 @@ def test_MultivariateNormalLaw( size = 2500 , plot = False ):##{{{
 	
 	## Fit non-stationary
 	try:
-		method = "moments"
 		mnorm_ns = sd.MultivariateNormalLaw( method = method , n_bootstrap = 10 )
 		mnorm_ns.fit( Y_ns , mean_cov = X , cov_cov = X )
 		print( "......OK   (Non-stationary fit)" )
@@ -418,7 +417,6 @@ if __name__ == "__main__":
 	
 	print(sd.__version__)
 	run_all_tests( plot = False )
-	
 	print("Done")
 
 

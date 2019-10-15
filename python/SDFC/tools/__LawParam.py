@@ -94,6 +94,7 @@ from SDFC.tools.__LinkFct import IdLinkFct
 ## Class ##
 ###########
 
+
 class LawParam:##{{{
 	"""
 	Internal class, do not use
@@ -102,10 +103,12 @@ class LawParam:##{{{
 		self.linkFct    = linkFct
 		self.coef_      = None
 		self.design_    = None
+		self.n_samples  = 0
+		self.n_features = 0
+		
 		self.size       = 0
 		self.dim        = 0
 		self.shape      = None
-		self._transform = None
 		self._value     = None
 		self._not_fixed = None
 		self.kind       = kind
@@ -118,16 +121,14 @@ class LawParam:##{{{
 		p.size       = self.size
 		p.dim        = self.dim
 		p.shape      = self.shape
-		p._transform = self._transform
 		p._value     = np.copy(self._value)  if self._value  is not None else None
 		p._not_fixed = self._not_fixed
 		return p
 	##}}}
 	
-	def init( self , X = None , fix_values = None , size = None , dim = 1 , transform = lambda x : x ): ##{{{
+	def init( self , X = None , fix_values = None , size = None , dim = 1 ): ##{{{
 		self._not_fixed = fix_values is None
 		self.dim        = dim
-		self._transform = transform
 		if fix_values is not None:
 			if dim == 1:
 				fix_values = np.array( [fix_values] ).reshape(-1,dim)
@@ -193,7 +194,7 @@ class LawParam:##{{{
 	
 	def update(self):##{{{
 		if self._not_fixed:
-			self._value = self._transform( self.design_ @ self.coef_ )
+			self._value = self.design_ @ self.coef_
 	##}}}
 	
 	def value( self ):##{{{
@@ -203,119 +204,6 @@ class LawParam:##{{{
 	def valueLf( self ):##{{{
 		out = self.linkFct( self._value )
 		return out
-	##}}}
-	
-	def valueGrLf( self ):##{{{
-		return self.linkFct.gradient( self._value )
-	##}}}
-
-##}}}
-
-
-class LawParam_deprecated:##{{{
-	"""
-	Internal class, do not use
-	"""
-	def __init__( self , linkFct = IdLinkFct() , kind = "Parameter" ):##{{{
-		self.linkFct    = linkFct
-		self.coef_      = None
-		self.design_    = None
-		self.size       = 0
-		self._value     = None
-		self._not_fixed = None
-		self.kind       = kind
-	##}}}
-	
-	def copy(self):##{{{
-		p = LawParam( self.linkFct , self.kind )
-		p.coef_ = np.copy(self.coef_) if self.coef_ is not None else None
-		p.design_ = np.copy(self.design_) if self.design_ is not None else None
-		p.size = self.size
-		p._value = np.copy(self._value) if self._value is not None else None
-		p._not_fixed = self._not_fixed
-		return p
-	##}}}
-	
-	def init( self , X = None , fix_values = None , size = None ): ##{{{
-		self._not_fixed = fix_values is None
-		if fix_values is not None:
-			fix_values = np.array( [fix_values] ).ravel()
-			if fix_values.size == 1 and size is not None:
-				self._value = self.linkFct.inverse( np.repeat( fix_values , size ).ravel() )
-			elif fix_values.size > 1:
-				self._value = self.linkFct.inverse( fix_values )
-			else:
-				print( "Error" )
-		else:
-			if X is None and size is not None:
-				self.coef_   = np.zeros( (1,) )
-				self.design_ = np.ones( (size,1) )
-			elif X is not None:
-				size = X.shape[0]
-				if X.ndim == 1:
-					X = X.reshape( (size,1) )
-				self.design_ = np.hstack( ( np.ones( (size,1) ) , X ) )
-				self.coef_   = np.zeros( (X.shape[1]+1) )
-			else:
-				print( "Error" )
-			
-			if np.linalg.matrix_rank(self.design_) < self.design_.shape[1]:
-				print( "SDFC.LawParam: singular design matrix" )
-				self.coef_   = np.zeros( (1,) )
-				self.design = np.ones( (size,1) )
-			self.size = self.coef_.size
-	##}}}
-	
-	def __str__(self):##{{{
-		val  = "SDFC.LawParam\n"
-		val += "-------------\n"
-		val += "* kind     : {}\n".format(self.kind)
-		val += "* fixed    : {}\n".format(not self._not_fixed)
-		val += "* link_fct : {}\n".format(str(self.linkFct))
-		val += "* coef_    : {}\n".format(self.coef_)
-		
-		return val
-	##}}}
-	
-	def __repr__(self):##{{{
-		return self.__str__()
-	##}}}
-	
-	def not_fixed(self):##{{{
-		return self._not_fixed
-	##}}}
-	
-	def set_coef( self , coef ):##{{{
-		if self._not_fixed:
-			self.coef_ = coef.ravel()
-	##}}}
-	
-	def set_intercept( self , intercept ):##{{{
-		if self._not_fixed:
-			self.coef_[0] = intercept
-	##}}}
-	
-	def design_wo1( self ):##{{{
-		"""
-		Return design matrix without intercept
-		"""
-		return None if self.size == 1 else self.design_[:,1:]
-	##}}}
-	
-	def update(self):##{{{
-		if self._not_fixed:
-#			print("LawParam.design.shape={}".format(self.design_.shape))
-#			print("LawParam.coef.shape={}".format(self.coef_.shape))
-#			print("LawParam.coef={}".format(self.coef_))
-			self._value = np.ravel( self.design_ @ self.coef_ )
-	##}}}
-	
-	def value( self ):##{{{
-		return np.ravel( self._value )
-	##}}}
-	
-	def valueLf( self ):##{{{
-		return np.ravel( self.linkFct( self._value ) )
 	##}}}
 	
 	def valueGrLf( self ):##{{{

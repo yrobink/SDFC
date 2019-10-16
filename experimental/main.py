@@ -48,14 +48,14 @@ import scipy.optimize as sco
 import scipy.linalg as scl
 
 from SDFC.tools.__LinkFct      import IdLinkFct
-
+import texttable as tt
 
 ###############
 ## Fonctions ##
 ###############
 
 
-def mean( Y , X = None , linkFct = IdLinkFct() , return_coef = False ):##{{{
+def mean( Y , c_Y = None , link = IdLinkFct() , value = True ):##{{{
 	"""
 		SDFC.NonParametric.mean
 		=======================
@@ -64,34 +64,34 @@ def mean( Y , X = None , linkFct = IdLinkFct() , return_coef = False ):##{{{
 		
 		Parameters
 		----------
-		Y       : np.array
+		Y     : np.array
 			Dataset to fit the mean
-		X       : np.array or None
+		c_Y   : np.array or None
 			Covariate(s)
-		linkFct : class based on SDFC.tools.LinkFct
+		link  : class based on SDFC.tools.LinkFct
 			Link function, default is identity
-		return_coef : bool
-			If true, return coefficients with covariates, else return mean fitted
+		value : bool
+			If true return value fitted, else return coefficients of fit
 		
 		Returns
 		-------
 		The mean or the coefficients of the regression
 	"""
 	out,coef = None,None
-	if X is None:
+	if c_Y is None:
 		out = np.mean(Y)
-		coef = linkFct.inverse(out)
+		coef = link.inverse(out)
 	else:
-		size = X.shape[0]
-		if X.ndim == 1:
-			X = X.reshape( (size,1) )
-		design = np.hstack( ( np.ones( (size,1) ) , X ) )
-		coef,_,_,_ = scl.lstsq( design , linkFct.inverse(Y) )
-		out = linkFct( design @ coef )
-	return coef if return_coef else out
+		size = c_Y.shape[0]
+		if c_Y.ndim == 1:
+			c_Y = c_Y.reshape(-1,1)
+		design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
+		coef,_,_,_ = scl.lstsq( design , link.inverse(Y) )
+		out = link( design @ coef )
+	return out if value else coef
 ##}}}
 
-def var( Y , X = None , m = None , linkFct = IdLinkFct() , return_coef = False ):##{{{
+def var( Y , c_Y = None , m_Y = None , link = IdLinkFct() , value = True ):##{{{
 	"""
 		SDFC.NonParametric.var
 		======================
@@ -100,39 +100,37 @@ def var( Y , X = None , m = None , linkFct = IdLinkFct() , return_coef = False )
 		
 		Parameters
 		----------
-		Y       : np.array
-			Dataset to fit the variance
-		X       : np.array or None
+		Y     : np.array
+			Dataset to fit the mean
+		c_Y   : np.array or None
 			Covariate(s)
-		m       : np.array or float or None
+		m_Y   : np.array or float or None
 			mean of Y. If None, m = np.mean(Y)
-		linkFct : class based on SDFC.tools.LinkFct
+		link  : class based on SDFC.tools.LinkFct
 			Link function, default is identity
-		return_coef : bool
-			If true, return coefficients with covariates, else return variance fitted
+		value : bool
+			If true return value fitted, else return coefficients of fit
 		
 		Returns
 		-------
 		The variance
 	"""
 	out,coef = None,None
-	if X is None:
+	if c_Y is None:
 		out  = np.var(Y)
-		coef = linkFct.inverse(out)
+		coef = link.inverse(out)
 	else:
-		m = np.mean( Y , axis = 0 ) if m is None else np.array( [m] ).reshape(-1,1)
-		Yres = ( Y - m )**2
-		size = X.shape[0]
-		if X.ndim == 1:
-			X = X.reshape(-1,1)
-		design = np.hstack( ( np.ones( (size,1) ) , X ) )
-		coef,_,_,_ = scl.lstsq( design , linkFct.inverse( Yres ) )
-		out = np.abs( linkFct( design @ coef ) )
+		m_Y = np.mean( Y , axis = 0 ) if m_Y is None else np.array( [m_Y] ).reshape(-1,1)
+		Yres = ( Y - m_Y )**2
+		if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
+		design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
+		coef,_,_,_ = scl.lstsq( design , link.inverse( Yres ) )
+		out = np.abs( link( design @ coef ) )
 	
-	return coef if return_coef else out
+	return out if value else coef
 ##}}}
 
-def std( Y , X = None , m = None , linkFct = IdLinkFct() , return_coef = False ):##{{{
+def std( Y , c_Y = None , m_Y = None , link = IdLinkFct() , value = True ):##{{{
 	"""
 		SDFC.NonParametric.std
 		======================
@@ -141,164 +139,39 @@ def std( Y , X = None , m = None , linkFct = IdLinkFct() , return_coef = False )
 		
 		Parameters
 		----------
-		Y       : np.array
-			Dataset to fit the standard deviation
-		X       : np.array or None
+		Y     : np.array
+			Dataset to fit the mean
+		c_Y   : np.array or None
 			Covariate(s)
-		m       : np.array or float or None
+		m_Y   : np.array or float or None
 			mean of Y. If None, m = np.mean(Y)
-		linkFct : class based on SDFC.tools.LinkFct
+		link  : class based on SDFC.tools.LinkFct
 			Link function, default is identity
-		return_coef : bool
-			If true, return coefficients with covariates, else return standard deviation fitted
+		value : bool
+			If true return value fitted, else return coefficients of fit
 		
 		Returns
 		-------
 		The standard deviation
 	"""
-	out = np.sqrt( var( Y , X , m , linkFct ) )
-	if return_coef:
-		if X is None:
-			coef = linkFct.inverse(out)
+	out = np.sqrt( var( Y , c_Y , m_Y , link ) )
+	if not value:
+		if c_Y is None:
+			coef = link.inverse(out)
 		else:
-			size = X.shape[0]
-			if X.ndim == 1:
-				X = X.reshape( (size,1) )
-			design = np.hstack( ( np.ones( (size,1) ) , X ) )
-			coef,_,_,_ = scl.lstsq( design , linkFct.inverse( out ) )
-			out = linkFct( design @ coef )
+			if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
+			design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
+			coef,_,_,_ = scl.lstsq( design , link.inverse( out ) )
+			out = link( design @ coef )
 		return coef
 	
 	return out
 ##}}}
 
-#############
-## Classes ##
-#############
 
-
-
-class LawParam:##{{{
-	"""
-	Internal class, do not use
-	"""
-	def __init__( self , linkFct = IdLinkFct() , kind = "Parameter" ):##{{{
-		self.linkFct    = linkFct
-		self.coef_      = None
-		self.design_    = None
-		self.size       = 0
-		self.dim        = 0
-		self.shape      = None
-		self._transform = None
-		self._value     = None
-		self._not_fixed = None
-		self.kind       = kind
-	##}}}
-	
-	def copy(self):##{{{
-		p            = LawParam( self.linkFct , self.kind )
-		p.coef_      = np.copy(self.coef_)   if self.coef_   is not None else None
-		p.design_    = np.copy(self.design_) if self.design_ is not None else None
-		p.size       = self.size
-		p.dim        = self.dim
-		p.shape      = self.shape
-		p._transform = self._transform
-		p._value     = np.copy(self._value)  if self._value  is not None else None
-		p._not_fixed = self._not_fixed
-		return p
-	##}}}
-	
-	def init( self , X = None , fix_values = None , size = None , dim = 1 , transform = lambda x : x ): ##{{{
-		self._not_fixed = fix_values is None
-		self.dim        = dim
-		self._transform = transform
-		if fix_values is not None:
-			if dim == 1:
-				fix_values = np.array( [fix_values] ).reshape(-1,dim)
-				if fix_values.size == 1:
-					fix_values = np.repeat( fix_values[0,0] , X.size ).reshape(-1,dim)
-			self._value = self.linkFct.inverse(fix_values)
-		else:
-			if X is None and size is not None:
-				self.coef_   = np.zeros( (1,dim) )
-				self.design_ = np.ones( (size,1) )
-			elif X is not None:
-				size = X.shape[0]
-				if X.ndim == 1:
-					X = X.reshape( (size,1) )
-				self.design_ = np.hstack( ( np.ones( (size,1) ) , X ) )
-				self.coef_   = np.zeros( (X.shape[1]+1,dim) )
-			else:
-				print( "Error" )
-			
-			if np.linalg.matrix_rank(self.design_) < self.design_.shape[1]:
-				print( "SDFC.LawParam: singular design matrix" )
-				self.coef_   = np.zeros( (1,dim) )
-				self.design = np.ones( (size,1) )
-			self.size  = np.prod(self.coef_.shape)
-			self.shape = self.coef_.shape
-	##}}}
-	
-	def __str__(self):##{{{
-		val  = "SDFC.LawParam\n"
-		val += "-------------\n"
-		val += "* kind     : {}\n".format(self.kind)
-		val += "* fixed    : {}\n".format(not self._not_fixed)
-		val += "* link_fct : {}\n".format(str(self.linkFct))
-		val += "* coef_    : {}\n".format(self.coef_)
-		
-		return val
-	##}}}
-	
-	def __repr__(self):##{{{
-		return self.__str__()
-	##}}}
-	
-	def not_fixed(self):##{{{
-		return self._not_fixed
-	##}}}
-	
-	def set_coef( self , coef ):##{{{
-		if self._not_fixed:
-			self.coef_ = coef.reshape( self.shape )
-	##}}}
-	
-	def set_intercept( self , intercept ):##{{{
-		if self._not_fixed:
-			self.coef_[0,:] = intercept
-	##}}}
-	
-	def design_wo1( self ):##{{{
-		"""
-		Return design matrix without intercept
-		"""
-		return None if self.shape[0] == 1 else self.design_[:,1:]
-	##}}}
-	
-	def update(self):##{{{
-		if self._not_fixed:
-			self._value = self._transform( self.design_ @ self.coef_ )
-	##}}}
-	
-	def value( self ):##{{{
-		return self._value
-	##}}}
-	
-	def valueLf( self ):##{{{
-		out = self.linkFct( self._value )
-		return out
-	##}}}
-	
-	def valueGrLf( self ):##{{{
-		return self.linkFct.gradient( self._value )
-	##}}}
-
-##}}}
-
-
-########################
-## New Params classes ##
-########################
+####################
+## Params classes ##
+####################
 
 class AbstractParam:##{{{
 	def __init__( self , kind , n_samples , **kwargs ):
@@ -312,16 +185,20 @@ class AbstractParam:##{{{
 	def is_fix(self):
 		pass
 	
+	@property
 	def value( self ):
 		return self.link(self.fit_)
 	
 	def gradient( self ):
 		return self.link.gradient(self.fit_)
 	
+	def set_coef( self , coef ):
+		pass
+	
 ##}}}
 
 class CovariateParam(AbstractParam):##{{{
-	def __init__( self , kind , n_samples , **kwargs ):
+	def __init__( self , kind , n_samples , resample , **kwargs ):
 		AbstractParam.__init__( self , kind , n_samples , **kwargs )
 		self.design_ = None
 		
@@ -329,7 +206,10 @@ class CovariateParam(AbstractParam):##{{{
 		X = kwargs.get( "c_" + self.kind )
 		if X.ndim == 1: X = X.reshape(-1,1)
 		self.n_features = X.shape[1] + 1
-		self.design_ = np.hstack( ( np.ones((self.n_samples,1)) , X ) )
+		if resample is None:
+			self.design_ = np.hstack( ( np.ones((self.n_samples,1)) , X ) )
+		else:
+			self.design_ = np.hstack( ( np.ones((self.n_samples,1)) , X[resample,:] ) )
 		self.coef_   = np.zeros(self.n_features)
 		
 		if np.linalg.matrix_rank(self.design_) < self.n_features:
@@ -354,17 +234,18 @@ class CovariateParam(AbstractParam):##{{{
 ##}}}
 
 class StationaryParam(AbstractParam):##{{{
-	def __init__( self , kind , n_samples , **kwargs ):
+	def __init__( self , kind , n_samples , resample , **kwargs ):
 		AbstractParam.__init__( self , kind , n_samples , **kwargs )
 		self.coef_      = np.zeros(1)
 		self.n_features = 1
 		self.fit_       = np.zeros(self.n_samples)
+		self.design_    = np.ones( (self.n_samples,1) )
 	
 	def is_fix(self):
 		return False
 	
 	def update( self ):
-		self.fit_ = np.repeat( self.coef_ , self.n_samples ).squeeze()
+		self.fit_ = np.repeat( self.coef_ , self.n_samples ).reshape(-1,1)
 	
 	def set_coef( self , coef ):
 		self.coef_ = np.array([coef]).squeeze()
@@ -375,10 +256,10 @@ class StationaryParam(AbstractParam):##{{{
 ##}}}
 
 class FixParam(AbstractParam):##{{{
-	def __init__( self , kind , n_samples , **kwargs ):
+	def __init__( self , kind , n_samples , resample , **kwargs ):
 		AbstractParam.__init__( self , kind , n_samples , **kwargs )
-		self.fit_       = np.array( [self.link.inverse( kwargs.get( "f_" + self.kind ) )] ).squeeze()
-		if self.fit_.size == 1: self.fit_ = np.repeat( self.fit_ , self.n_samples ).squeeze()
+		self.fit_       = np.array( [self.link.inverse( kwargs.get( "f_" + self.kind ) )] ).reshape(-1,1)
+		if self.fit_.size == 1: self.fit_ = np.repeat( self.fit_ , self.n_samples ).reshape(-1,1)
 	
 	def is_fix(self):
 		return True
@@ -390,13 +271,13 @@ class LawParams:##{{{
 		self.kinds = kinds
 		self._dparams = {}
 	
-	def add_params( self , n_samples , **kwargs ):
+	def add_params( self , n_samples , resample , **kwargs ):
 		for kind in self.kinds:
 			k_param = self.filter( kind , **kwargs )
 			config = self.infer_configuration(**k_param)
-			if self.is_covariate(config):  self._dparams[kind] = CovariateParam(  kind , n_samples , **k_param )
-			if self.is_stationary(config): self._dparams[kind] = StationaryParam( kind , n_samples , **k_param )
-			if self.is_fix(config):        self._dparams[kind] = FixParam(        kind , n_samples , **k_param )
+			if self.is_covariate(config):  self._dparams[kind] = CovariateParam(  kind , n_samples , resample , **k_param )
+			if self.is_stationary(config): self._dparams[kind] = StationaryParam( kind , n_samples , resample , **k_param )
+			if self.is_fix(config):        self._dparams[kind] = FixParam(        kind , n_samples , resample , **k_param )
 	
 	def merge_coef( self ):
 		coef = np.array([])
@@ -404,7 +285,7 @@ class LawParams:##{{{
 			if not self._dparams[k].is_fix():
 				coef = np.hstack( (coef,self._dparams[k].coef_.squeeze()) )
 		return coef
-
+	
 	def split_coef( self , coef ):
 		tcoef = []
 		a,b = 0,0
@@ -415,16 +296,12 @@ class LawParams:##{{{
 				b = a + self._dparams[k].n_features
 				tcoef.append( coef[a:b] )
 				a = b
-		
 		return tcoef
 	
 	def update_coef( self , coef ):
 		lcoef = self.split_coef(coef)
-		i = 0
-		for k in self._dparams:
-			if not self._dparams[k].is_fix():
-				self._dparams[k].set_coef(lcoef[i])
-				i += 1
+		for c,k in zip(lcoef,self._dparams):
+			self._dparams[k].set_coef(c)
 	
 	def infer_configuration( self , **kwargs ):
 		has_c = False
@@ -462,6 +339,7 @@ class LawParams:##{{{
 ## Base law ##
 ##############
 
+
 class AbstractLaw:##{{{
 	"""
 	SDFC.AbstractLaw
@@ -483,7 +361,7 @@ class AbstractLaw:##{{{
 		Level of confidence interval
 	"""
 	
-	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ):##{{{
+	def __init__( self , method , n_bootstrap , alpha ):##{{{
 		"""
 		Initialization of AbstractLaw
 		
@@ -498,13 +376,9 @@ class AbstractLaw:##{{{
 		
 		
 		"""
-		self.method    = method
+		self.method    = method.lower()
 		self.params    = {}
-		self._lparams  = None
 		self.coef_     = None
-		
-		self._Y        = None
-		self._size     = None
 		
 		self.n_bootstrap         = n_bootstrap
 		self.coefs_bootstrap     = None
@@ -530,19 +404,20 @@ class AbstractLaw:##{{{
 		tab = tt.Texttable( max_width = 0 )
 		
 		## Header
-		header = [ str(type(self)).split(".")[-1][:-2] + " ({})".format(self.method) , "Link function" , "Is fix" , "coef" ]
+		header = [ str(type(self)).split(".")[-1][:-2] + " ({})".format(self.method) , "Link" , "Type" , "coef" ]
 		if self.confidence_interval is not None:
 			header += [ "Quantile {}".format(self.alpha/2) , "Quantile {}".format( 1 - self.alpha / 2 ) ]
 		tab.header( header )
 		
 		## Loop on params
 		a = 0
-		for p in self._lparams:
+		for k in self.params._dparams:
+			p = self.params._dparams[k]
 			coef = None if p.coef_ is None else str(p.coef_.squeeze().round(3).tolist())
-			row = [ p.kind , str(p.linkFct).split(".")[-1] , str(not p._not_fixed) , coef ]
+			row = [ p.kind , str(p.link).split(".")[-1] , str(type(p)).split(".")[-1].split("Param")[0] , coef ]
 			if self.confidence_interval is not None:
-				if p._not_fixed:
-					b = a + p.size
+				if not p.is_fix():
+					b = a + p.n_features
 					row += [ self.confidence_interval[i,a:b].squeeze().round(3).tolist() for i in range(2) ]
 					a = b
 				else:
@@ -551,26 +426,25 @@ class AbstractLaw:##{{{
 		return tab.draw() + "\n"
 	##}}}
 	
-	def _predict_param( self , param , cov = None ): ##{{{
-		if cov is None:
-			return param.valueLf()
-		if param.size == 1:
-			return np.repeat( param.valueLf()[0] , cov.size )
-		if cov.ndim == 1:
-			cov = cov.reshape( (cov.size,1) )
-		return param.linkFct( param.coef_[0] + np.dot( cov , param.coef_[1:] ) )
+	
+	def _predict_covariate( self , kind , c_p ): ##{{{
+		p = self.params._dparams[kind]
+		
+		if isinstance(p,CovariateParam) and c_p is not None:
+			return p.coef_[0] + c_p.T @ p.coef_[1:]
+		return p.value
 	##}}}
 	
+	def _update_coef(func):##{{{
+		def wrapper(*args):
+			args[0].params.update_coef(args[1])
+			return func(*args)
+		return wrapper
+	##}}}
 	
-	def _update_fit( self , coef ):
-		pass
-
-	def _negloglikelihood(self):
-		pass
-	
-	def _optim_function( self , coef ):##{{{
-		self._update_fit(coef)
-		return self._negloglikelihood()
+	def _fit_mle( self ):##{{{
+		self.optim_result = sco.minimize( self._negloglikelihood , self.params.merge_coef() , jac = self._gradient_nlll , method = "BFGS" )
+		self.params.update_coef( self.optim_result.x )
 	##}}}
 	
 ##}}}
@@ -607,7 +481,7 @@ class NormalLaw(AbstractLaw):##{{{
 		Level of confidence interval
 	"""
 	
-	def __init__( self , method = "MLE" , link_fct_loc = IdLinkFct() , link_fct_scale = IdLinkFct() , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
+	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
 		"""
 		Initialization of NormalLaw
 		
@@ -615,10 +489,6 @@ class NormalLaw(AbstractLaw):##{{{
 		----------
 		method         : string
 			Method called to fit parameters, options are "moments" and "MLE" (Maximum Likelihood estimation)
-		link_fct_loc   : a class herited from SDFC.tools.LinkFct
-			Link function for loc, default is IdLinkFct()
-		link_fct_scale : a class herited from SDFC.tools.LinkFct
-			Link function for scale, default is SDFC.tools.IdLinkFct(). Interesting option is SDFC.tools.ExpLinkFct().
 		n_bootstrap    : integer
 			Numbers of bootstrap for confidence interval, default = 0 (no bootstrap)
 		alpha          : float
@@ -626,13 +496,6 @@ class NormalLaw(AbstractLaw):##{{{
 		
 		"""
 		AbstractLaw.__init__( self , method , n_bootstrap , alpha )
-		
-		self.loc       = None
-		self.scale     = None
-		
-		self._loc   = LawParam( linkFct = link_fct_loc   , kind = "loc"   )
-		self._scale = LawParam( linkFct = link_fct_scale , kind = "scale" )
-		self._lparams = [self._loc,self._scale]
 	##}}}
 	
 	def __str__(self):##{{{
@@ -644,100 +507,14 @@ class NormalLaw(AbstractLaw):##{{{
 	##}}}
 	
 	
-	def fit( self , Y , **kwargs ): #loc_cov = None , scale_cov = None , floc = None , fscale = None ): ##{{{
-		"""
-		Fit function for NormalLaw
-		
-		Arguments
-		---------
-		
-		Y         : numpy.ndarray
-			Data to fit
-		loc_cov   : None or numpy.ndarray
-			Co-variates of loc in columns.
-		scale_cov : None or numpy.ndarray
-			Co-variates of scale in columns.
-		floc      : None or numpy.ndarray
-			If not None, fix the value of loc parameter (so not fitted)
-		fscale    : None or numpy.ndarray
-			If not None, fix the value of scale parameter (so not fitted)
-		"""
-		self._size = Y.size
-		
-		######################
-		lkinds = ["loc","scale"]
-		self.params = LawParams( kinds = ["loc","scale"] )
-		self.params.add_params( n_samples = Y.size , **kwargs )
-		self._Y = Y.reshape(-1,1)
-		self.method = "MLE"
-		self.__fit()
-		print(self.params._dparams["loc"].coef_)
-		print(self.params._dparams["scale"].coef_)
-		self.coef_ = self.params.merge_coef()
-		######################
-		
-		
-#		if self.n_bootstrap > 0:
-#			self.coefs_bootstrap = []
-#			if loc_cov is not None and loc_cov.ndim == 1:
-#				loc_cov = loc_cov.reshape( (loc_cov.size,1) )
-#			if scale_cov is not None and scale_cov.ndim == 1:
-#				scale_cov = scale_cov.reshape( (scale_cov.size,1) )
-#			if np.isscalar(floc):
-#				floc = np.array([floc]).ravel()
-#			if np.isscalar(fscale):
-#				fscale = np.array([fscale]).ravel()
-#			
-#			
-#			for i in range(self.n_bootstrap):
-#				idx = np.random.choice( self._size , self._size )
-#				Y_bs         = Y[idx]
-#				loc_cov_bs   = None   if loc_cov   is None else loc_cov[idx,:]
-#				scale_cov_bs = None   if scale_cov is None else scale_cov[idx,:]
-#				floc_bs      = floc   if floc      is None or floc.size == 1   else floc[idx]
-#				fscale_bs    = fscale if fscale    is None or fscale.size == 1 else fscale[idx]
-#				
-#				self._fit( Y_bs , loc_cov_bs , scale_cov_bs , floc_bs , fscale_bs )
-#				self.coefs_bootstrap.append( self.coef_ )
-#			
-#			self.coefs_bootstrap = np.array( self.coefs_bootstrap )
-#			self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
-#		
-#		self._fit( Y , loc_cov , scale_cov , floc , fscale )
-		
+	@property
+	def loc(self):##{{{
+		return self.params._dparams["loc"].value
 	##}}}
 	
-	
-	def __fit_moments(self):##{{{
-		ploc   = self.params._dparams["loc"]
-		pscale = self.params._dparams["scale"]
-		
-		## Fit loc
-		if not ploc.is_fix():
-			ploc.set_coef( mean( self._Y , ploc.design_wo1() , return_coef = True , linkFct = ploc.link ) )
-		
-		## Fit scale
-		if not pscale.is_fix():
-			pscale.set_coef( std( self._Y , pscale.design_wo1() , m = ploc.value() , return_coef = True , linkFct = pscale.link ) )
-		
-		self.loc   = ploc.value()
-		self.scale = pscale.value()
-	##}}}
-	
-	def __fit_mle(self):##{{{
-		self.__fit_moments()
-		coef_init = self.params.merge_coef()
-		self.optim_result = sco.minimize( self._optim_function , coef_init , jac = self._gradient_optim_function , method = "BFGS" )
-		self._update_fit( self.optim_result.x )
-	##}}}
-	
-	def __fit( self ):##{{{
-		
-		## Fit itself
-		if self.method == "moments":
-			self.__fit_moments()
-		else:
-			self.__fit_mle()
+	@property
+	def scale(self):##{{{
+		return self.params._dparams["scale"].value
 	##}}}
 	
 	
@@ -769,56 +546,124 @@ class NormalLaw(AbstractLaw):##{{{
 		return law
 	##}}}
 	
-	def predict_loc( self , loc_cov = None ):##{{{
+	def predict_loc( self , c_loc = None ):##{{{
 		"""
 		Return location parameter with a new co-variates
 		
 		Arguments
 		---------
-		loc_cov : np.array or None
+		c_loc : np.array or None
 			Covariate
 		
 		Return
 		------
 		loc : np.array
-			Location parameters
+			Location parameters, if c_loc is None return self.loc
 		"""
-		return self._predict_param( self._loc , loc_cov )
+		return self._predict_covariate( "loc" , c_loc )
 	##}}}
 	
-	def predict_scale( self , scale_cov = None ):##{{{
+	def predict_scale( self , c_scale  = None ):##{{{
 		"""
 		Return scale parameter with a new co-variates
 		
 		Arguments
 		---------
-		scale_cov : np.array or None
+		c_scale : np.array or None
 			Covariate
 		
 		Return
 		------
 		scale : np.array
-			Location parameters
+			Scale parameters, if c_scale is None return self.scale
 		"""
-		return self._predict_param( self._scale , scale_cov )
+		return self._predict_covariate( "scale" , c_scale )
 	##}}}
 	
 	
+	def fit( self , Y , **kwargs ): ##{{{
+		"""
+		Fit function for NormalLaw
+		
+		Arguments
+		---------
+		
+		Y       : numpy.ndarray
+			Data to fit
+		c_loc   : numpy.ndarray or None
+			Covariate of loc
+		f_loc   : numpy.ndarray or None
+			Fix value of loc
+		l_loc   : SDFC.tools.LinkFct (optional)
+			Link function of loc
+		c_scale : numpy.ndarray or None
+			Covariate of scale
+		f_scale : numpy.ndarray or None
+			Fix value of scale
+		l_scale : SDFC.tools.LinkFct (optional)
+			Link function of scale
+		"""
+		
+		## Bootstrap part
+		if self.n_bootstrap > 0:
+			self.coefs_bootstrap = []
+			for _ in range(self.n_bootstrap):
+				idx = np.random.choice( Y.size , Y.size , replace = True )
+				self.params = LawParams( kinds = ["loc","scale"] )
+				self.params.add_params( n_samples = Y.size , resample = idx , **kwargs )
+				self._Y = Y.reshape(-1,1)[idx,:]
+				self._fit()
+				self.coefs_bootstrap.append( self.coef_ )
+			self.coefs_bootstrap = np.array( self.coefs_bootstrap )
+			self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
+		
+		## Fit part
+		self.params = LawParams( kinds = ["loc","scale"] )
+		self.params.add_params( n_samples = Y.size , resample = None , **kwargs )
+		self._Y = Y.reshape(-1,1)
+		self._fit()
+		del self._Y
+		
+		
+	##}}}
 	
-	def _negloglikelihood( self ): ##{{{
+	def _fit_moments(self):##{{{
+		ploc   = self.params._dparams["loc"]
+		pscale = self.params._dparams["scale"]
+		
+		## Fit loc
+		if not ploc.is_fix():
+			cm = mean( self._Y , ploc.design_wo1() , value = False , link = ploc.link )
+			ploc.set_coef( cm )
+		
+		## Fit scale
+		if not pscale.is_fix():
+			pscale.set_coef( std( self._Y , pscale.design_wo1() , m_Y = self.loc , value = False , link = pscale.link ) )
+	##}}}
+	
+	def _fit_mle(self):##{{{
+		self._fit_moments()
+		AbstractLaw._fit_mle(self)
+	##}}}
+	
+	def _fit( self ):##{{{
+		
+		## Fit itself
+		if self.method == "moments":
+			self._fit_moments()
+		else:
+			self._fit_mle()
+		self.coef_ = self.params.merge_coef()
+	##}}}
+	
+	@AbstractLaw._update_coef
+	def _negloglikelihood( self , coef ): ##{{{
 		scale2 = np.power( self.scale , 2 )
 		return np.Inf if not np.all( self.scale > 0 ) else np.sum( np.log( scale2 ) ) / 2. + np.sum( np.power( self._Y - self.loc , 2 ) / scale2 ) / 2.
 	##}}}
 	
-	def _update_fit( self , coef ):##{{{
-		self.params.update_coef(coef)
-		
-		self.loc   = self.params._dparams["loc"].value()
-		self.scale = self.params._dparams["scale"].value()
-	##}}}
-	
-	def _gradient_optim_function( self , coef ): ##{{{
-		self._update_fit(coef)
+	@AbstractLaw._update_coef
+	def _gradient_nlll( self , coef ): ##{{{
 		grad = np.array( [] )
 		Yc = self._Y - self.loc
 		
@@ -848,13 +693,14 @@ if __name__ == "__main__":
 	## Dataset
 	size  = 2000
 	t,X_loc,X_scale,_ = sdt.Dataset.covariates(size)
-	loc   = 1. + 0.8 * X_loc
+	loc   = 1. + 0.8 * X_loc# - 0.5 * X_loc**2
 	scale = 0.08 * X_scale
 	Y     = np.random.normal( loc = loc , scale = scale )
 	
 	
 	## Fit
-	norm = NormalLaw()
-	norm.fit( Y , c_loc = X_loc , c_scale = X_scale )#, scale_cov = X_scale )
+	norm = NormalLaw( method = "MLE" , n_bootstrap = 100 )
+	norm.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = sdt.IdLinkFct() )
+	print(norm)
 	
 	print("Done")

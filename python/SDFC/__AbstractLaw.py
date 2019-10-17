@@ -86,10 +86,10 @@
 ## Libraries ##
 ###############
 
-import numpy     as np
-from SDFC.tools.__LawParams    import LawParams
+import numpy          as np
 import scipy.optimize as sco
-import texttable as tt
+import texttable      as tt
+from SDFC.tools.__LawParams import LawParams
 
 
 ###########

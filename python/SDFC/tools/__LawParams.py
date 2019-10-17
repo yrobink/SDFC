@@ -87,7 +87,7 @@
 ###############
 
 import numpy as np
-from SDFC.tools.__LinkFct import IdLinkFct
+from SDFC.tools.__Link import IdLink
 
 
 ###########
@@ -97,7 +97,7 @@ from SDFC.tools.__LinkFct import IdLinkFct
 class AbstractParam:##{{{
 	def __init__( self , kind , n_samples , **kwargs ):
 		self.kind       = kind
-		self.link    = IdLinkFct() if kwargs.get("l_" + self.kind) is None else kwargs.get("l_" + self.kind)
+		self.link    = IdLink() if kwargs.get("l_" + self.kind) is None else kwargs.get("l_" + self.kind)
 		self.n_samples  = n_samples
 		self.n_features = 0
 		self.coef_      = None

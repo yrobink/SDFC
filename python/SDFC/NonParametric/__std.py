@@ -90,14 +90,14 @@ import numpy        as np
 import scipy.linalg as scl
 
 from SDFC.NonParametric.__var import var
-from SDFC.tools.__LinkFct     import IdLinkFct
+from SDFC.tools.__Link        import IdLink
 
 
 ###############
 ## Functions ##
 ###############
 
-def std( Y , c_Y = None , m_Y = None , link = IdLinkFct() , value = True ):
+def std( Y , c_Y = None , m_Y = None , link = IdLink() , value = True ):
 	"""
 		SDFC.NonParametric.std
 		======================
@@ -112,7 +112,7 @@ def std( Y , c_Y = None , m_Y = None , link = IdLinkFct() , value = True ):
 			Covariate(s)
 		m_Y   : np.array or float or None
 			mean of Y. If None, m = np.mean(Y)
-		link  : class based on SDFC.tools.LinkFct
+		link  : class based on SDFC.tools.Link
 			Link function, default is identity
 		value : bool
 			If true return value fitted, else return coefficients of fit

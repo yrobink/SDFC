@@ -86,16 +86,15 @@
 ## Libraries ##
 ###############
 
-from SDFC.tools.__dataset  import Dataset
-from SDFC.tools.__LawParam import LawParam
-from SDFC.tools.__LinkFct  import LinkFct
-from SDFC.tools.__LinkFct  import ChainLinkFct
-from SDFC.tools.__LinkFct  import IdLinkFct
-from SDFC.tools.__LinkFct  import InverseLinkFct
-from SDFC.tools.__LinkFct  import ExpLinkFct
-from SDFC.tools.__LinkFct  import LogitLinkFct
-from SDFC.tools.__LinkFct  import SemiBoundedLinkFct
-from SDFC.tools.__LinkFct  import BoundedLinkFct
+from SDFC.tools.__dataset import Dataset
+from SDFC.tools.__Link    import AbstractLink
+from SDFC.tools.__Link    import ChainLink
+from SDFC.tools.__Link    import IdLink
+from SDFC.tools.__Link    import InverseLink
+from SDFC.tools.__Link    import ExpLink
+from SDFC.tools.__Link    import LogitLink
+from SDFC.tools.__Link    import SemiBoundedLink
+from SDFC.tools.__Link    import BoundedLink
 from SDFC.tools.__plot_confidences_intervals import plot_confidences_intervals
 from SDFC.tools.__plot_confidences_intervals import plot_confidences_intervals_scaled
 

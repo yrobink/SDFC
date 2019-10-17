@@ -93,10 +93,10 @@ import numpy as np
 ## Class ##
 ###########
 
-class LinkFct:##{{{
+class AbstractLink:##{{{
 	"""
-	SDFC.tools.LinkFct
-	==================
+	SDFC.tools.AbstractLink
+	=======================
 	
 	Abstract base class for link function
 	
@@ -129,38 +129,38 @@ class LinkFct:##{{{
 		pass
 ##}}}
 
-class ChainLinkFct(LinkFct): ##{{{
+class ChainLink(AbstractLink): ##{{{
 	"""
-	SDFC.tools.ChainLinkFct
-	=======================
+	SDFC.tools.ChainLink
+	====================
 	
-	This class is used to chain two link functions, i.e. $linkFct1 \circ linkFct0$
+	This class is used to chain two link functions, i.e. $link1 \circ link0$
 	
 	"""
-	def __init__( self , linkFct1 , linkFct0 ):
-		self.linkFct1 = linkFct1
-		self.linkFct0 = linkFct0
+	def __init__( self , link1 , link0 ):
+		self.link1 = link1
+		self.link0 = link0
 	
 	def __str__(self):
-		return "SDFC.tools.ChainLinkFct between {} and {}".format(str(self.linkFct1,self.linkFct2))
+		return "SDFC.tools.ChainLink between {} and {}".format(str(self.link1,self.link0))
 	
 	def __repr__(self):
 		return self.__str__()
 	
 	def __call__( self , x ):
-		return self.linkFct1( self.linkFct0( x ) )
+		return self.link1( self.link0( x ) )
 	
 	def gradient( self , x ):
-		return self.linkFct0.gradient(x) * self.linkFct1.gradient( self.linkFct0(x) )
+		return self.link0.gradient(x) * self.link1.gradient( self.link0(x) )
 	
 	def inverse( self , x ):
-		return self.linkFct0.inverse( self.linkFct1.inverse( x ) )
+		return self.link0.inverse( self.link1.inverse( x ) )
 ##}}}
 
-class IdLinkFct(LinkFct): ##{{{
+class IdLink(AbstractLink): ##{{{
 	"""
-	SDFC.tools.IdLinkFct
-	====================
+	SDFC.tools.IdLink
+	=================
 	
 	Identity link function
 	
@@ -170,7 +170,7 @@ class IdLinkFct(LinkFct): ##{{{
 		pass
 	
 	def __str__(self):
-		return "SDFC.tools.IdLinkFct"
+		return "SDFC.tools.IdLink"
 	
 	def __repr__(self):
 		return self.__str__()
@@ -185,10 +185,10 @@ class IdLinkFct(LinkFct): ##{{{
 		return x
 ##}}}
 
-class InverseLinkFct(LinkFct): ##{{{
+class InverseLink(AbstractLink): ##{{{
 	"""
-	SDFC.tools.InverseLinkFct
-	=========================
+	SDFC.tools.InverseLink
+	======================
 	
 	Inverse link function, i.e.:
 		f(x) = 1/x
@@ -200,7 +200,7 @@ class InverseLinkFct(LinkFct): ##{{{
 		pass
 	
 	def __str__(self):
-		return "SDFC.tools.InverseLinkFct"
+		return "SDFC.tools.InverseLink"
 	
 	def __repr__(self):
 		return self.__str__()
@@ -215,10 +215,10 @@ class InverseLinkFct(LinkFct): ##{{{
 		return 1. / x
 ##}}}
 
-class ExpLinkFct(LinkFct):##{{{
+class ExpLink(AbstractLink):##{{{
 	"""
-	SDFC.tools.ExpLinkFct
-	=====================
+	SDFC.tools.ExpLink
+	==================
 	
 	Exponential link function, i.e.:
 		f(x) = exp(s*x) + b
@@ -231,7 +231,7 @@ class ExpLinkFct(LinkFct):##{{{
 		self.s = s
 	
 	def __str__(self):
-		return "SDFC.tools.ExpLinkFct, bounds:{}, sign:{}".format(self.b,self.s)
+		return "SDFC.tools.ExpLink ({}{})".format( ">" if self.s > 0 else "<" , self.b )
 	
 	def __repr__(self):
 		return self.__str__()
@@ -246,10 +246,10 @@ class ExpLinkFct(LinkFct):##{{{
 		return np.log(x - self.b) / self.s
 ##}}}
 
-class LogitLinkFct(LinkFct):##{{{
+class LogitLink(AbstractLink):##{{{
 	"""
-	SDFC.tools.LogitLinkFct
-	=======================
+	SDFC.tools.LogitLink
+	====================
 	
 	Logit link function, i.e.:
 		f(x) = ( b - a ) / ( 1 + exp(-sx) ) + b
@@ -266,7 +266,7 @@ class LogitLinkFct(LinkFct):##{{{
 		self.s      = s
 	
 	def __str__(self):
-		return "SDFC.tools.LogitLinkFct, bounds: ({},{}), speed: {}".format(self.a,self.b,self.s)
+		return "SDFC.tools.LogitLink, ({}< x{} < {})".format(self.a,self.s,self.b)
 	
 	def __repr__(self):
 		return self.__str__()
@@ -287,11 +287,11 @@ class LogitLinkFct(LinkFct):##{{{
 		return - np.log( (self.b - self.a) / ( x - self.a ) - 1 ) / self.s
 ##}}}
 
-class SemiBoundedLinkFct(LinkFct):##{{{
+class SemiBoundedLink(AbstractLink):##{{{
 	"""
-	SDFC.tools.SemiBoundedLinkFct
-	=============================
-	A simple semi bounded function, use it if ExpLinkFct has too many overflow (Here the gradient is not well defined at x = b, and the inverse also).
+	SDFC.tools.SemiBoundedLink
+	==========================
+	A simple semi bounded function, use it if ExpLink has too many overflow (Here the gradient is not well defined at x = b, and the inverse also).
 	Values:
 		- x < b : f(x) = sx
 		- x > b : f(x) = b
@@ -313,7 +313,7 @@ class SemiBoundedLinkFct(LinkFct):##{{{
 		self.s = s
 	
 	def __str__(self):
-		return "SDFC.tools.SemiBoundedLinkFct, bounds : {}, slope : {}".format(self.b,self.s)
+		return "SDFC.tools.SemiBoundedLink"
 	
 	def __repr__(self):
 		return self.__str__()
@@ -330,11 +330,11 @@ class SemiBoundedLinkFct(LinkFct):##{{{
 		return self.__call__(x)
 ##}}}
 
-class BoundedLinkFct(LinkFct):##{{{
+class BoundedLink(AbstractLink):##{{{
 	"""
-	SDFC.tools.BoundedLinkFct
-	=========================
-	A simple bounded function, use it if LogitLinkFct has too many overflow (Here the gradient is not well defined at x = a and x = b, and the inverse also).
+	SDFC.tools.BoundedLink
+	======================
+	A simple bounded function, use it if LogitLink has too many overflow (Here the gradient is not well defined at x = a and x = b, and the inverse also).
 	Values:
 		- x < a : f(x) = a
 		- x > b : f(x) = b
@@ -345,7 +345,7 @@ class BoundedLinkFct(LinkFct):##{{{
 		self.b = b
 	
 	def __str__(self):
-		return "SDFC.tools.BoundedLinkFct, bounds : ({},{})".format(self.a,self.b)
+		return "SDFC.tools.BoundedLink ({}<x<{})".format(self.a,self.b)
 	
 	def __repr__(self):
 		return self.__str__()

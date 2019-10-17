@@ -96,7 +96,7 @@ from SDFC.tools.__LinkFct      import IdLinkFct
 ## Functions ##
 ###############
 
-def var( Y , X = None , m = None , linkFct = IdLinkFct() , return_coef = False ):
+def var( Y , c_Y = None , m_Y = None , link = IdLinkFct() , value = True ):
 	"""
 		SDFC.NonParametric.var
 		======================
@@ -105,35 +105,34 @@ def var( Y , X = None , m = None , linkFct = IdLinkFct() , return_coef = False )
 		
 		Parameters
 		----------
-		Y       : np.array
-			Dataset to fit the variance
-		X       : np.array or None
+		Y     : np.array
+			Dataset to fit the mean
+		c_Y   : np.array or None
 			Covariate(s)
-		m       : np.array or float or None
+		m_Y   : np.array or float or None
 			mean of Y. If None, m = np.mean(Y)
-		linkFct : class based on SDFC.tools.LinkFct
+		link  : class based on SDFC.tools.LinkFct
 			Link function, default is identity
-		return_coef : bool
-			If true, return coefficients with covariates, else return variance fitted
+		value : bool
+			If true return value fitted, else return coefficients of fit
 		
 		Returns
 		-------
 		The variance
 	"""
 	out,coef = None,None
-	if X is None:
+	if c_Y is None:
 		out  = np.var(Y)
-		coef = linkFct.inverse(out)
+		coef = link.inverse(out)
 	else:
-		m = np.mean( Y , axis = 0 ) if m is None else np.array( [m] ).reshape(-1,1)
-		Yres = ( Y - m )**2
-		size = X.shape[0]
-		if X.ndim == 1:
-			X = X.reshape(-1,1)
-		design = np.hstack( ( np.ones( (size,1) ) , X ) )
-		coef,_,_,_ = scl.lstsq( design , linkFct.inverse( Yres ) )
-		out = np.abs( linkFct( design @ coef ) )
+		m_Y = np.mean( Y , axis = 0 ) if m_Y is None else np.array( [m_Y] ).reshape(-1,1)
+		Yres = ( Y - m_Y )**2
+		if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
+		design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
+		coef,_,_,_ = scl.lstsq( design , link.inverse( Yres ) )
+		out = np.abs( link( design @ coef ) )
 	
-	return coef if return_coef else out
+	return out if value else coef
+
 
 

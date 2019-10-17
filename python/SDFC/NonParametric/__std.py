@@ -97,7 +97,7 @@ from SDFC.tools.__LinkFct     import IdLinkFct
 ## Functions ##
 ###############
 
-def std( Y , X = None , m = None , linkFct = IdLinkFct() , return_coef = False ):
+def std( Y , c_Y = None , m_Y = None , link = IdLinkFct() , value = True ):
 	"""
 		SDFC.NonParametric.std
 		======================
@@ -106,36 +106,32 @@ def std( Y , X = None , m = None , linkFct = IdLinkFct() , return_coef = False )
 		
 		Parameters
 		----------
-		Y       : np.array
-			Dataset to fit the standard deviation
-		X       : np.array or None
+		Y     : np.array
+			Dataset to fit the mean
+		c_Y   : np.array or None
 			Covariate(s)
-		m       : np.array or float or None
+		m_Y   : np.array or float or None
 			mean of Y. If None, m = np.mean(Y)
-		linkFct : class based on SDFC.tools.LinkFct
+		link  : class based on SDFC.tools.LinkFct
 			Link function, default is identity
-		return_coef : bool
-			If true, return coefficients with covariates, else return standard deviation fitted
+		value : bool
+			If true return value fitted, else return coefficients of fit
 		
 		Returns
 		-------
 		The standard deviation
 	"""
-	out = np.sqrt( var( Y , X , m , linkFct ) )
-	
-	if return_coef:
-		if X is None:
-			coef = linkFct.inverse(out)
+	out = np.sqrt( var( Y , c_Y , m_Y , link ) )
+	if not value:
+		if c_Y is None:
+			coef = link.inverse(out)
 		else:
-			size = X.shape[0]
-			if X.ndim == 1:
-				X = X.reshape( (size,1) )
-			design = np.hstack( ( np.ones( (size,1) ) , X ) )
-			coef,_,_,_ = scl.lstsq( design , linkFct.inverse( out ) )
-			out = linkFct( design @ coef )
+			if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
+			design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
+			coef,_,_,_ = scl.lstsq( design , link.inverse( out ) )
+			out = link( design @ coef )
 		return coef
 	
 	return out
-
 
 

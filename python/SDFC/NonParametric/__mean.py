@@ -96,7 +96,7 @@ from SDFC.tools.__LinkFct import IdLinkFct
 ## Functions ##
 ###############
 
-def mean( Y , X = None , linkFct = IdLinkFct() , return_coef = False ):
+def mean( Y , c_Y = None , link = IdLinkFct() , value = True ):
 	"""
 		SDFC.NonParametric.mean
 		=======================
@@ -105,30 +105,30 @@ def mean( Y , X = None , linkFct = IdLinkFct() , return_coef = False ):
 		
 		Parameters
 		----------
-		Y       : np.array
+		Y     : np.array
 			Dataset to fit the mean
-		X       : np.array or None
+		c_Y   : np.array or None
 			Covariate(s)
-		linkFct : class based on SDFC.tools.LinkFct
+		link  : class based on SDFC.tools.LinkFct
 			Link function, default is identity
-		return_coef : bool
-			If true, return coefficients with covariates, else return mean fitted
+		value : bool
+			If true return value fitted, else return coefficients of fit
 		
 		Returns
 		-------
 		The mean or the coefficients of the regression
 	"""
 	out,coef = None,None
-	if X is None:
+	if c_Y is None:
 		out = np.mean(Y)
-		coef = linkFct.inverse(out)
+		coef = link.inverse(out)
 	else:
-		size = X.shape[0]
-		if X.ndim == 1:
-			X = X.reshape( (size,1) )
-		design = np.hstack( ( np.ones( (size,1) ) , X ) )
-		coef,_,_,_ = scl.lstsq( design , linkFct.inverse(Y) )
-		out = linkFct( design @ coef )
-	return coef if return_coef else out
+		size = c_Y.shape[0]
+		if c_Y.ndim == 1:
+			c_Y = c_Y.reshape(-1,1)
+		design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
+		coef,_,_,_ = scl.lstsq( design , link.inverse(Y) )
+		out = link( design @ coef )
+	return out if value else coef
 
 

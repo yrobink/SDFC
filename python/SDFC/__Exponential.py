@@ -121,7 +121,7 @@ class Exponential(AbstractLaw):
 	
 	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
 		"""
-		Initialization of ExpLaw
+		Initialization of Exponential law
 		
 		Parameters
 		----------

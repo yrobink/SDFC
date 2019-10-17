@@ -126,7 +126,7 @@ class Normal(AbstractLaw):
 	
 	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
 		"""
-		Initialization of NormalLaw
+		Initialization of Normal law
 		
 		Parameters
 		----------

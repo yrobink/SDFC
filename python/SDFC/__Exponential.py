@@ -89,7 +89,6 @@
 import numpy as np
 
 from SDFC.__AbstractLaw        import AbstractLaw
-from SDFC.tools.__LinkFct      import IdLinkFct
 from SDFC.NonParametric.__mean import mean
 
 
@@ -128,8 +127,6 @@ class Exponential(AbstractLaw):
 		----------
 		method         : string
 			Method called to fit parameters, options are "moments", "lmoments", "quantiles" and "MLE" (Maximum Likelihood estimation)
-		link_fct_scale : a class herited from SDFC.tools.LinkFct
-			Link function for scale, default is SDFC.tools.IdLinkFct(). Interesting option is SDFC.tools.ExpLinkFct().
 		n_bootstrap    : integer
 			Numbers of bootstrap for confidence interval, default = 0 (no bootstrap)
 		alpha          : float

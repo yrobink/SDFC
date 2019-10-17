@@ -89,7 +89,6 @@
 import numpy as np
 
 from SDFC.__AbstractLaw        import AbstractLaw
-from SDFC.tools.__LinkFct      import IdLinkFct
 from SDFC.NonParametric.__mean import mean
 from SDFC.NonParametric.__std  import std
 

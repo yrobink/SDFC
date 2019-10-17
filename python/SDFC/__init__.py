@@ -86,12 +86,11 @@
 ## Libraries ##
 ###############
 
-__version__ = "0.5.0b0"
+__version__ = "0.5.0a3"
 
-from SDFC.__AbstractLaw import AbstractLaw
-from SDFC.__NormalLaw   import NormalLaw
-from SDFC.__ExpLaw      import ExpLaw
-from SDFC.__GammaLaw    import GammaLaw
-from SDFC.__GPDLaw      import GPDLaw
-from SDFC.__GEVLaw      import GEVLaw
+from SDFC.__Normal      import Normal
+from SDFC.__Exponential import Exponential
+from SDFC.__Gamma       import Gamma
+#from SDFC.__GPDLaw      import GPDLaw
+#from SDFC.__GEVLaw      import GEVLaw
 

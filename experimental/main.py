@@ -361,7 +361,75 @@ class AbstractLaw:##{{{
 		Level of confidence interval
 	"""
 	
-	def __init__( self , method , n_bootstrap , alpha ):##{{{
+	class _Bootstrap:##{{{
+		def __init__( self , n_bootstrap , alpha ):##{{{
+			self.n_bootstrap         = n_bootstrap
+			self.coefs_bootstrap     = None
+			self.confidence_interval = None
+			self.alpha               = alpha
+		##}}}
+		
+		def _bootstrap_method(func):##{{{
+			def wrapper(*args,**kwargs):
+				self,Y = args
+				if self.n_bootstrap > 0:
+					self.coefs_bootstrap = []
+					for _ in range(self.n_bootstrap):
+						idx = np.random.choice( Y.size , Y.size , replace = True )
+						self.params = LawParams( kinds = self.kinds_params )
+						self.params.add_params( n_samples = Y.size , resample = idx , **kwargs )
+						self._Y = Y.reshape(-1,1)[idx,:]
+						self._fit()
+						self.coefs_bootstrap.append( self.coef_ )
+					self.coefs_bootstrap = np.array( self.coefs_bootstrap )
+					self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
+				return func(*args,**kwargs)
+			return wrapper
+		##}}}
+	##}}}
+	
+	@property
+	def n_bootstrap(self):##{{{
+		return self._bootstrap.n_bootstrap
+	##}}}
+	
+	@n_bootstrap.setter
+	def n_bootstrap( self , n_bootsrap ):##{{{
+		self._bootstrap.n_bootstrap = n_bootstrap
+	##}}}
+	
+	@property
+	def coefs_bootstrap(self):##{{{
+		return self._bootstrap.coefs_bootstrap
+	##}}}
+	
+	@coefs_bootstrap.setter
+	def coefs_bootstrap( self , coefs_bootstrap ):##{{{
+		self._bootstrap.coefs_bootstrap = coefs_bootstrap
+	##}}}
+	
+	@property
+	def confidence_interval(self):##{{{
+		return self._bootstrap.confidence_interval
+	##}}}
+	
+	@confidence_interval.setter
+	def confidence_interval( self , confidence_interval ):##{{{
+		self._bootstrap.confidence_interval = confidence_interval
+	##}}}
+	
+	@property
+	def alpha(self):##{{{
+		return self._bootstrap.alpha
+	##}}}
+	
+	@alpha.setter
+	def alpha( self , alpha ):##{{{
+		self._bootstrap.alpha = alpha
+	##}}}
+	
+	
+	def __init__( self , kinds_params , method , n_bootstrap , alpha ):##{{{
 		"""
 		Initialization of AbstractLaw
 		
@@ -379,11 +447,9 @@ class AbstractLaw:##{{{
 		self.method    = method.lower()
 		self.params    = {}
 		self.coef_     = None
+		self.kinds_params = kinds_params
 		
-		self.n_bootstrap         = n_bootstrap
-		self.coefs_bootstrap     = None
-		self.confidence_interval = None
-		self.alpha               = alpha
+		self._bootstrap = AbstractLaw._Bootstrap( n_bootstrap , alpha )
 		
 		self._debug = []
 		
@@ -442,6 +508,38 @@ class AbstractLaw:##{{{
 		return wrapper
 	##}}}
 	
+	@_Bootstrap._bootstrap_method
+	def fit( self , Y , **kwargs ): ##{{{
+		"""
+		Generic function to fit
+		
+		Arguments
+		---------
+		
+		Y       : numpy.ndarray
+			Data to fit
+		c_<param> : numpy.ndarray or None
+			Covariate of a param to fit
+		f_<param> : numpy.ndarray or None
+			Fix value of a param
+		l_<param> : SDFC.tools.LinkFct (optional)
+			Link function of a param
+		
+		Notes
+		-----
+		This function is generic, for example for a NormalLaw you can call:
+		>> NormalLaw.fit( Y , f_loc = loc , c_scale = X_scale , l_scale = SDFC.tools.ExpLinkFct() )
+		
+		"""
+		
+		## Fit part
+		self.params = LawParams( kinds = self.kinds_params )
+		self.params.add_params( n_samples = Y.size , resample = None , **kwargs )
+		self._Y = Y.reshape(-1,1)
+		self._fit()
+		del self._Y
+	##}}}
+	
 	def _fit_mle( self ):##{{{
 		self.optim_result = sco.minimize( self._negloglikelihood , self.params.merge_coef() , jac = self._gradient_nlll , method = "BFGS" )
 		self.params.update_coef( self.optim_result.x )
@@ -495,7 +593,7 @@ class NormalLaw(AbstractLaw):##{{{
 			Level of confidence interval, default = 0.05
 		
 		"""
-		AbstractLaw.__init__( self , method , n_bootstrap , alpha )
+		AbstractLaw.__init__( self , ["loc","scale"] , method , n_bootstrap , alpha )
 	##}}}
 	
 	def __str__(self):##{{{
@@ -515,35 +613,6 @@ class NormalLaw(AbstractLaw):##{{{
 	@property
 	def scale(self):##{{{
 		return self.params._dparams["scale"].value
-	##}}}
-	
-	
-	def bootstrap_law( self , i ):##{{{
-		"""
-		Return a NormalLaw with coef from bootstrap
-		
-		Arguments
-		---------
-		i : integer
-			Number of bootstrap
-		
-		Return
-		------
-		law : SDFC.NormalLaw
-			A NormalLaw, None if n_bootstrap = 0
-		"""
-		if self.n_bootstrap == 0:
-			return None
-		law = NormalLaw( self.method , alpha = self.alpha )
-		law._loc   = self._loc.copy()
-		law._scale = self._scale.copy()
-		loc,scale = self._split_param( self.coefs_bootstrap[i,:] )
-		law._lparams = [law._loc,law._scale]
-		law._loc.set_coef( loc )
-		law._scale.set_coef( scale )
-		law.coef_ = law._concat_param()
-		law._update_param( law.coef_ )
-		return law
 	##}}}
 	
 	def predict_loc( self , c_loc = None ):##{{{
@@ -580,52 +649,6 @@ class NormalLaw(AbstractLaw):##{{{
 		return self._predict_covariate( "scale" , c_scale )
 	##}}}
 	
-	
-	def fit( self , Y , **kwargs ): ##{{{
-		"""
-		Fit function for NormalLaw
-		
-		Arguments
-		---------
-		
-		Y       : numpy.ndarray
-			Data to fit
-		c_loc   : numpy.ndarray or None
-			Covariate of loc
-		f_loc   : numpy.ndarray or None
-			Fix value of loc
-		l_loc   : SDFC.tools.LinkFct (optional)
-			Link function of loc
-		c_scale : numpy.ndarray or None
-			Covariate of scale
-		f_scale : numpy.ndarray or None
-			Fix value of scale
-		l_scale : SDFC.tools.LinkFct (optional)
-			Link function of scale
-		"""
-		
-		## Bootstrap part
-		if self.n_bootstrap > 0:
-			self.coefs_bootstrap = []
-			for _ in range(self.n_bootstrap):
-				idx = np.random.choice( Y.size , Y.size , replace = True )
-				self.params = LawParams( kinds = ["loc","scale"] )
-				self.params.add_params( n_samples = Y.size , resample = idx , **kwargs )
-				self._Y = Y.reshape(-1,1)[idx,:]
-				self._fit()
-				self.coefs_bootstrap.append( self.coef_ )
-			self.coefs_bootstrap = np.array( self.coefs_bootstrap )
-			self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
-		
-		## Fit part
-		self.params = LawParams( kinds = ["loc","scale"] )
-		self.params.add_params( n_samples = Y.size , resample = None , **kwargs )
-		self._Y = Y.reshape(-1,1)
-		self._fit()
-		del self._Y
-		
-		
-	##}}}
 	
 	def _fit_moments(self):##{{{
 		ploc   = self.params._dparams["loc"]

@@ -94,7 +94,7 @@ from SDFC.NonParametric.__quantile import quantile
 ## Functions ##
 ###############
 
-def median( Y , X = None , return_coef = False ):
+def median( Y , c_Y = None , value = True ):
 	"""
 		SDFC.NonParametric.median
 		=========================
@@ -105,16 +105,16 @@ def median( Y , X = None , return_coef = False ):
 		----------
 		Y       : np.array
 			Dataset to fit the median
-		X       : np.array or None
+		c_Y   : np.array or None
 			Covariate(s)
-		return_coef : bool
-			If true, return coefficients with covariates, else return median fitted
+		value : bool
+			If true return value fitted, else return coefficients of fit
 		
 		Returns
 		-------
 		The median
 	"""
-	return quantile( Y , [0.5] , X , return_coef )
+	return quantile( Y , [0.5] , c_Y , value )
 
 
 

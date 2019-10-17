@@ -89,14 +89,14 @@
 import numpy        as np
 import scipy.linalg as scl
 
-from SDFC.tools.__LinkFct     import IdLinkFct
+from SDFC.tools.__Link import IdLink
 
 
 ###############
 ## Functions ##
 ###############
 
-def cov( Y0 , Y1 , X = None , m0 = None , m1 = None , linkFct = IdLinkFct() , return_coef = False ):
+def cov( Y0 , Y1 , c_Y = None , m_Y0 = None , m_Y1 = None , link = IdLink() , value = True ):
 	"""
 		SDFC.NonParametric.cov
 		======================
@@ -105,19 +105,19 @@ def cov( Y0 , Y1 , X = None , m0 = None , m1 = None , linkFct = IdLinkFct() , re
 		
 		Parameters
 		----------
-		Y0      : np.array
+		Y0    : np.array
 			Dataset0 to fit the covariance between Y0 and Y1 
-		Y1      : np.array
+		Y1    : np.array
 			Dataset1 to fit the covariance between Y0 and Y1 
-		X       : np.array or None
+		c_Y   : np.array or None
 			Covariate(s)
-		m0      : np.array or float or None
-			mean of Y0. If None, m0 = np.mean(Y0)
-		m1      : np.array or float or None
-			mean of Y1. If None, m1 = np.mean(Y1)
-		linkFct : class based on SDFC.tools.LinkFct
+		m_Y0  : np.array or float or None
+			mean of Y0. If None, m_Y0 = np.mean(Y0)
+		m_Y1  : np.array or float or None
+			mean of Y1. If None, m_Y1 = np.mean(Y1)
+		link  : class based on SDFC.tools.AbstractLink
 			Link function, default is identity
-		return_coef : bool
+		value : bool
 			If true, return coefficients with covariates, else return covariance fitted
 		
 		Returns
@@ -125,21 +125,19 @@ def cov( Y0 , Y1 , X = None , m0 = None , m1 = None , linkFct = IdLinkFct() , re
 		The covariance
 	"""
 	out,coef = None,None
-	if X is None:
+	if c_Y is None:
 		out  = np.cov( np.stack( (Y0.ravel(),Y1.ravel()) ) )[0,1]
-		coef = linkFct.inverse(out)
+		coef = link.inverse(out)
 	else:
-		m0 = np.mean( Y0 ) if m0 is None else np.array( [m0] ).ravel()
-		m1 = np.mean( Y1 ) if m1 is None else np.array( [m1] ).ravel()
+		m_Y0 = np.mean( Y0 ) if m_Y0 is None else np.array( [m_Y0] ).reshape(-1,1)
+		m_Y1 = np.mean( Y1 ) if m_Y1 is None else np.array( [m_Y1] ).reshape(-1,1)
 		
-		Yres = ( Y0.ravel() - m0 ) * ( Y1.ravel() - m1 )
-		size = X.shape[0]
-		if X.ndim == 1:
-			X = X.reshape( (size,1) )
-		design = np.hstack( ( np.ones( (size,1) ) , X ) )
-		coef,_,_,_ = scl.lstsq( design , linkFct.inverse( Yres ) )
-		out = linkFct( design @ coef )
+		Yres = ( Y0 - m_Y0 ) * ( Y1 - m_Y1 )
+		if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
+		design = np.hstack( ( np.ones( (Y0.size,1) ) , c_Y ) )
+		coef,_,_,_ = scl.lstsq( design , link.inverse( Yres ) )
+		out = link( design @ coef )
 	
-	return coef if return_coef else out
+	return out if value else coef
 
 

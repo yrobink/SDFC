@@ -93,7 +93,7 @@ from SDFC.NonParametric.__NonParametric_cpp  import QuantileRegression
 ## Functions ##
 ###############
 
-def quantile( Y , ltau , X = None , return_coef = False ):
+def quantile( Y , ltau , c_Y = None , value = True ):
 	"""
 		SDFC.NonParametric.quantile
 		===========================
@@ -106,10 +106,12 @@ def quantile( Y , ltau , X = None , return_coef = False ):
 			Dataset to fit the quantile
 		ltau    : np.array
 			The quantile to fit, between 0 and 1
-		X       : np.array or None
+		c_Y   : np.array or None
 			Covariate(s)
-		return_coef : bool
-			If true, return coefficients with covariates, else return quantile fitted
+		link  : class based on SDFC.tools.Link
+			Link function, default is identity
+		value : bool
+			If true return value fitted, else return coefficients of fit
 		
 		Returns
 		-------
@@ -120,14 +122,14 @@ def quantile( Y , ltau , X = None , return_coef = False ):
 	q    = None
 	coef = None
 	
-	if X is None:
+	if c_Y is None:
 		q    = np.percentile( Y , 100 * ltau )
 		coef = q.copy()
 	else:
 		reg  = QuantileRegression( ltau = ltau )
-		reg.fit( Y , X )
+		reg.fit( Y , c_Y )
 		q    = reg.quantiles
 		coef = reg.coef_
-	return coef if return_coef else q
+	return q if value else coef
 
 

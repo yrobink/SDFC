@@ -86,7 +86,9 @@
 ## Libraries ##
 ###############
 
-import numpy as np
+import numpy     as np
+from SDFC.tools.__LawParams    import LawParams
+import scipy.optimize as sco
 import texttable as tt
 
 
@@ -115,7 +117,75 @@ class AbstractLaw:
 		Level of confidence interval
 	"""
 	
-	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ):##{{{
+	class _Bootstrap:##{{{
+		def __init__( self , n_bootstrap , alpha ):##{{{
+			self.n_bootstrap         = n_bootstrap
+			self.coefs_bootstrap     = None
+			self.confidence_interval = None
+			self.alpha               = alpha
+		##}}}
+		
+		def _bootstrap_method(func):##{{{
+			def wrapper(*args,**kwargs):
+				self,Y = args
+				if self.n_bootstrap > 0:
+					self.coefs_bootstrap = []
+					for _ in range(self.n_bootstrap):
+						idx = np.random.choice( Y.size , Y.size , replace = True )
+						self.params = LawParams( kinds = self.kinds_params )
+						self.params.add_params( n_samples = Y.size , resample = idx , **kwargs )
+						self._Y = Y.reshape(-1,1)[idx,:]
+						self._fit()
+						self.coefs_bootstrap.append( self.coef_ )
+					self.coefs_bootstrap = np.array( self.coefs_bootstrap )
+					self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
+				return func(*args,**kwargs)
+			return wrapper
+		##}}}
+	##}}}
+	
+	@property
+	def n_bootstrap(self):##{{{
+		return self._bootstrap.n_bootstrap
+	##}}}
+	
+	@n_bootstrap.setter
+	def n_bootstrap( self , n_bootsrap ):##{{{
+		self._bootstrap.n_bootstrap = n_bootstrap
+	##}}}
+	
+	@property
+	def coefs_bootstrap(self):##{{{
+		return self._bootstrap.coefs_bootstrap
+	##}}}
+	
+	@coefs_bootstrap.setter
+	def coefs_bootstrap( self , coefs_bootstrap ):##{{{
+		self._bootstrap.coefs_bootstrap = coefs_bootstrap
+	##}}}
+	
+	@property
+	def confidence_interval(self):##{{{
+		return self._bootstrap.confidence_interval
+	##}}}
+	
+	@confidence_interval.setter
+	def confidence_interval( self , confidence_interval ):##{{{
+		self._bootstrap.confidence_interval = confidence_interval
+	##}}}
+	
+	@property
+	def alpha(self):##{{{
+		return self._bootstrap.alpha
+	##}}}
+	
+	@alpha.setter
+	def alpha( self , alpha ):##{{{
+		self._bootstrap.alpha = alpha
+	##}}}
+	
+	
+	def __init__( self , kinds_params , method , n_bootstrap , alpha ):##{{{
 		"""
 		Initialization of AbstractLaw
 		
@@ -130,17 +200,12 @@ class AbstractLaw:
 		
 		
 		"""
-		self.method    = method
-		self._lparams  = None
+		self.method    = method.lower()
+		self.params    = {}
 		self.coef_     = None
+		self.kinds_params = kinds_params
 		
-		self._Y        = None
-		self._size     = None
-		
-		self.n_bootstrap         = n_bootstrap
-		self.coefs_bootstrap     = None
-		self.confidence_interval = None
-		self.alpha               = alpha
+		self._bootstrap = AbstractLaw._Bootstrap( n_bootstrap , alpha )
 		
 		self._debug = []
 		
@@ -161,19 +226,20 @@ class AbstractLaw:
 		tab = tt.Texttable( max_width = 0 )
 		
 		## Header
-		header = [ str(type(self)).split(".")[-1][:-2] + " ({})".format(self.method) , "Link function" , "Is fix" , "coef" ]
+		header = [ str(type(self)).split(".")[-1][:-2] + " ({})".format(self.method) , "Link" , "Type" , "coef" ]
 		if self.confidence_interval is not None:
 			header += [ "Quantile {}".format(self.alpha/2) , "Quantile {}".format( 1 - self.alpha / 2 ) ]
 		tab.header( header )
 		
 		## Loop on params
 		a = 0
-		for p in self._lparams:
+		for k in self.params._dparams:
+			p = self.params._dparams[k]
 			coef = None if p.coef_ is None else str(p.coef_.squeeze().round(3).tolist())
-			row = [ p.kind , str(p.linkFct).split(".")[-1] , str(not p._not_fixed) , coef ]
+			row = [ p.kind , str(p.link).split(".")[-1] , str(type(p)).split(".")[-1].split("Param")[0] , coef ]
 			if self.confidence_interval is not None:
-				if p._not_fixed:
-					b = a + p.size
+				if not p.is_fix():
+					b = a + p.n_features
 					row += [ self.confidence_interval[i,a:b].squeeze().round(3).tolist() for i in range(2) ]
 					a = b
 				else:
@@ -182,45 +248,58 @@ class AbstractLaw:
 		return tab.draw() + "\n"
 	##}}}
 	
-	def _predict_param( self , param , cov = None ): ##{{{
-		if cov is None:
-			return param.valueLf()
-		if param.size == 1:
-			return np.repeat( param.valueLf()[0] , cov.size )
-		if cov.ndim == 1:
-			cov = cov.reshape( (cov.size,1) )
-		return param.linkFct( param.coef_[0] + np.dot( cov , param.coef_[1:] ) )
-	##}}}
 	
-	def _gen_concat_param( self , lp ):##{{{
-		param = np.array([])
-		for p in lp:
-			if p.not_fixed():
-				param = np.hstack( (param,p.coef_.ravel()) )
-		return param
-	##}}}
-	
-	def _concat_param( self ):##{{{
-		param = np.array([])
-		for p in self._lparams:
-			if p.not_fixed():
-				param = np.hstack( (param,p.coef_.ravel()) )
-		return param
-	##}}}
-	
-	def _split_param( self , param ):##{{{
-		tparams = []
-		a,b = 0,0
-		for p in self._lparams:
-			if not p.not_fixed():
-				tparams.append(None)
-			else:
-				b = a + p.size
-				tparams.append( param[a:b] )
-				a = b
+	def _predict_covariate( self , kind , c_p ): ##{{{
+		p = self.params._dparams[kind]
 		
-		return tparams
-		
+		if isinstance(p,CovariateParam) and c_p is not None:
+			return p.coef_[0] + c_p.T @ p.coef_[1:]
+		return p.value
 	##}}}
+	
+	def _update_coef(func):##{{{
+		def wrapper(*args):
+			args[0].params.update_coef(args[1])
+			return func(*args)
+		return wrapper
+	##}}}
+	
+	@_Bootstrap._bootstrap_method
+	def fit( self , Y , **kwargs ): ##{{{
+		"""
+		Generic function to fit
+		
+		Arguments
+		---------
+		
+		Y       : numpy.ndarray
+			Data to fit
+		c_<param> : numpy.ndarray or None
+			Covariate of a param to fit
+		f_<param> : numpy.ndarray or None
+			Fix value of a param
+		l_<param> : SDFC.tools.LinkFct (optional)
+			Link function of a param
+		
+		Notes
+		-----
+		This function is generic, for example for a NormalLaw you can call:
+		>> NormalLaw.fit( Y , f_loc = loc , c_scale = X_scale , l_scale = SDFC.tools.ExpLinkFct() )
+		
+		"""
+		
+		## Fit part
+		self.params = LawParams( kinds = self.kinds_params )
+		self.params.add_params( n_samples = Y.size , resample = None , **kwargs )
+		self._Y = Y.reshape(-1,1)
+		self._fit()
+		del self._Y
+	##}}}
+	
+	def _fit_mle( self ):##{{{
+		self.optim_result = sco.minimize( self._negloglikelihood , self.params.merge_coef() , jac = self._gradient_nlll , method = "BFGS" )
+		self.params.update_coef( self.optim_result.x )
+	##}}}
+
 
 

@@ -94,102 +94,55 @@ import scipy.special as scs
 ## Functions ##
 ###############
 
-## TODO: vectorialize and use symmetrie to optimize methods
-## TODO: add order 4?
-
-def _lmoments2(X):
-	Y    = np.sort(X)
-	size = Y.size
-	res  = 0
-	for i in range(size):
-		res += ( scs.binom( i , 1 ) - scs.binom( size - i + 1 , 1 ) ) * Y[i]
-	
-	res = res / ( 2 * scs.binom( size , 2 ) )
-	
-	return res
-
-
-def _lmoments3(X):
-	Y    = np.sort(X)
-	size = Y.size
-	res  = 0
-	for i in range(size):
-		res += ( scs.binom( i , 2 ) - scs.binom( i , 1 ) * scs.binom( size - i + 1 , 1 ) + scs.binom( size - i + 1 , 2 ) ) * Y[i]
-	
-	res = res / ( 3 * scs.binom( size , 3 ) )
-	
-	return res
-
-
-def lmoments( X , order = 0 ):
+def lmoments( X , order = None ):##{{{
 	"""
 		SDFC.NonParametric.lmoments
 		===========================
 		
-		Estimate the lmoments of order 1, 2, 3
+		Estimate the lmoments of orders 1 to 4
 		
 		Parameters
 		----------
 		X     : np.array
 			Dataset to fit the lmoments
-		order : integer
-			An integer between 1 and 3.
+		order : integer, list of integer or None
+			Integers between 1 and 4
 		
 		
 		Returns
 		-------
-		The lmoments. if order is 1,2,3 or 4, return the corresponding values, else return a tuple with the four first lmoments
+		The lmoments.
 	"""
+	Xs = np.sort(X)
 	
-	if order == 1:
-		return np.mean(X)
-	elif order == 2:
-		return _lmoments2(X)
-	elif order == 3:
-		return _lmoments3(X)
-	else:
-		return np.nan
-
-
-
-def _lmoments_origin( X , order = 0 ):##{{{
-	l1,l2,l3,l4 = 0,0,0,0
-	Y = np.sort(X)
-	N = Y.size
+	lmom = [np.nan,np.nan,np.nan,np.nan]
 	
-	for i in range(N):
-		cl1 = i - 1
-		cl2 = cl1 * ( i - 1 - 1 ) / 2
-		cl3 = cl2 * ( i - 1 - 2 ) / 3
-		cr1 = N - 1
-		cr2 = cr1 * ( N - i - 1 ) / 2
-		cr3 = cr2 * ( N - i - 2 ) / 3
-		
-		l1 += Y[i]
-		l2 += ( cl1 - cr1 ) * Y[i]
-		l3 += ( cl2 - 2 * cl1 * cr1 + cr2 ) * Y[i]
-		l4 += ( cl3 - 3 * cl2 * cr1 + 3 * cl1 * cr2 - cr3 ) * Y[i]
+	## Order 1
+	lmom[0] = np.mean(Xs)
 	
-	c1 = N
-	c2 = c1 * ( N - 1 ) / 2
-	c3 = c2 * ( N - 2 ) / 3
-	c4 = c3 * ( N - 3 ) / 4
+	## Order 2
+	C0 = scs.binom( range( X.size ) , 1 )
+	C1 = scs.binom( range( X.size - 1 , -1 , -1 ) , 1 )
+	lmom[1] = np.sum( ( C0 - C1 ) * Xs ) / ( 2 * scs.binom( X.size , 2 ) )
 	
-	l1 = l1 / c1
-	l2 = l2 / c2 / 2
-	l3 = l3 / c3 / 3
-	l4 = l4 / c4 / 4
+	## Order 3
+	C2 = scs.binom( range( X.size ) , 2 )
+	C3 = scs.binom( range( X.size - 1 , -1 , -1 ) , 2 )
+	lmom[2] = np.sum( ( C2 - 2 * C0 * C1 + C3 ) * Xs ) / ( 3 * scs.binom( X.size , 3 ) )
 	
-	if order == 1:
-		return l1
-	elif order == 2:
-		return l2
-	elif order == 3:
-		return l3
-	elif order == 4:
-		return l4
-	else:
-		return (l1,l2,l3,l4)
+	## Order 4
+	C4 = scs.binom( range( X.size ) , 3 )
+	C5 = scs.binom( range(X.size - 1 , -1 , -1 ) , 3 )
+	lmom[3] = np.sum( (C4 - 3 * C2 * C1 + 3 * C0 * C3 - C5 ) * Xs ) / ( 4 * scs.binom( X.size , 4 ) )
+	
+	if order is None:
+		return lmom
+	
+	out = [lmom[i+1] for i in order]
+	
+	return out
 ##}}}
+
+
 
 

@@ -44,8 +44,13 @@ except:
 ###############
 
 import SDFC as sd
+import SDFC.NonParametric as sdn
 import SDFC.tools as sdt
 import texttable as tt
+
+
+from SDFC.NonParametric.__lmoments import _lmoments2
+from SDFC.NonParametric.__lmoments import _lmoments3
 
 ###############
 ## Fonctions ##
@@ -84,7 +89,7 @@ def test_exponential():##{{{
 	print(law)
 ##}}}
 
-def test_gamma():
+def test_gamma():##{{{
 	## Dataset
 	size  = 2000
 	t,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
@@ -98,6 +103,8 @@ def test_gamma():
 	law = Law( method = "MLE" , n_bootstrap = 10 )
 	law.fit( Y , f_scale = scale , c_shape = X_shape )
 	print(law)
+##}}}
+
 
 ##########
 ## main ##
@@ -107,6 +114,13 @@ if __name__ == "__main__":
 	
 #	test_normal()
 #	test_exponential()
-	test_gamma()
+#	test_gamma()
+	
+	X = sc.genextreme.rvs( size = 10000 , loc = 1 , scale = 0.5 , c = 0.3 )
+	
+	print(sdn.lmoments(X))
+	print(np.mean(X))
+	print(_lmoments2(X))
+	print(_lmoments3(X))
 	
 	print("Done")

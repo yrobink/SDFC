@@ -202,7 +202,6 @@ class AbstractLaw:
 		"""
 		self.method    = method.lower()
 		self.params    = {}
-		self.coef_     = None
 		self.kinds_params = kinds_params
 		
 		self._bootstrap = AbstractLaw._Bootstrap( n_bootstrap , alpha )
@@ -248,6 +247,15 @@ class AbstractLaw:
 		return tab.draw() + "\n"
 	##}}}
 	
+	@property
+	def coef_(self):##{{{
+		return self.params.coef_
+	##}}}
+	
+	@coef_.setter
+	def coef_( self , coef_  ):##{{{
+		self.params.update_coef(coef_)
+	##}}}
 	
 	def _predict_covariate( self , kind , c_p ): ##{{{
 		p = self.params._dparams[kind]
@@ -297,8 +305,8 @@ class AbstractLaw:
 	##}}}
 	
 	def _fit_mle( self ):##{{{
-		self.optim_result = sco.minimize( self._negloglikelihood , self.params.merge_coef() , jac = self._gradient_nlll , method = "BFGS" )
-		self.params.update_coef( self.optim_result.x )
+		self.optim_result = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
+		self.coef_ = self.optim_result.x
 	##}}}
 
 

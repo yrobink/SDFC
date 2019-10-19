@@ -138,7 +138,7 @@ def lmoments( X , order = None ):##{{{
 	if order is None:
 		return lmom
 	
-	out = [lmom[i+1] for i in order]
+	out = [lmom[i-1] for i in order]
 	
 	return out
 ##}}}

@@ -49,9 +49,6 @@ import SDFC.tools as sdt
 import texttable as tt
 
 
-from SDFC.NonParametric.__lmoments import _lmoments2
-from SDFC.NonParametric.__lmoments import _lmoments3
-
 ###############
 ## Fonctions ##
 ###############
@@ -103,6 +100,7 @@ def test_gamma():##{{{
 	law = Law( method = "MLE" , n_bootstrap = 10 )
 	law.fit( Y , f_scale = scale , c_shape = X_shape )
 	print(law)
+	print(law.coef_)
 ##}}}
 
 
@@ -112,15 +110,13 @@ def test_gamma():##{{{
 
 if __name__ == "__main__":
 	
-#	test_normal()
-#	test_exponential()
-#	test_gamma()
+	test_normal()
+	test_exponential()
+	test_gamma()
 	
-	X = sc.genextreme.rvs( size = 10000 , loc = 1 , scale = 0.5 , c = 0.3 )
-	
-	print(sdn.lmoments(X))
-	print(np.mean(X))
-	print(_lmoments2(X))
-	print(_lmoments3(X))
+#	X = sc.genextreme.rvs( size = 10000 , loc = 1 , scale = 0.5 , c = 0.3 )
+#	
+#	print(sdn.lmoments(X))
+#	print(np.mean(X))
 	
 	print("Done")

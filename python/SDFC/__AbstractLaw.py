@@ -117,6 +117,8 @@ class AbstractLaw:
 		Level of confidence interval
 	"""
 	
+	#####################################################################
+	
 	class _Bootstrap:##{{{
 		def __init__( self , n_bootstrap , alpha ):##{{{
 			self.n_bootstrap         = n_bootstrap
@@ -185,6 +187,8 @@ class AbstractLaw:
 	##}}}
 	
 	
+	#####################################################################
+	
 	def __init__( self , kinds_params , method , n_bootstrap , alpha ):##{{{
 		"""
 		Initialization of AbstractLaw
@@ -202,7 +206,7 @@ class AbstractLaw:
 		"""
 		self.method    = method.lower()
 		self.params    = {}
-		self.kinds_params = kinds_params
+		self._kinds_params = kinds_params
 		
 		self._bootstrap = AbstractLaw._Bootstrap( n_bootstrap , alpha )
 		
@@ -246,6 +250,15 @@ class AbstractLaw:
 			tab.add_row( row )
 		return tab.draw() + "\n"
 	##}}}
+	
+	@property
+	def kinds_params(self):##{{{
+		return self._kinds_params
+	##}}}
+	
+	@kinds_params.setter
+	def kinds_params( self , kp ):
+		pass
 	
 	@property
 	def coef_(self):##{{{

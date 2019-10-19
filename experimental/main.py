@@ -114,9 +114,4 @@ if __name__ == "__main__":
 	test_exponential()
 	test_gamma()
 	
-#	X = sc.genextreme.rvs( size = 10000 , loc = 1 , scale = 0.5 , c = 0.3 )
-#	
-#	print(sdn.lmoments(X))
-#	print(np.mean(X))
-	
 	print("Done")

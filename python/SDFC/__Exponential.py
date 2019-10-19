@@ -174,7 +174,7 @@ class Exponential(AbstractLaw):
 		
 		## Fit loc
 		if not pscale.is_fix():
-			pscale.set_coef( mean( self._Y , pscale.design_wo1() , value = False , link = pscale.link ) )
+			self.params.update_coef( mean( self._Y , pscale.design_wo1() , value = False , link = pscale.link ) , "scale" )
 	##}}}
 	
 	def _fit_mle(self):##{{{
@@ -189,7 +189,6 @@ class Exponential(AbstractLaw):
 			self._fit_moments()
 		else:
 			self._fit_mle()
-		self.coef_ = self.params.merge_coef()
 	##}}}
 	
 	@AbstractLaw._update_coef

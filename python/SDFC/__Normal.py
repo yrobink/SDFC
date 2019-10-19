@@ -201,11 +201,11 @@ class Normal(AbstractLaw):
 		
 		## Fit loc
 		if not ploc.is_fix():
-			ploc.set_coef( mean( self._Y , ploc.design_wo1() , value = False , link = ploc.link ) )
+			self.params.update_coef( mean( self._Y , ploc.design_wo1() , value = False , link = ploc.link ) , "loc" )
 		
 		## Fit scale
 		if not pscale.is_fix():
-			pscale.set_coef( std( self._Y , pscale.design_wo1() , m_Y = self.loc , value = False , link = pscale.link ) )
+			self.params.update_coef( std( self._Y , pscale.design_wo1() , m_Y = self.loc , value = False , link = pscale.link ) , "scale" )
 	##}}}
 	
 	def _fit_mle(self):##{{{
@@ -220,7 +220,6 @@ class Normal(AbstractLaw):
 			self._fit_moments()
 		else:
 			self._fit_mle()
-		self.coef_ = self.params.merge_coef()
 	##}}}
 	
 	@AbstractLaw._update_coef

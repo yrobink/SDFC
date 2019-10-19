@@ -224,23 +224,22 @@ class Gamma(AbstractLaw):
 				scale[idx] = scale[cidx].min()
 				shape[idx] = shape[cidx].min()
 			
-			pscale.set_coef( mean( scale , pscale.design_wo1() , value = False , link = pscale.link ) )
-			pshape.set_coef( mean( shape , pshape.design_wo1() , value = False , link = pshape.link ) )
-			
+			self.params.update_coef( mean( scale , pscale.design_wo1() , value = False , link = pscale.link ) , "scale" )
+			self.params.update_coef( mean( shape , pshape.design_wo1() , value = False , link = pshape.link ) , "shape" )
 		elif pscale.is_fix():
 			
 			m = mean( self._Y  , pshape.design_wo1() * self.scale )
 			v = var(  self._Y  , pshape.design_wo1() * self.scale**2 )
 			
 			shape = m**2 / v
-			pshape.set_coef( mean( shape , pshape.design_wo1() , value = False , link = pshape.link ) )
+			self.params.update_coef( mean( shape , pshape.design_wo1() , value = False , link = pshape.link ) , "shape" )
 			
 		elif pshape.is_fix():
 			m = mean( self._Y  , pscale.design_wo1()    * self.shape )
 			v = var(  self._Y  , pscale.design_wo1()**2 * self.shape )
 			
 			scale = v / m
-			pscale.set_coef( mean( scale , pscale.design_wo1() , value = False , link = pscale.link ) )
+			self.params.update_coef( mean( scale , pscale.design_wo1() , value = False , link = pscale.link ) , "scale" )
 	##}}}
 	
 	def _fit_mle(self):##{{{
@@ -253,7 +252,6 @@ class Gamma(AbstractLaw):
 			self._fit_moments()
 		else:
 			self._fit_mle()
-		self.coef_ = self.params.merge_coef()
 	##}}}
 	
 	@AbstractLaw._update_coef

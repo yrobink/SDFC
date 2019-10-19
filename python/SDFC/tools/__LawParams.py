@@ -188,26 +188,30 @@ class FixParam(AbstractParam):##{{{
 ##}}}
 
 class LawParams:##{{{
-	def __init__( self , kinds , **kwargs ):
+	
+	def __init__( self , kinds , **kwargs ):##{{{
 		self.kinds = kinds
 		self._dparams = {}
+		self.coef_ = None
+	##}}}
 	
-	def add_params( self , n_samples , resample , **kwargs ):
+	def add_params( self , n_samples , resample , **kwargs ):##{{{
 		for kind in self.kinds:
 			k_param = self.filter( kind , **kwargs )
 			config = self.infer_configuration(**k_param)
 			if self.is_covariate(config):  self._dparams[kind] = CovariateParam(  kind , n_samples , resample , **k_param )
 			if self.is_stationary(config): self._dparams[kind] = StationaryParam( kind , n_samples , resample , **k_param )
 			if self.is_fix(config):        self._dparams[kind] = FixParam(        kind , n_samples , resample , **k_param )
+	##}}}
 	
-	def merge_coef( self ):
-		coef = np.array([])
+	def merge_coef( self ):##{{{
+		self.coef_ = np.array([])
 		for k in self._dparams:
 			if not self._dparams[k].is_fix():
-				coef = np.hstack( (coef,self._dparams[k].coef_.squeeze()) )
-		return coef
+				self.coef_ = np.hstack( (self.coef_,self._dparams[k].coef_.squeeze()) )
+	##}}}
 	
-	def split_coef( self , coef ):
+	def split_coef( self , coef ):##{{{
 		tcoef = []
 		a,b = 0,0
 		for k in self._dparams:
@@ -218,13 +222,19 @@ class LawParams:##{{{
 				tcoef.append( coef[a:b] )
 				a = b
 		return tcoef
+	##}}}
 	
-	def update_coef( self , coef ):
-		lcoef = self.split_coef(coef)
-		for c,k in zip(lcoef,self._dparams):
-			self._dparams[k].set_coef(c)
+	def update_coef( self , coef , kind = None ):##{{{
+		if kind is None:
+			lcoef = self.split_coef(coef)
+			for c,k in zip(lcoef,self._dparams):
+				self._dparams[k].set_coef(c)
+		else:
+			self._dparams[kind].set_coef(coef)
+		self.merge_coef()
+	##}}}
 	
-	def infer_configuration( self , **kwargs ):
+	def infer_configuration( self , **kwargs ):##{{{
 		has_c = False
 		has_s = False
 		has_f = False
@@ -253,5 +263,7 @@ class LawParams:##{{{
 			if kind in k:
 				out[k] = kwargs[k]
 		return out
+	##}}}
+
 ##}}}
 

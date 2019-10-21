@@ -146,8 +146,13 @@ class CovariateParam(AbstractParam):##{{{
 	def update( self ):
 		self.fit_ = (self.design_ @ self.coef_).reshape(-1,1)
 	
+	def set_intercept( self , coef ):
+		coef = np.array([coef]).squeeze()
+		self.coef_[0] = coef
+		self.update()
+	
 	def set_coef( self , coef ):
-		self.coef_ = coef.squeeze()
+		self.coef_ = np.array([coef]).squeeze()
 		self.update()
 	
 	def design_wo1(self):
@@ -167,6 +172,9 @@ class StationaryParam(AbstractParam):##{{{
 	
 	def update( self ):
 		self.fit_ = np.repeat( self.coef_ , self.n_samples ).reshape(-1,1)
+	
+	def set_intercept( self , coef ):
+		self.set_coef(coef)
 	
 	def set_coef( self , coef ):
 		self.coef_ = np.array([coef]).squeeze()
@@ -233,6 +241,11 @@ class LawParams:##{{{
 			self._dparams[kind].set_coef(coef)
 		self.merge_coef()
 	##}}}
+	
+	def set_intercept( self , coef , kind ):
+		self._dparams[kind].set_intercept(coef)
+		self.merge_coef()
+	
 	
 	def infer_configuration( self , **kwargs ):##{{{
 		has_c = False

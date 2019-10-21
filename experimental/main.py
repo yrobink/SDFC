@@ -113,11 +113,11 @@ def test_gev():##{{{
 	Y = sc.genextreme.rvs( loc = loc , scale = scale , c = - shape )
 	
 	Law = sd.GEV
-	law = Law( method = "mle" , n_bootstrap = 0 )
+	law = Law( method = "mle" , n_bootstrap = 100 )
 	law.fit( Y , c_loc = X_loc , c_scale = X_scale , c_shape = X_shape )
 	print(law)
-	print(law.optim_result)
 ##}}}
+
 
 ##########
 ## main ##

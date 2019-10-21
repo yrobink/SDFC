@@ -314,27 +314,32 @@ class GEV(AbstractLaw):
 			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
 	##}}}
 	
-	def _fit_mle_initialization(self):
-		
-		self._fit_moments()
-		nlll_mom = self._negloglikelihood(self.coef_)
-		grad_mom = self._gradient_nlll(self.coef_)
-		
-		self._fit_lmoments()
-		nlll_lmo = self._negloglikelihood(self.coef_)
-		grad_lmo = self._gradient_nlll(self.coef_)
+	def _fit_mle_initialization(self):##{{{
 		
 		self._fit_quantiles()
-		nlll_qua = self._negloglikelihood(self.coef_)
-		grad_qua = self._gradient_nlll(self.coef_)
 		
-		## Test on gradient
-		is_mom = not np.any(np.isnan(grad_mom))
-		is_lmo = not np.any(np.isnan(grad_lmo))
-		is_qua = not np.any(np.isnan(grad_qua))
+		nlll = self._negloglikelihood(self.coef_)
+		grad = self._gradient_nlll(self.coef_)
 		
-		## Test on value of nlll
-		
+		f_scale = 1
+		f_shape = 1
+		while ( not nlll < np.inf ) or np.any(np.isnan(grad)):
+			pscale = self.params._dparams["scale"]
+			pshape = self.params._dparams["shape"]
+			
+			if pshape.is_fix():
+				coef_ = np.zeros(pshape.n_features)
+				coef_[0] = 1. * f_scale
+				self.params.update_coef( coef_ , "scale" )
+			else:
+				coef_ = np.zeros(pshape.n_features)
+				coef_[0] = 1e-1 / f_shape
+				self.params.update_coef( coef_ , "shape" )
+			f_scale *= 2
+			f_shape *= 2
+			nlll = self._negloglikelihood(self.coef_)
+			grad = self._gradient_nlll(self.coef_)
+	##}}}
 	
 	def _fit_mle(self):##{{{
 		self._fit_mle_initialization()

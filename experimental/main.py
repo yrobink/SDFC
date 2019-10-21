@@ -100,9 +100,24 @@ def test_gamma():##{{{
 	law = Law( method = "MLE" , n_bootstrap = 10 )
 	law.fit( Y , f_scale = scale , c_shape = X_shape )
 	print(law)
-	print(law.coef_)
 ##}}}
 
+def test_gev():##{{{
+	## Dataset
+	size  = 2000
+	t,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
+	loc   = 1. + 0.8 * X_loc# - 0.5 * X_loc**2
+	scale = 0.08 * X_scale
+	shape = 1. + 0.3 * X_shape
+	
+	Y = sc.genextreme.rvs( loc = loc , scale = scale , c = - shape )
+	
+	Law = sd.GEV
+	law = Law( method = "mle" , n_bootstrap = 0 )
+	law.fit( Y , c_loc = X_loc , c_scale = X_scale , c_shape = X_shape )
+	print(law)
+	print(law.optim_result)
+##}}}
 
 ##########
 ## main ##
@@ -110,8 +125,9 @@ def test_gamma():##{{{
 
 if __name__ == "__main__":
 	
-	test_normal()
-	test_exponential()
-	test_gamma()
+#	test_normal()
+#	test_exponential()
+#	test_gamma()
+	test_gev()
 	
 	print("Done")

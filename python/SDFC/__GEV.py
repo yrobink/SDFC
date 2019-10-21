@@ -315,7 +315,26 @@ class GEV(AbstractLaw):
 	##}}}
 	
 	def _fit_mle_initialization(self):
+		
+		self._fit_moments()
+		nlll_mom = self._negloglikelihood(self.coef_)
+		grad_mom = self._gradient_nlll(self.coef_)
+		
+		self._fit_lmoments()
+		nlll_lmo = self._negloglikelihood(self.coef_)
+		grad_lmo = self._gradient_nlll(self.coef_)
+		
 		self._fit_quantiles()
+		nlll_qua = self._negloglikelihood(self.coef_)
+		grad_qua = self._gradient_nlll(self.coef_)
+		
+		## Test on gradient
+		is_mom = not np.any(np.isnan(grad_mom))
+		is_lmo = not np.any(np.isnan(grad_lmo))
+		is_qua = not np.any(np.isnan(grad_qua))
+		
+		## Test on value of nlll
+		
 	
 	def _fit_mle(self):##{{{
 		self._fit_mle_initialization()

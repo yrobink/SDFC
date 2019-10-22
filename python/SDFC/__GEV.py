@@ -263,6 +263,7 @@ class GEV(AbstractLaw):
 		kappa = 7.8590 * co + 2.9554 * co**2
 		g     = scs.gamma( 1. + kappa )
 		
+		
 		iscale = lmom[1] * kappa / ( (1 - np.power( 2 , - kappa )) * g )
 		iloc   = lmom[0] - iscale * (1 - g) / kappa
 		ishape = - kappa
@@ -300,14 +301,16 @@ class GEV(AbstractLaw):
 			qscale = np.array([0.25,0.5,0.75])
 			coef   = -1. / np.log( - np.log(qscale) )
 			qreg = quantile( self._Y - self.loc , qscale , pscale.design_wo1() )
-			fscale = np.mean( qreg * coef , axis = 1 ).reshape(-1,1)
+			print(coef.shape)
+			print(qreg.shape)
+			fscale = np.mean( (qreg * coef).reshape(-1,qscale.size) , axis = 1 ).reshape(-1,1)
 			fscale[np.logical_not(fscale > 0)] = 0.1
 			self.params.update_coef( mean( fscale , pscale.design_wo1() , link = pscale.link , value = False ) , "scale" )
 		
 		## Fit shape
 		if not pshape.is_fix():
 			p0,p1 = 0.1,0.9
-			qval = quantile( (self._Y - self.loc) / self.scale , [p0,p1] , pshape.design_wo1() )
+			qval = quantile( (self._Y - self.loc) / self.scale , [p0,p1] , pshape.design_wo1() ).reshape(-1,2)
 			kappa = qval[:,0] / qval[:,1]
 			llp0,llp1 = np.log( - np.log( p0 ) ) , np.log( - np.log( p1 ) )
 			shape = ( 2 * (llp0 - kappa * llp1 ) / ( llp0**2 - kappa * llp1**2 ) ).reshape(-1,1)

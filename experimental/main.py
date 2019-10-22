@@ -113,11 +113,26 @@ def test_gev():##{{{
 	Y = sc.genextreme.rvs( loc = loc , scale = scale , c = - shape )
 	
 	Law = sd.GEV
-	law = Law( method = "lmoments" , n_bootstrap = 0 )
-	law.fit( Y )
+	law = Law( method = "mle" , n_bootstrap = 10 )
+	law.fit( Y , c_loc = X_loc , c_scale = X_scale , c_shape = X_shape )
 	print(law)
 ##}}}
 
+def test_gpd():##{{{
+	## Dataset
+	size  = 2000
+	t,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
+	loc   = 1. + 0.8 * X_loc# - 0.5 * X_loc**2
+	scale = 0.08 * X_scale
+	shape = 0.3 * X_shape
+	
+	Y = sc.genpareto.rvs( loc = loc , scale = scale , c = shape )
+	
+	Law = sd.GPD
+	law = Law( method = "mle" , n_bootstrap = 0 )
+	law.fit( Y , f_loc = loc , f_scale = scale , c_shape = X_shape )
+	print(law)
+##}}}
 
 ##########
 ## main ##
@@ -128,6 +143,7 @@ if __name__ == "__main__":
 #	test_normal()
 #	test_exponential()
 #	test_gamma()
-	test_gev()
+#	test_gev()
+	test_gpd()
 	
 	print("Done")

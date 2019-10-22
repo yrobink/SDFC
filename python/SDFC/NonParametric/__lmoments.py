@@ -113,7 +113,8 @@ def lmoments( X , order = None ):##{{{
 		-------
 		The lmoments.
 	"""
-	Xs = np.sort(X)
+	Xs = np.sort(X.squeeze())
+	
 	
 	lmom = [np.nan,np.nan,np.nan,np.nan]
 	
@@ -134,6 +135,7 @@ def lmoments( X , order = None ):##{{{
 	C4 = scs.binom( range( X.size ) , 3 )
 	C5 = scs.binom( range(X.size - 1 , -1 , -1 ) , 3 )
 	lmom[3] = np.sum( (C4 - 3 * C2 * C1 + 3 * C0 * C3 - C5 ) * Xs ) / ( 4 * scs.binom( X.size , 4 ) )
+	
 	
 	if order is None:
 		return lmom

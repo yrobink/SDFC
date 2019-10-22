@@ -86,12 +86,11 @@
 ## Libraries ##
 ###############
 
-__version__ = "0.5.0a4"
+__version__ = "0.5.0a5"
 
 from SDFC.__Normal      import Normal
 from SDFC.__Exponential import Exponential
 from SDFC.__Gamma       import Gamma
 from SDFC.__GEV         import GEV
-#from SDFC.__GPDLaw      import GPDLaw
-#from SDFC.__GEVLaw      import GEVLaw
+from SDFC.__GPD         import GPD
 

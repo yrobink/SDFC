@@ -301,8 +301,6 @@ class GEV(AbstractLaw):
 			qscale = np.array([0.25,0.5,0.75])
 			coef   = -1. / np.log( - np.log(qscale) )
 			qreg = quantile( self._Y - self.loc , qscale , pscale.design_wo1() )
-			print(coef.shape)
-			print(qreg.shape)
 			fscale = np.mean( (qreg * coef).reshape(-1,qscale.size) , axis = 1 ).reshape(-1,1)
 			fscale[np.logical_not(fscale > 0)] = 0.1
 			self.params.update_coef( mean( fscale , pscale.design_wo1() , link = pscale.link , value = False ) , "scale" )

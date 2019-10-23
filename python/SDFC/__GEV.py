@@ -371,14 +371,16 @@ class GEV(AbstractLaw):
 			pscale = self.params._dparams["scale"]
 			pshape = self.params._dparams["shape"]
 			
-			if pshape.is_fix():
+			if pshape.is_fix() and not pscale.is_fix():
 				coef_ = np.zeros(pscale.n_features)
 				coef_[0] = 1. * f_scale
 				self.params.update_coef( coef_ , "scale" )
-			else:
+			elif not pshape.is_fix():
 				coef_ = np.zeros(pshape.n_features)
 				coef_[0] = 1e-1 / f_shape
 				self.params.update_coef( coef_ , "shape" )
+			else:
+				self._fit_quantiles()
 			f_scale *= 2
 			f_shape *= 2
 			nlll = self._negloglikelihood(self.coef_)

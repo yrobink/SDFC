@@ -51,135 +51,111 @@ import SDFC.NonParametric as sdnp
 ## Tests for SDFC parametric laws
 ##===============================
 
-def test_law( sdlaw , gen , size = 2500 , has_loc = True , has_scale = True , has_shape = True  , plot = True ): ##{{{
+def test_law( law , generator , size ):##{{{
 	
-	law = sdlaw( n_bootstrap = 100 )
-	name_law = str(law).split("\n")[0]
-	print("Test of {}".format(str(sdlaw).split(".")[-1][:-2]) )
+	name = str(type(law)).split(".")[-1][:-2]
 	
-	## Generic co-variates
-	t,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
-	if isinstance(law,sd.GammaLaw) : X_shape = 1 / ( 1 + np.exp( - 8 * (t-0.5) ) )
+	print("Test {} law         ".format(name))
 	
-	## Build data
-	loc   = 1. + 0.8 * X_loc
-	scale = 0.08 * X_scale
-	shape = 0.3 * X_shape
-	Y = gen( loc = loc , scale = scale , shape = shape )
+	## Covariates
+	_,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
+	loc   = 1.  + 0.8  * X_loc
+	scale = 0.2 + 0.08 * X_scale
+	shape = 1.  + 0.3  * X_shape
 	
-	## Fit all law
+	## Dataset
+	Y = generator( loc , scale , shape )
+	
+	## Full fit
+	print("==> Full fit..." , end  = "\r" )
 	try:
-		if isinstance(law,sd.NormalLaw) : law.fit( Y , loc_cov = X_loc , scale_cov = X_scale )
-		if isinstance(law,sd.ExpLaw)    : law.fit( Y ,                   scale_cov = X_scale )
-		if isinstance(law,sd.GammaLaw)  : law.fit( Y ,                   scale_cov = X_scale , shape_cov = X_shape )
-		if isinstance(law,sd.GPDLaw)    : law.fit( Y , loc = loc       , scale_cov = X_scale , shape_cov = X_shape )
-		if isinstance(law,sd.GEVLaw)    : law.fit( Y , loc_cov = X_loc , scale_cov = X_scale , shape_cov = X_shape )
-		print( "......OK   (Fit)" )
+		law.fit( Y , c_loc = X_loc , c_scale = X_scale , c_shape = X_shape )
+		print("==> Full fit. (OK)" , end  = "\n" )
 	except:
-		print( "......FAIL (Fit)" )
+		print("==> Full fit. (FAIL)" , end  = "\n" )
 	
-	## Test bootstrap law
+	## Stationary fit
+	print("==> Stationary fit..." , end  = "\r" )
 	try:
-		law_bs = law.bootstrap_law(0)
-		print( "......OK   (Bootstrap law)" )
+		law.fit( Y )
+		print("==> Stationary fit. (OK)" , end  = "\n" )
 	except:
-		print( "......FAIL (Bootstrap law)" )
+		print("==> Stationary fit. (FAIL)" , end  = "\n" )
 	
-	## Test fit with fix values
+	lp = law.kinds_params
+	## Fit by fixing one parameter
+	print("==> Fit with one parameter fixed..." , end  = "\r" )
 	try:
-		if isinstance(law,sd.NormalLaw):
-			lawf = sdlaw( n_bootstrap = 0 )
-			lawf.fit( Y , floc = loc , scale_cov = X_scale )
-			lawf.fit( Y , loc_cov = X_loc , fscale = scale )
-		if isinstance(law,sd.GammaLaw):
-			lawf = sdlaw( n_bootstrap = 0 )
-			lawf.fit( Y , fscale = scale , shape_cov = X_shape )
-			lawf.fit( Y , scale_cov = X_scale , fshape = shape )
-		if isinstance(law,sd.GPDLaw):
-			lawf = sdlaw( n_bootstrap = 0 )
-			lawf.fit( Y , loc = loc , fscale = scale , shape_cov = X_shape )
-			lawf.fit( Y , loc = loc , scale_cov = X_scale , fshape = shape )
-		if isinstance(law,sd.GEVLaw):
-			lawf = sdlaw( n_bootstrap = 0 )
-			lawf.fit( Y , floc = loc , scale_cov = X_scale , shape_cov = X_shape )
-			lawf.fit( Y , loc_cov = X_loc , fscale = scale , shape_cov = X_shape )
-			lawf.fit( Y , loc_cov = X_loc , scale_cov = X_scale , fshape = shape )
-			lawf.fit( Y , floc = loc , fscale = scale , shape_cov = X_shape )
-			lawf.fit( Y , loc_cov = X_loc , fscale = scale , fshape = shape )
-			lawf.fit( Y , floc = loc , scale_cov = X_scale , fshape = shape )
-		print( "......OK   (Fit with fix values)" )
+		if "scale" in lp or "shape" in lp:
+			law.fit( Y , f_loc = loc   , c_scale = X_scale , c_shape = X_shape )
+		if "loc" in lp or "shape" in lp:
+			law.fit( Y , c_loc = X_loc , f_scale = scale   , c_shape = X_shape )
+		if "loc" in lp or "scale" in lp:
+			law.fit( Y , c_loc = X_loc , c_scale = X_scale , f_shape = shape   )
+		print("==> Fit with one parameter fixed. (OK)" , end  = "\n" )
 	except:
-		print( "......FAIL (Fit with fix values)" )
+		print("==> Fit with one parameter fixed. (FAIL)" , end  = "\n" )
 	
-	## Test the predict
-	##=================
+	## Fit by fixing two parameters
+	print("==> Fit with two parameters fixed..." , end  = "\r" )
 	try:
-		if has_loc   : law.predict_loc(   loc_cov   = 1.  +   2 * X_loc   )
-		if has_scale : law.predict_scale( scale_cov = 0.1 + 0.4 * X_scale )
-		if has_shape : law.predict_shape( shape_cov = 0.1 - 0.4 * X_shape )
-		print( "......OK   (Predict functions)" )
+		if "loc" in lp:
+			law.fit( Y , c_loc = X_loc , f_scale = scale   , f_shape = shape   )
+		if "scale" in lp:
+			law.fit( Y , f_loc = loc   , c_scale = X_scale , f_shape = shape   )
+		if "shape" in lp:
+			law.fit( Y , f_loc = loc   , f_scale = scale   , c_shape = X_shape )
+		print("==> Fit with two parameters fixed. (OK)" , end  = "\n" )
 	except:
-		print( "......FAIL (Predict functions)" )
-	
-	
-	## Plot
-	if plot:
-		
-		nrow,ncol,fs = 2,3,5
-		fig = plt.figure( figsize = (fs*ncol,fs*nrow) )
-		
-		ax = fig.add_subplot( nrow , ncol , 1 )
-		ax.plot( t , Y , color = "blue" , linestyle = "" , marker = "." , alpha = 0.5 )
-		ax.set_xlabel( r"$t$" )
-		ax.set_ylabel( r"$Y$" )
-		
-		ax = fig.add_subplot( nrow , ncol , 4 )
-		colors = [ c for c in plt.cm.Reds( np.linspace( 0.3 , 0.7 , 3 ) ) ]
-		if has_loc   : ax.plot( t , X_loc   , color = colors[0] , linestyle = "-" , label = "loc cov"   )
-		if has_scale : ax.plot( t , X_scale , color = colors[1] , linestyle = "-" , label = "scale cov" )
-		if has_shape : ax.plot( t , X_shape , color = colors[2] , linestyle = "-" , label = "shape cov" )
-		ax.set_xlabel( r"$t$" )
-		ax.set_ylabel( "Co-variates" )
-		ax.legend( loc = "lower right" )
-		
-		ax = fig.add_subplot( nrow , ncol , 2 )
-		sdt.plot_confidences_intervals( law , ax )
-		labels = []
-		if has_loc   : labels += [ r"$\mu_0$"    , r"$\mu_1$" ]
-		if has_scale : labels += [ r"$\sigma_0$" , r"$\sigma_1$" ]
-		if has_shape : labels += [ r"$\xi_0$" , r"$\xi_1$" ]
-		ax.set_xticklabels( labels )
-		
-		if has_loc:
-			ax = fig.add_subplot( nrow , ncol , 3 )
-			ax.plot( loc , law.loc , color = "red" , linestyle = "" , marker = "." , alpha = 0.5 )
-			ax.plot( [min(loc.min(),law.loc.min()),max(loc.max(),law.loc.max())] , [min(loc.min(),law.loc.min()),max(loc.max(),law.loc.max())] , color = "black" )
-			ax.set_xlabel( r"$\mu$" )
-			ax.set_ylabel( r"$\hat{\mu}$" )
-		
-		if has_scale:
-			ax = fig.add_subplot( nrow , ncol , 5 )
-			ax.plot( scale , law.scale , color = "red" , linestyle = "" , marker = "." , alpha = 0.5 )
-			ax.plot( [min(scale.min(),law.scale.min()),max(scale.max(),law.scale.max())] , [min(scale.min(),law.scale.min()),max(scale.max(),law.scale.max())] , color = "black" )
-			ax.set_xlabel( r"$\sigma$" )
-			ax.set_ylabel( r"$\hat{\sigma}$" )
-		
-		if has_shape:
-			ax = fig.add_subplot( nrow , ncol , 6 )
-			ax.plot( shape , law.shape , color = "red" , linestyle = "" , marker = "." , alpha = 0.5 )
-			ax.plot( [min(shape.min(),law.shape.min()),max(shape.max(),law.shape.max())] , [min(shape.min(),law.shape.min()),max(shape.max(),law.shape.max())] , color = "black" )
-			ax.set_xlabel( r"$\xi$" )
-			ax.set_ylabel( r"$\hat{\xi}$" )
-		
-		fig.set_tight_layout(True)
-		plt.show()
+		print("==> Fit with two parameters fixed. (FAIL)" , end  = "\n" )
 ##}}}
+
+def test_gpd( size ):##{{{
+	
+	print("Test GPD law")
+	
+	## Covariates
+	t,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
+	loc   = 1.  + 0.8  * X_loc
+	scale = 0.2 + 0.08 * X_scale
+	shape = 1.  + 0.3  * X_shape
+	
+	## Dataset
+	Y = sc.genpareto.rvs( loc = loc , scale = scale , c = shape )
+	law = sd.GPD( method = "mle" )
+	
+	## Full fit
+	print("==> Full fit..." , end  = "\r" )
+	try:
+		law.fit( Y , f_loc = loc , c_scale = X_scale , c_shape = X_shape )
+		print("==> Full fit. (OK)" , end  = "\n" )
+	except:
+		print("==> Full fit. (FAIL)" , end  = "\n" )
+	
+	## Stationary fit
+	print("==> Stationary fit..." , end  = "\r" )
+	try:
+		law.fit( Y , f_loc = loc )
+		print("==> Stationary fit. (OK)" , end  = "\n" )
+	except:
+		print("==> Stationary fit. (FAIL)" , end  = "\n" )
+	
+	## Fit by fixing one parameter
+	print("==> Fit with one parameter fixed..." , end  = "\r" )
+	try:
+		law.fit( Y , f_loc = loc , f_scale = scale , c_shape = X_shape )
+		law.fit( Y , f_loc = loc , c_scale = X_scale , f_shape = shape )
+		print("==> Fit with one parameter fixed. (OK)" , end  = "\n" )
+	except:
+		print("==> Fit with one parameter fixed. (FAIL)" , end  = "\n" )
+##}}}
+
 
 
 ## Tests for non-parametric tools
 ##===============================
 
-def test_quantile_regression( size = 2500 , plot = True ):##{{{
+def test_quantile_regression( size = 2500 ):##{{{
 	
 	print( "Test of QuantileRegression" )
 	
@@ -197,44 +173,22 @@ def test_quantile_regression( size = 2500 , plot = True ):##{{{
 		print( "......OK   (Fit)" )
 	except:
 		print( "......FAIL (Fit)" )
-	
-	if plot:
-		## Plot
-		nrow,ncol = 1,2
-		fig = plt.figure( figsize = (15,8) )
-		fig.suptitle( "Quantile Regression" )
-		
-		ax = fig.add_subplot( nrow , ncol , 1 )
-		ax.plot( t , X , color = "red"  , linestyle = "-" , marker = ""  )
-		ax.plot( t , Y , color = "blue" , linestyle = ""  , marker = "." )
-		ylim = ax.get_ylim()
-		
-		
-		ax = fig.add_subplot( nrow , ncol , 2 )
-		for i in range(ltau.size):
-			ax.plot( t , q[:,i] , color = "grey" , linestyle = "-" , marker = "" )
-		ax.plot( t , Y , color = "blue" , linestyle = ""  , marker = "." )
-		ax.set_ylim()
-		
-		plt.tight_layout()
-		plt.show()
 ##}}}
 
 
 ## Run all tests in one function 
 ##==============================
 
-def run_all_tests( size = 2500 , plot = False ):##{{{
+def run_all_tests( size = 2500 ):##{{{
 
 	## Test laws
-	test_law( sd.NormalLaw , size = size , gen = lambda loc,scale,shape : sc.norm.rvs(  loc = loc      , scale = scale                   ) , has_loc = True  , has_scale = True , has_shape = False , plot = plot )
-	test_law( sd.ExpLaw    , size = size , gen = lambda loc,scale,shape : sc.expon.rvs(                  scale = scale                   ) , has_loc = False , has_scale = True , has_shape = False , plot = plot )
-	test_law( sd.GammaLaw  , size = size , gen = lambda loc,scale,shape : np.random.gamma(               scale = scale , shape = shape   ) , has_loc = False , has_scale = True , has_shape = True  , plot = plot )
-	test_law( sd.GPDLaw    , size = size , gen = lambda loc,scale,shape : sc.genpareto.rvs( loc = loc  , scale = scale , c     = shape   ) , has_loc = False , has_scale = True , has_shape = True  , plot = plot )
-	test_law( sd.GEVLaw    , size = size , gen = lambda loc,scale,shape : sc.genextreme.rvs( loc = loc , scale = scale , c     = - shape ) , has_loc = True  , has_scale = True , has_shape = True  , plot = plot )
+	test_law( sd.Normal()      , lambda loc,scale,shape : np.random.normal( loc , scale )  , size )
+	test_law( sd.Exponential() , lambda loc,scale,shape : np.random.exponential( scale )   , size )
+	test_law( sd.Gamma()       , lambda loc,scale,shape : np.random.gamma( scale , shape ) , size )
+	test_law( sd.GEV()         , lambda loc,scale,shape : sc.genextreme.rvs( loc = loc , scale = scale , c = -shape ) , size )
 	
 	## Test non parametric
-	test_quantile_regression( size = size , plot = plot )
+	test_quantile_regression( size = size )
 ##}}}
 
 
@@ -252,7 +206,7 @@ def run_all_tests( size = 2500 , plot = False ):##{{{
 if __name__ == "__main__":
 	
 	print(sd.__version__)
-	run_all_tests( plot = False )
+	run_all_tests()
 	print("Done")
 
 

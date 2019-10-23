@@ -212,6 +212,30 @@ class LawParams:##{{{
 			if self.is_fix(config):        self._dparams[kind] = FixParam(        kind , n_samples , resample , **k_param )
 	##}}}
 	
+	def merge_covariate( self ):##{{{
+		
+		l_c = [ self._dparams[k].design_wo1() for k in self._dparams if isinstance(self._dparams[k],CovariateParam) ]
+		
+		if len(l_c) == 0:
+			return None
+		
+		for i in range(len(l_c)):
+			if l_c[i].ndim == 1:
+				l_c[i] = l_c[i].reshape(-1,1)
+		
+		C = np.ones( (l_c[0].shape[0],1) )
+		
+		for c in l_c:
+			C_next = np.hstack( (C,c) )
+			if np.linalg.matrix_rank(C_next) == C_next.shape[1]:
+				C = C_next
+		
+		if C.shape[1] == 1:
+			return None
+		else:
+			return C[:,1:]
+	##}}}
+	
 	def merge_coef( self ):##{{{
 		self.coef_ = np.array([])
 		for k in self._dparams:
@@ -242,10 +266,10 @@ class LawParams:##{{{
 		self.merge_coef()
 	##}}}
 	
-	def set_intercept( self , coef , kind ):
+	def set_intercept( self , coef , kind ):##{{{
 		self._dparams[kind].set_intercept(coef)
 		self.merge_coef()
-	
+	##}}}
 	
 	def infer_configuration( self , **kwargs ):##{{{
 		has_c = False

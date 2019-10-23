@@ -53,86 +53,106 @@ import texttable as tt
 ## Fonctions ##
 ###############
 
-def test_normal():##{{{
-	Law = sd.Normal
+
+def test_law( law , generator , size ):##{{{
+	
+	name = str(type(law)).split(".")[-1][:-2]
+	
+	print("Test {} law         ".format(name))
+	
+	## Covariates
+	_,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
+	loc   = 1.  + 0.8  * X_loc
+	scale = 0.2 + 0.08 * X_scale
+	shape = 1.  + 0.3  * X_shape
 	
 	## Dataset
-	size  = 2000
-	t,X_loc,X_scale,_ = sdt.Dataset.covariates(size)
-	loc   = 1. + 0.8 * X_loc# - 0.5 * X_loc**2
-	scale = 0.08 * X_scale
+	Y = generator( loc , scale , shape )
 	
-	Y = np.random.normal( loc = loc , scale = scale )
+	## Full fit
+	print("==> Full fit..." , end  = "\r" )
+	try:
+		law.fit( Y , c_loc = X_loc , c_scale = X_scale , c_shape = X_shape )
+		print("==> Full fit. (OK)" , end  = "\n" )
+	except:
+		print("==> Full fit. (FAIL)" , end  = "\n" )
 	
-	## Fit for Normal law
-	law = Law( method = "MLE" , n_bootstrap = 10 )
-	law.fit( Y , c_loc = X_loc , c_scale = X_scale )
-	print(law)
+	## Stationary fit
+	print("==> Stationary fit..." , end  = "\r" )
+	try:
+		law.fit( Y )
+		print("==> Stationary fit. (OK)" , end  = "\n" )
+	except:
+		print("==> Stationary fit. (FAIL)" , end  = "\n" )
+	
+	lp = law.kinds_params
+	## Fit by fixing one parameter
+	print("==> Fit with one parameter fixed..." , end  = "\r" )
+	try:
+		if "scale" in lp or "shape" in lp:
+			law.fit( Y , f_loc = loc   , c_scale = X_scale , c_shape = X_shape )
+		if "loc" in lp or "shape" in lp:
+			law.fit( Y , c_loc = X_loc , f_scale = scale   , c_shape = X_shape )
+		if "loc" in lp or "scale" in lp:
+			law.fit( Y , c_loc = X_loc , c_scale = X_scale , f_shape = shape   )
+		print("==> Fit with one parameter fixed. (OK)" , end  = "\n" )
+	except:
+		print("==> Fit with one parameter fixed. (FAIL)" , end  = "\n" )
+	
+	## Fit by fixing two parameters
+	print("==> Fit with two parameters fixed..." , end  = "\r" )
+	try:
+		if "loc" in lp:
+			law.fit( Y , c_loc = X_loc , f_scale = scale   , f_shape = shape   )
+		if "scale" in lp:
+			law.fit( Y , f_loc = loc   , c_scale = X_scale , f_shape = shape   )
+		if "shape" in lp:
+			law.fit( Y , f_loc = loc   , f_scale = scale   , c_shape = X_shape )
+		print("==> Fit with two parameters fixed. (OK)" , end  = "\n" )
+	except:
+		print("==> Fit with two parameters fixed. (FAIL)" , end  = "\n" )
 ##}}}
 
-def test_exponential():##{{{
+def test_gpd( size ):##{{{
 	
-	## Dataset
-	size  = 2000
-	t,X_loc,X_scale,_ = sdt.Dataset.covariates(size)
-	loc   = 1. + 0.8 * X_loc# - 0.5 * X_loc**2
-	scale = 0.08 * X_scale
+	print("Test GPD law")
 	
-	Y = np.random.exponential( scale = scale )
-	
-	Law = sd.Exponential
-	law = Law( method = "MLE" , n_bootstrap = 10 )
-	law.fit( Y , c_loc = X_loc , c_scale = X_scale )
-	print(law)
-##}}}
-
-def test_gamma():##{{{
-	## Dataset
-	size  = 2000
+	## Covariates
 	t,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
-	loc   = 1. + 0.8 * X_loc# - 0.5 * X_loc**2
-	scale = 0.08 * X_scale
-	shape = 1. + 0.3 * X_shape
+	loc   = 1.  + 0.8  * X_loc
+	scale = 0.2 + 0.08 * X_scale
+	shape = 1.  + 0.3  * X_shape
 	
-	Y = np.random.gamma( scale = scale , shape = shape )
-	
-	Law = sd.Gamma
-	law = Law( method = "MLE" , n_bootstrap = 10 )
-	law.fit( Y , f_scale = scale , c_shape = X_shape )
-	print(law)
-##}}}
-
-def test_gev():##{{{
 	## Dataset
-	size  = 2000
-	t,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
-	loc   = 1. + 0.8 * X_loc# - 0.5 * X_loc**2
-	scale = 0.08 * X_scale
-	shape = 1. + 0.3 * X_shape
-	
-	Y = sc.genextreme.rvs( loc = loc , scale = scale , c = - shape )
-	
-	Law = sd.GEV
-	law = Law( method = "mle" , n_bootstrap = 10 )
-	law.fit( Y , c_loc = X_loc , c_scale = X_scale , c_shape = X_shape )
-	print(law)
-##}}}
-
-def test_gpd():##{{{
-	## Dataset
-	size  = 2000
-	t,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
-	loc   = 1. + 0.8 * X_loc# - 0.5 * X_loc**2
-	scale = 0.08 * X_scale
-	shape = 0.3 * X_shape
-	
 	Y = sc.genpareto.rvs( loc = loc , scale = scale , c = shape )
+	law = sd.GPD( method = "mle" )
 	
-	Law = sd.GPD
-	law = Law( method = "mle" , n_bootstrap = 0 )
-	law.fit( Y , f_loc = loc , f_scale = scale , c_shape = X_shape )
-	print(law)
+	## Full fit
+	print("==> Full fit..." , end  = "\r" )
+	try:
+		law.fit( Y , f_loc = loc , c_scale = X_scale , c_shape = X_shape )
+		print("==> Full fit. (OK)" , end  = "\n" )
+	except:
+		print("==> Full fit. (FAIL)" , end  = "\n" )
+	
+	## Stationary fit
+	print("==> Stationary fit..." , end  = "\r" )
+	try:
+		law.fit( Y , f_loc = loc )
+		print("==> Stationary fit. (OK)" , end  = "\n" )
+	except:
+		print("==> Stationary fit. (FAIL)" , end  = "\n" )
+	
+	## Fit by fixing one parameter
+	print("==> Fit with one parameter fixed..." , end  = "\r" )
+	try:
+		law.fit( Y , f_loc = loc , f_scale = scale , c_shape = X_shape )
+		law.fit( Y , f_loc = loc , c_scale = X_scale , f_shape = shape )
+		print("==> Fit with one parameter fixed. (OK)" , end  = "\n" )
+	except:
+		print("==> Fit with one parameter fixed. (FAIL)" , end  = "\n" )
 ##}}}
+
 
 ##########
 ## main ##
@@ -140,10 +160,11 @@ def test_gpd():##{{{
 
 if __name__ == "__main__":
 	
-#	test_normal()
-#	test_exponential()
-#	test_gamma()
-#	test_gev()
-	test_gpd()
+	size = 2500
+#	test_law( sd.Normal()      , lambda loc,scale,shape : np.random.normal( loc , scale )  , size )
+#	test_law( sd.Exponential() , lambda loc,scale,shape : np.random.exponential( scale )   , size )
+#	test_law( sd.Gamma()       , lambda loc,scale,shape : np.random.gamma( scale , shape ) , size )
+#	test_law( sd.GEV()         , lambda loc,scale,shape : sc.genextreme.rvs( loc = loc , scale = scale , c = -shape ) , size )
+	test_gpd( size )
 	
 	print("Done")

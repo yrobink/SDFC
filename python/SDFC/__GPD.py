@@ -257,6 +257,7 @@ class GPD(AbstractLaw):
 		if c_Y is None:
 			self._fit_lmoments()
 			return
+		
 		c_Y = c_Y[idx.squeeze(),:]
 		lmom = lmoments( Y , c_Y )
 		
@@ -267,7 +268,7 @@ class GPD(AbstractLaw):
 			self.params.update_coef( mean( scale , pscale.design_wo1() , link = pscale.link , value = False ) , "scale" )
 			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
 		elif not pscale.is_fix():
-			scale = lmom[:,0] * ( 1 - self.shape )
+			scale = lmom[:,0].reshape(-1,1) * ( 1 - self.shape )
 			self.params.update_coef( mean( scale , pscale.design_wo1() , link = pscale.link , value = False ) , "scale" )
 		elif not pshape.is_fix():
 			Y    /= self.scale[idx].reshape(-1,1)

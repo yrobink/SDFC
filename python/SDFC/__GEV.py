@@ -86,8 +86,9 @@
 ## Libraries ##
 ###############
 
-import numpy         as np
-import scipy.special as scs
+import numpy          as np
+import scipy.special  as scs
+import scipy.optimize as sco
 
 from SDFC.__AbstractLaw            import AbstractLaw
 from SDFC.NonParametric.__mean     import mean
@@ -285,6 +286,45 @@ class GEV(AbstractLaw):
 			self.params.set_intercept( ishape , "shape" )
 	##}}}
 	
+	def _fit_lmoments_experimental(self):##{{{
+		
+		ploc   = self.params._dparams["loc"]
+		pscale = self.params._dparams["scale"]
+		pshape = self.params._dparams["shape"]
+		
+		## First step, find lmoments
+		c_Y = self.params.merge_covariate()
+		lmom = lmoments( self._Y , c_Y )
+		
+		## Find shape
+		def uni_shape_solver(tau):
+			bl,bu=-1,1
+			fct = lambda x : 3 / 2 + tau / 2 - ( 1 - 3**x ) / (1 - 2**x )
+			while fct(bl) * fct(bu) > 0:
+				bl *= 2
+				bu *= 2
+			opt = sco.root_scalar( fct , method = "brenth" , bracket = [bl , bu] )
+			return opt.root
+		shape_solver = np.vectorize(uni_shape_solver)
+		tau3 = lmom[:,2] / lmom[:,1]
+		shape = shape_solver(tau3)
+		
+		## Find scale
+		gshape = scs.gamma( 1 - shape )
+		scale = - lmom[:,1] * shape / ( gshape * ( 1 - 2**shape ) )
+		
+		## Find loc
+		loc = lmom[:,0] - scale * ( gshape - 1 ) / shape
+		
+		
+		if not ploc.is_fix():
+			self.params.update_coef( mean( loc   , ploc.design_wo1()   , link = ploc.link   , value = False ) , "loc"   )
+		if not pscale.is_fix():
+			self.params.update_coef( mean( scale , pscale.design_wo1() , link = pscale.link , value = False ) , "scale" )
+		if not pshape.is_fix():
+			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
+	##}}}
+	
 	def _fit_quantiles( self ):##{{{
 		
 		ploc   = self.params._dparams["loc"]
@@ -317,7 +357,7 @@ class GEV(AbstractLaw):
 	
 	def _fit_mle_initialization(self):##{{{
 		
-		self._fit_quantiles()
+		self._fit_lmoments_experimental()
 		
 		nlll = self._negloglikelihood(self.coef_)
 		grad = self._gradient_nlll(self.coef_)
@@ -329,7 +369,7 @@ class GEV(AbstractLaw):
 			pshape = self.params._dparams["shape"]
 			
 			if pshape.is_fix():
-				coef_ = np.zeros(pshape.n_features)
+				coef_ = np.zeros(pscale.n_features)
 				coef_[0] = 1. * f_scale
 				self.params.update_coef( coef_ , "scale" )
 			else:
@@ -354,6 +394,8 @@ class GEV(AbstractLaw):
 			self._fit_moments()
 		elif self.method == "lmoments":
 			self._fit_lmoments()
+		elif self.method == "lmoments-experimental":
+			self._fit_lmoments_experimental()
 		elif self.method == "quantiles":
 			self._fit_quantiles()
 		else:

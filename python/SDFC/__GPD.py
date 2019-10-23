@@ -245,31 +245,63 @@ class GPD(AbstractLaw):
 			self.params.set_intercept( 2 - itau , "shape" )
 	##}}}
 	
-	def _fit_mle_initialization(self):##{{{
-		self._fit_moments()
-		nlll_mom = self._negloglikelihood(self.coef_)
-		grad_mom = np.any(np.isnan(self._gradient_nlll(self.coef_)))
+	def _fit_lmoments_experimental( self ): ##{{{
 		
-		self._fit_lmoments()
-		nlll_lmo = self._negloglikelihood(self.coef_)
-		grad_lmo = np.any(np.isnan(self._gradient_nlll(self.coef_)))
-
-		if grad_mom and grad_lmo and ( nlll_mom < np.inf or nlll_lmo < np.inf ):
-			if nlll_mom < nlll_lmo:
-				self._fit_moments()
-			else:
-				self._fit_lmoments()
-		elif grad_mom and nlll_mom < np.inf:
-			self._fit_moments()
-		elif grad_lmo and nlll_lmo < np.inf:
+		pscale = self.params._dparams["scale"]
+		pshape = self.params._dparams["shape"]
+		idx = (self._Y > self.loc)
+		Y   = (self._Y[idx] - self.loc[idx]).reshape(-1,1)
+		
+		## First step, find lmoments
+		c_Y = self.params.merge_covariate()
+		if c_Y is None:
 			self._fit_lmoments()
-		else:
-			pscale = self.params._dparams["scale"]
-			pshape = self.params._dparams["shape"]
-			if not pscale.is_fix():
-				self.params.set_intercept( 1.   , "scale" )
-			if not pshape.is_fix():
-				self.params.set_intercept( 0.01 , "shape" )
+			return
+		c_Y = c_Y[idx.squeeze(),:]
+		lmom = lmoments( Y , c_Y )
+		
+		if not pscale.is_fix() and not pshape.is_fix():
+			itau  = lmom[:,0] / lmom[:,1]
+			scale = lmom[:,0] * ( itau - 1 )
+			shape = 2 - itau
+			self.params.update_coef( mean( scale , pscale.design_wo1() , link = pscale.link , value = False ) , "scale" )
+			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
+		elif not pscale.is_fix():
+			scale = lmom[:,0] * ( 1 - self.shape )
+			self.params.update_coef( mean( scale , pscale.design_wo1() , link = pscale.link , value = False ) , "scale" )
+		elif not pshape.is_fix():
+			Y    /= self.scale[idx].reshape(-1,1)
+			lmom  = lmoments( Y , pshape.design_wo1() )
+			shape = 2 - lmom[:,0] / lmom[:,1]
+			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
+	##}}}
+	
+	def _fit_mle_initialization(self):##{{{
+		self._fit_lmoments_experimental()
+#		self._fit_moments()
+#		nlll_mom = self._negloglikelihood(self.coef_)
+#		grad_mom = np.any(np.isnan(self._gradient_nlll(self.coef_)))
+#		
+#		self._fit_lmoments()
+#		nlll_lmo = self._negloglikelihood(self.coef_)
+#		grad_lmo = np.any(np.isnan(self._gradient_nlll(self.coef_)))
+#		
+#		if grad_mom and grad_lmo and ( nlll_mom < np.inf or nlll_lmo < np.inf ):
+#			if nlll_mom < nlll_lmo:
+#				self._fit_moments()
+#			else:
+#				self._fit_lmoments()
+#		elif grad_mom and nlll_mom < np.inf:
+#			self._fit_moments()
+#		elif grad_lmo and nlll_lmo < np.inf:
+#			self._fit_lmoments()
+#		else:
+#			pscale = self.params._dparams["scale"]
+#			pshape = self.params._dparams["shape"]
+#			if not pscale.is_fix():
+#				self.params.set_intercept( 1.   , "scale" )
+#			if not pshape.is_fix():
+#				self.params.set_intercept( 0.01 , "shape" )
 		
 	##}}}
 	
@@ -285,6 +317,8 @@ class GPD(AbstractLaw):
 			self._fit_moments()
 		elif self.method == "lmoments":
 			self._fit_lmoments()
+		elif self.method == "lmoments-experimental":
+			self._fit_lmoments_experimental()
 		else:
 			self._fit_mle()
 	##}}}

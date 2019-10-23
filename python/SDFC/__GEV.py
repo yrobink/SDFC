@@ -294,6 +294,9 @@ class GEV(AbstractLaw):
 		
 		## First step, find lmoments
 		c_Y = self.params.merge_covariate()
+		if c_Y is None:
+			self._fit_lmoments()
+			return
 		lmom = lmoments( self._Y , c_Y )
 		
 		## Find shape

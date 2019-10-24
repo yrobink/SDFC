@@ -96,7 +96,6 @@ from SDFC.tools.__Link    import LogitLink
 from SDFC.tools.__Link    import SemiBoundedLink
 from SDFC.tools.__Link    import BoundedLink
 from SDFC.tools.__plot_confidences_intervals import plot_confidences_intervals
-from SDFC.tools.__plot_confidences_intervals import plot_confidences_intervals_scaled
 
 
 

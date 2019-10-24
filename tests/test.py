@@ -151,7 +151,6 @@ def test_gpd( size ):##{{{
 ##}}}
 
 
-
 ## Tests for non-parametric tools
 ##===============================
 
@@ -175,6 +174,29 @@ def test_quantile_regression( size = 2500 ):##{{{
 		print( "......FAIL (Fit)" )
 ##}}}
 
+## Test plot
+##==========
+
+def test_plot( size = 2500 , show = False ):##{{{
+	_,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
+	loc   = 1.  + 0.8  * X_loc
+	scale = 0.2 + 0.08 * X_scale
+	shape = 1.  + 0.3  * X_shape
+	
+	
+	Y = sc.genextreme.rvs( loc = loc , scale = scale , c = - shape )
+	gev = sd.GEV( n_bootstrap = 50 )
+	gev.fit( Y , c_loc = X_loc , c_scale = X_scale , c_shape = X_shape )
+	
+	fig = plt.figure()
+	
+	ax = fig.add_subplot(1,1,1)
+	ax = sdt.plot_confidences_intervals( gev , ax )
+	
+	if show:
+		fig.set_tight_layout(True)
+		plt.show()
+##}}}
 
 ## Run all tests in one function 
 ##==============================
@@ -189,7 +211,11 @@ def run_all_tests( size = 2500 ):##{{{
 	
 	## Test non parametric
 	test_quantile_regression( size = size )
+	
+	## Test plot
+	test_plot( show = False )
 ##}}}
+
 
 
 
@@ -206,7 +232,10 @@ def run_all_tests( size = 2500 ):##{{{
 if __name__ == "__main__":
 	
 	print(sd.__version__)
-	run_all_tests()
+#	run_all_tests()
+	
+	test_plot(show = True)
+	
 	print("Done")
 
 

@@ -98,26 +98,19 @@ from SDFC.NonParametric.__mean import mean
 
 class Exponential(AbstractLaw):
 	"""
-	SDFC.Exponential
-	================
+	Class to fit an Exponential law with covariates, available methods are:
 	
-	Fit parameters of an Exponential law, possibly with co-variable
+	moments  : use empirical estimator of mean and standard deviation to find loc and scale, possibly with least square
+			   regression if covariates are given
+	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of n_mcmc_iteration sample draw from
+	           the posterior P(coef_ | Y)
+	mle      : Maximum likelihood estimation
 	
-	Attributes
-	----------
-	method : string
-		method used to fit
-	scale  : numpy.ndarray
-		Scale fitted
-	coef_  : numpy.ndarray
-		Coefficients fitted
-	coefs_bootstrap: numpy.ndarray
-		coef_ for each bootstrap
-	confidence interval: numpy.ndarray[ shape = (2,coef_.size) ]
-		Confidence interval, first line is the alpha/2 quantile, and second line the 1 - alpha/2 quantile
-	alpha          : float
-		Level of confidence interval
+	Parameters
+	==========
+	scale : scale parameter
 	"""
+	__doc__ += AbstractLaw.__doc__
 	
 	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
 		"""

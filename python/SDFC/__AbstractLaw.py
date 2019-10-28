@@ -98,14 +98,13 @@ from SDFC.tools.__LawParams import LawParams
 ###########
 
 class AbstractLaw:
+	##{{{
 	"""
-	SDFC.AbstractLaw
-	================
-	
-	Base class of SDFC laws
 	
 	Attributes
-	----------
+	==========
+	<param> : np.array
+		Value of param fitted, can be loc, scale, name of param of law, etc.
 	method : string
 		method used to fit
 	coef_  : numpy.ndarray
@@ -116,8 +115,63 @@ class AbstractLaw:
 		Confidence interval, first line is the alpha/2 quantile, and second line the 1 - alpha/2 quantile
 	alpha          : float
 		Level of confidence interval
-	"""
 	
+	
+	Fit method
+	==========
+	
+	The method <law>.fit is generic, and takes arguments of the form <type for param>_<name of param>, see below.
+	In case of Bayesian fit, some others optional parameters are available.
+	
+	Arguments
+	---------
+	
+	Y         : numpy.ndarray
+		Data to fit
+	c_<param> : numpy.ndarray or None
+		Covariate of a param to fit
+	f_<param> : numpy.ndarray or None
+		Fix value of a param
+	l_<param> : SDFC.tools.LinkFct (optional)
+		Link function of a param
+	
+	prior : None or law or prior
+		Prior for Bayesian fit, if None a Multivariate Normal law assuming independence between parameters is used,
+		if you set it, this must be a class which implement the method logpdf(coef), returning the log of probability
+		density function
+	transition: None or function
+		Transition function for MCMC algorithm, if None is given a normal law N(0,0.1) is used.
+	n_mcmc_iteration : None or integer
+		Number of iterations for MCMC algorithm, if None, the value 10000 is used.
+	
+	Example
+	=======
+	Example with a Normal law:
+	>> _,X_loc,X_scale,_ = SDFC.tools.Dataset.covariates(2500)
+	>> loc   = 1. + 0.8 * X_loc
+	>> scale = 0.08 * X_scale
+	>> 
+	>> Y = numpy.random.normal( loc = loc , scale = scale )
+	>> 
+	>> ## Define the Normal law estimator, with the MLE method and 10 bootstrap for confidence interval:
+	>> law = Law( method = "MLE" , n_bootstrap = 10 )
+	>>
+	>> ## Now perform the fit, c_loc is the covariate of loc, and c_scale the covariate of scale, and we pass a link function to scale:
+	>> law.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = SDFC.tools.ExpLink() )
+	>> print(law) ## That print a summary of fit
+	>>
+	>> ## But we can assume that scale is stationary, so no covariates are given:
+	>> law.fit( Y , c_loc = X_loc , l_scale = SDFC.tools.ExpLink() )
+	>> print(law)
+	>>
+	>> ## Or the loc can be given, so we need to fit only the scale:
+	>> law.fit( Y , f_loc = loc , c_scale = X_scale )
+	>>
+	>> ## And that works for all laws defined in SDFC, you can call
+	>> print(law.kinds_params)
+	>> ## to print the name of parameters of each law
+	"""
+	##}}}
 	#####################################################################
 	
 	class _Bootstrap:##{{{
@@ -306,48 +360,6 @@ class AbstractLaw:
 	
 	@_Bootstrap._bootstrap_method
 	def fit( self , Y , **kwargs ): ##{{{
-		"""
-		Generic function to fit
-		
-		Arguments
-		---------
-		
-		Y       : numpy.ndarray
-			Data to fit
-		c_<param> : numpy.ndarray or None
-			Covariate of a param to fit
-		f_<param> : numpy.ndarray or None
-			Fix value of a param
-		l_<param> : SDFC.tools.LinkFct (optional)
-			Link function of a param
-		
-		Notes
-		-----
-		This function is generic, take an example with a Normal law:
-		>> _,X_loc,X_scale,_ = SDFC.tools.Dataset.covariates(2500)
-		>> loc   = 1. + 0.8 * X_loc
-		>> scale = 0.08 * X_scale
-		>> 
-		>> Y = numpy.random.normal( loc = loc , scale = scale )
-		>> 
-		>> ## Define the Normal law estimator, with the MLE method and 10 bootstrap for confidence interval:
-		>> law = Law( method = "MLE" , n_bootstrap = 10 )
-		>>
-		>> ## Now perform the fit, c_loc is the covariate of loc, and c_scale the covariate of scale, and we pass a link function to scale:
-		>> law.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = SDFC.tools.ExpLink() )
-		>> print(law) ## That print a summary of fit
-		>>
-		>> ## But we can assume that scale is stationary, so no covariates are given:
-		>> law.fit( Y , c_loc = X_loc , l_scale = SDFC.tools.ExpLink() )
-		>> print(law)
-		>>
-		>> ## Or the loc can be given, so we need to fit only the scale:
-		>> law.fit( Y , f_loc = loc , c_scale = X_scale )
-		>>
-		>> ## And that works for all laws defined in SDFC, you can call
-		>> print(law.kinds_params)
-		>> ## to print the name of parameters of each law
-		"""
 		
 		## Fit part
 		self.params = LawParams( kinds = self.kinds_params )

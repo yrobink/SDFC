@@ -102,30 +102,25 @@ from SDFC.NonParametric.__lmoments import lmoments
 
 class GEV(AbstractLaw):
 	"""
-	SDFC.GEV
-	========
+	Class to fit a GEV law with covariates, available methods are:
 	
-	Fit parameters of a Generalized Extreme Value law, possibly with co-variable
+	moments  : use empirical estimator of mean and standard deviation to find loc and scale, possibly with least square
+			   regression if covariates are given
+	lmoments : Use L-Moments estimation, only in stationary context
+	lmoments_experimental: Use non-stationary L-Moments with Quantile Regression, experimental and not published, only
+	           used to find an initialization of MLE
+	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of n_mcmc_iteration sample draw from
+	           the posterior P(coef_ | Y)
+	mle      : Maximum likelihood estimation
 	
-	Attributes
-	----------
-	method : string
-		method used to fit
-	loc    : numpy.ndarray
-		Location fitted
-	scale  : numpy.ndarray
-		Scale fitted
-	shape  : numpy.ndarray
-		Shape fitted
-	coef_  : numpy.ndarray
-		Coefficients fitted
-	coefs_bootstrap: numpy.ndarray
-		coef_ for each bootstrap
-	confidence interval: numpy.ndarray[ shape = (2,coef_.size) ]
-		Confidence interval, first line is the alpha/2 quantile, and second line the 1 - alpha/2 quantile
-	alpha          : float
-		Level of confidence interval
+	Parameters
+	==========
+	loc   : location parameter
+	scale : scale parameter
+	shape : shape parameter, caution here, GEV ~ sc.genextreme( loc = loc , scale = scale , c = - shape )
+	
 	"""
+	__doc__ += AbstractLaw.__doc__
 	
 	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
 		"""

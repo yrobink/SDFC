@@ -229,7 +229,7 @@ run_all_tests = function()##{{{
 ## main ##
 ##########
 
-run_all_tests()
+#run_all_tests()
 
 
 

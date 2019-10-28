@@ -110,7 +110,7 @@ def test_law( law , generator , size ):##{{{
 		print("==> Fit with two parameters fixed. (FAIL)" , end  = "\n" )
 ##}}}
 
-def test_gpd( size ):##{{{
+def test_gpd( method , size ):##{{{
 	
 	print("Test GPD law")
 	
@@ -122,7 +122,7 @@ def test_gpd( size ):##{{{
 	
 	## Dataset
 	Y = sc.genpareto.rvs( loc = loc , scale = scale , c = shape )
-	law = sd.GPD( method = "mle" )
+	law = sd.GPD( method = method )
 	
 	## Full fit
 	print("==> Full fit..." , end  = "\r" )
@@ -201,13 +201,14 @@ def test_plot( size = 2500 , show = False ):##{{{
 ## Run all tests in one function 
 ##==============================
 
-def run_all_tests( size = 2500 ):##{{{
+def run_all_tests( method = "MLE" , size = 2500 ):##{{{
 
 	## Test laws
-	test_law( sd.Normal()      , lambda loc,scale,shape : np.random.normal( loc , scale )  , size )
-	test_law( sd.Exponential() , lambda loc,scale,shape : np.random.exponential( scale )   , size )
-	test_law( sd.Gamma()       , lambda loc,scale,shape : np.random.gamma( scale , shape ) , size )
-	test_law( sd.GEV()         , lambda loc,scale,shape : sc.genextreme.rvs( loc = loc , scale = scale , c = -shape ) , size )
+	test_law( sd.Normal( method = method )      , lambda loc,scale,shape : np.random.normal( loc , scale )  , size )
+	test_law( sd.Exponential( method = method ) , lambda loc,scale,shape : np.random.exponential( scale )   , size )
+	test_law( sd.Gamma( method = method )       , lambda loc,scale,shape : np.random.gamma( scale , shape ) , size )
+	test_law( sd.GEV( method = method )         , lambda loc,scale,shape : sc.genextreme.rvs( loc = loc , scale = scale , c = -shape ) , size )
+	test_gpd( method , size )
 	
 	## Test non parametric
 	test_quantile_regression( size = size )
@@ -233,8 +234,6 @@ if __name__ == "__main__":
 	
 	print(sd.__version__)
 #	run_all_tests()
-	
-	test_plot(show = True)
 	
 	print("Done")
 

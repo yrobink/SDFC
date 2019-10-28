@@ -47,6 +47,8 @@ mpl.rcParams['font.size'] = 15
 
 if __name__ == "__main__":
 	
+	np.random.seed(42)
+	
 	## Generate data
 	size = 2500
 	t = np.linspace( 0 , 1 , size )
@@ -58,16 +60,20 @@ if __name__ == "__main__":
 	Y    = np.random.normal( loc = loc , scale = scale , size = size )
 	
 	
-	## Fit a Gaussian law
-	law = sd.NormalLaw()
-	law.fit( Y , loc_cov = X0 , scale_cov = X1 )
+	## Fit a Gaussian law with MLE
+	floc   = []
+	fscale = []
+	lmethods = ["moments","bayesian","mle"]
+	for method in lmethods:
+		law = sd.Normal(method = method)
+		law.fit( Y , c_loc = X0 , c_scale = X1 )
+		floc.append( law.loc )
+		fscale.append( law.scale )
 	
 	
 	## Fit a Quantile Regression
 	probs = np.linspace( 0.01 , 0.99 , 100 )
-	reg = sdnp.QuantileRegression( probs )
-	reg.fit( Y , np.vstack( (X0,X1) ).T )
-	qr = reg.quantiles
+	qr = sdnp.quantile( Y , probs , c_Y = np.vstack( (X0,X1) ).T )
 	
 	## Plot
 	nrow,ncol = 1,2
@@ -76,11 +82,13 @@ if __name__ == "__main__":
 	
 	ax  = fig.add_subplot( nrow , ncol , 1 )
 	ax.plot( t , Y , color = "blue" , linestyle = "" , marker = "." , alpha = 0.5 , label = r"$N(\mu(t),\sigma(t))$" )
-	ax.plot( t , law.loc , color = "red" , label = r"$\hat{\mu}(t)$" )
-	ax.plot( t , law.loc - law.scale , color = "red" , linestyle = "--" , label = r"$\hat{\mu}(t)\pm\hat{\sigma}(t)$")
-	ax.plot( t , law.loc + law.scale , color = "red" , linestyle = "--" )
+	color = [ c for c in plt.cm.Reds( np.linspace( 0.3 , 0.7 , 3 ) ) ]
+	for i,m in enumerate(lmethods):
+		ax.plot( t , floc[i] , color = color[i] , label = m )
+		ax.plot( t , floc[i] - fscale[i] , color = color[i] , linestyle = "--" )
+		ax.plot( t , floc[i] + fscale[i] , color = color[i] , linestyle = "--" )
+	
 	ax.set_xlabel( r"$t$" )
-#	ax.set_ylabel( r"$N(\mu(t),\sigma(t))$" )
 	ax.set_title( "Gaussian Regression" )
 	ax.legend( loc = "upper center" , fontsize = 10 )
 	

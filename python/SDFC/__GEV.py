@@ -358,7 +358,7 @@ class GEV(AbstractLaw):
 			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
 	##}}}
 	
-	def _fit_mle_initialization(self):##{{{
+	def _initialization_mle(self):##{{{
 		
 		self._fit_lmoments_experimental()
 		
@@ -387,11 +387,6 @@ class GEV(AbstractLaw):
 			grad = self._gradient_nlll(self.coef_)
 	##}}}
 	
-	def _fit_mle(self):##{{{
-		self._fit_mle_initialization()
-		AbstractLaw._fit_mle(self)
-	##}}}
-	
 	def _fit( self ):##{{{
 		
 		## Fit itself
@@ -403,8 +398,6 @@ class GEV(AbstractLaw):
 			self._fit_lmoments_experimental()
 		elif self.method == "quantiles":
 			self._fit_quantiles()
-		else:
-			self._fit_mle()
 	##}}}
 	
 	

@@ -277,7 +277,7 @@ class GPD(AbstractLaw):
 			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
 	##}}}
 	
-	def _fit_mle_initialization(self):##{{{
+	def _initialization_mle(self):##{{{
 		self._fit_lmoments_experimental()
 #		self._fit_moments()
 #		nlll_mom = self._negloglikelihood(self.coef_)
@@ -306,11 +306,6 @@ class GPD(AbstractLaw):
 		
 	##}}}
 	
-	def _fit_mle(self):##{{{
-		self._fit_mle_initialization()
-		AbstractLaw._fit_mle(self)
-	##}}}
-	
 	def _fit( self ):##{{{
 		
 		## Fit itself
@@ -320,8 +315,6 @@ class GPD(AbstractLaw):
 			self._fit_lmoments()
 		elif self.method == "lmoments-experimental":
 			self._fit_lmoments_experimental()
-		else:
-			self._fit_mle()
 	##}}}
 	
 	

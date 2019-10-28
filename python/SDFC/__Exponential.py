@@ -177,9 +177,8 @@ class Exponential(AbstractLaw):
 			self.params.update_coef( mean( self._Y , pscale.design_wo1() , value = False , link = pscale.link ) , "scale" )
 	##}}}
 	
-	def _fit_mle(self):##{{{
+	def _initialization_mle(self):##{{{
 		self._fit_moments()
-		AbstractLaw._fit_mle(self)
 	##}}}
 	
 	def _fit( self ):##{{{
@@ -187,8 +186,6 @@ class Exponential(AbstractLaw):
 		## Fit itself
 		if self.method == "moments":
 			self._fit_moments()
-		else:
-			self._fit_mle()
 	##}}}
 	
 	@AbstractLaw._update_coef

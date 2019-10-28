@@ -137,7 +137,12 @@ class AbstractLaw:
 						self.params = LawParams( kinds = self.kinds_params )
 						self.params.add_params( n_samples = Y.size , resample = idx , **kwargs )
 						self._Y = Y.reshape(-1,1)[idx,:]
-						self._fit()
+						if self.method not in [ "mle" , "bayesian" ]:
+							self._fit()
+						elif self.method == "bayesian":
+							self._fit_bayesian()
+						else:
+							self._fit_mle()
 						self.coefs_bootstrap.append( self.coef_ )
 					self.coefs_bootstrap = np.array( self.coefs_bootstrap )
 					self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
@@ -257,8 +262,9 @@ class AbstractLaw:
 	##}}}
 	
 	@kinds_params.setter
-	def kinds_params( self , kp ):
+	def kinds_params( self , kp ):##{{{
 		pass
+	##}}}
 	
 	@property
 	def coef_(self):##{{{
@@ -334,11 +340,26 @@ class AbstractLaw:
 		self.params = LawParams( kinds = self.kinds_params )
 		self.params.add_params( n_samples = Y.size , resample = None , **kwargs )
 		self._Y = Y.reshape(-1,1)
-		self._fit()
+		if self.method not in ["mle","bayesian"]:
+			self._fit()
+		elif self.method == "bayesian":
+			self._fit_bayesian(**kwargs)
+		else:
+			self._fit_mle()
 		del self._Y
 	##}}}
 	
+	def _fit_bayesian( self , **kwargs ):
+		
+		## Define prior
+		prior = kwargs.get("prior")
+#		if prior is None:
+#			print(self.coef_.size)
+		
+#		print("Bayesian fit")
+	
 	def _fit_mle( self ):##{{{
+		self._initialization_mle()
 		self.optim_result = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
 		self.coef_ = self.optim_result.x
 	##}}}

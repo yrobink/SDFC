@@ -141,8 +141,8 @@ class AbstractLaw:
 		density function
 	transition: None or function
 		Transition function for MCMC algorithm, if None is given a normal law N(0,0.1) is used.
-	n_mcmc_iteration : None or integer
-		Number of iterations for MCMC algorithm, if None, the value 10000 is used.
+	n_mcmc_drawn : None or integer
+		Number of drawn for MCMC algorithm, if None, the value 10000 is used.
 	
 	Example
 	=======
@@ -396,21 +396,21 @@ class AbstractLaw:
 		
 		## Define numbers of iterations of MCMC algorithm
 		##===============================================
-		n_mcmc_iteration = kwargs.get("n_mcmc_iteration")
-		if n_mcmc_iteration is None:
-			n_mcmc_iteration = 10000
+		n_mcmc_drawn = kwargs.get("n_mcmc_drawn")
+		if n_mcmc_drawn is None:
+			n_mcmc_drawn = 10000
 		
 		## MCMC algorithm
 		##===============
-		draw = np.zeros( (n_mcmc_iteration,n_features) )
-		accept = np.zeros( n_mcmc_iteration , dtype = np.bool )
+		draw = np.zeros( (n_mcmc_drawn,n_features) )
+		accept = np.zeros( n_mcmc_drawn , dtype = np.bool )
 		
 		draw[0,:]     = np.random.uniform( size = n_features )
 		lll_current   = -self._negloglikelihood(draw[0,:])
 		prior_current = prior.logpdf(draw[0,:]).sum()
 		p_current     = prior_current + lll_current
 		
-		for i in range(1,n_mcmc_iteration):
+		for i in range(1,n_mcmc_drawn):
 			draw[i,:] = transition(draw[i-1,:])
 			
 			## Likelihood and probability of new points
@@ -432,11 +432,11 @@ class AbstractLaw:
 		self.params.update_coef( np.mean( draw , axis = 0 ) )
 		
 		## Update information
-		self._info.draw        = draw
-		self._info.accept      = accept
-		self._info.n_mcmc_iteration = n_mcmc_iteration
-		self._info.rate_accept = np.sum(accept) / n_mcmc_iteration
-		self._info.cov         = np.cov(draw.T)
+		self._info.draw         = draw
+		self._info.accept       = accept
+		self._info.n_mcmc_drawn = n_mcmc_drawn
+		self._info.rate_accept  = np.sum(accept) / n_mcmc_drawn
+		self._info.cov          = np.cov(draw.T)
 	##}}}
 	
 	def _fit_mle( self ):##{{{

@@ -101,30 +101,27 @@ from SDFC.NonParametric.__lmoments import lmoments
 
 class GPD(AbstractLaw):
 	"""
-	SDFC.GPD
+	Class to fit a GPD law with covariates, available methods are:
+	
+	moments  : use empirical estimator of mean and standard deviation to find loc and scale, possibly with least square
+			   regression if covariates are given
+	lmoments : Use L-Moments estimation, only in stationary context
+	lmoments_experimental: Use non-stationary L-Moments with Quantile Regression, experimental and not published, only
+	           used to find an initialization of MLE
+	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of n_mcmc_iteration sample draw from
+	           the posterior P(coef_ | Y)
+	mle      : Maximum likelihood estimation
+	
+	WARNING: For this class, f_loc must be always given, because we fit a pareto beyond the loc parameter!
 	========
 	
-	Fit parameters of a Generalized Pareto Distribution, possibly with co-variable
-	
-	Attributes
-	----------
-	method : string
-		method used to fit
-	loc    : numpy.ndarray
-		Location, given by user in fit function
-	scale  : numpy.ndarray
-		Scale fitted
-	shape  : numpy.ndarray
-		Shape fitted
-	coef_  : numpy.ndarray
-		Coefficients fitted
-	coefs_bootstrap: numpy.ndarray
-		coef_ for each bootstrap
-	confidence interval: numpy.ndarray[ shape = (2,coef_.size) ]
-		Confidence interval, first line is the alpha/2 quantile, and second line the 1 - alpha/2 quantile
-	alpha          : float
-		Level of confidence interval
+	Parameters
+	==========
+	loc   : location parameter, must be pass with f_loc
+	scale : scale parameter
+	shape : shape parameter
 	"""
+	__doc__ += AbstractLaw.__doc__
 	
 	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
 		"""
@@ -277,7 +274,7 @@ class GPD(AbstractLaw):
 			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
 	##}}}
 	
-	def _fit_mle_initialization(self):##{{{
+	def _initialization_mle(self):##{{{
 		self._fit_lmoments_experimental()
 #		self._fit_moments()
 #		nlll_mom = self._negloglikelihood(self.coef_)
@@ -306,11 +303,6 @@ class GPD(AbstractLaw):
 		
 	##}}}
 	
-	def _fit_mle(self):##{{{
-		self._fit_mle_initialization()
-		AbstractLaw._fit_mle(self)
-	##}}}
-	
 	def _fit( self ):##{{{
 		
 		## Fit itself
@@ -320,8 +312,6 @@ class GPD(AbstractLaw):
 			self._fit_lmoments()
 		elif self.method == "lmoments-experimental":
 			self._fit_lmoments_experimental()
-		else:
-			self._fit_mle()
 	##}}}
 	
 	

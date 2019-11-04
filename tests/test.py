@@ -110,7 +110,7 @@ def test_law( law , generator , size ):##{{{
 		print("==> Fit with two parameters fixed. (FAIL)" , end  = "\n" )
 ##}}}
 
-def test_gpd( size ):##{{{
+def test_gpd( method , size ):##{{{
 	
 	print("Test GPD law")
 	
@@ -122,7 +122,7 @@ def test_gpd( size ):##{{{
 	
 	## Dataset
 	Y = sc.genpareto.rvs( loc = loc , scale = scale , c = shape )
-	law = sd.GPD( method = "mle" )
+	law = sd.GPD( method = method )
 	
 	## Full fit
 	print("==> Full fit..." , end  = "\r" )
@@ -151,7 +151,6 @@ def test_gpd( size ):##{{{
 ##}}}
 
 
-
 ## Tests for non-parametric tools
 ##===============================
 
@@ -175,21 +174,49 @@ def test_quantile_regression( size = 2500 ):##{{{
 		print( "......FAIL (Fit)" )
 ##}}}
 
+## Test plot
+##==========
+
+def test_plot( size = 2500 , show = False ):##{{{
+	_,X_loc,X_scale,X_shape = sdt.Dataset.covariates(size)
+	loc   = 1.  + 0.8  * X_loc
+	scale = 0.2 + 0.08 * X_scale
+	shape = 1.  + 0.3  * X_shape
+	
+	
+	Y = sc.genextreme.rvs( loc = loc , scale = scale , c = - shape )
+	gev = sd.GEV( n_bootstrap = 50 )
+	gev.fit( Y , c_loc = X_loc , c_scale = X_scale , c_shape = X_shape )
+	
+	fig = plt.figure()
+	
+	ax = fig.add_subplot(1,1,1)
+	ax = sdt.plot_confidences_intervals( gev , ax )
+	
+	if show:
+		fig.set_tight_layout(True)
+		plt.show()
+##}}}
 
 ## Run all tests in one function 
 ##==============================
 
-def run_all_tests( size = 2500 ):##{{{
+def run_all_tests( method = "MLE" , size = 2500 ):##{{{
 
 	## Test laws
-	test_law( sd.Normal()      , lambda loc,scale,shape : np.random.normal( loc , scale )  , size )
-	test_law( sd.Exponential() , lambda loc,scale,shape : np.random.exponential( scale )   , size )
-	test_law( sd.Gamma()       , lambda loc,scale,shape : np.random.gamma( scale , shape ) , size )
-	test_law( sd.GEV()         , lambda loc,scale,shape : sc.genextreme.rvs( loc = loc , scale = scale , c = -shape ) , size )
+	test_law( sd.Normal( method = method )      , lambda loc,scale,shape : np.random.normal( loc , scale )  , size )
+	test_law( sd.Exponential( method = method ) , lambda loc,scale,shape : np.random.exponential( scale )   , size )
+	test_law( sd.Gamma( method = method )       , lambda loc,scale,shape : np.random.gamma( scale , shape ) , size )
+	test_law( sd.GEV( method = method )         , lambda loc,scale,shape : sc.genextreme.rvs( loc = loc , scale = scale , c = -shape ) , size )
+	test_gpd( method , size )
 	
 	## Test non parametric
 	test_quantile_regression( size = size )
+	
+	## Test plot
+	test_plot( show = False )
 ##}}}
+
 
 
 
@@ -206,7 +233,8 @@ def run_all_tests( size = 2500 ):##{{{
 if __name__ == "__main__":
 	
 	print(sd.__version__)
-	run_all_tests()
+#	run_all_tests()
+	
 	print("Done")
 
 

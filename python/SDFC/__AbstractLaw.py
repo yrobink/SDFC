@@ -87,6 +87,7 @@
 ###############
 
 import numpy          as np
+import scipy.stats    as sc
 import scipy.optimize as sco
 import texttable      as tt
 from SDFC.tools.__LawParams import LawParams
@@ -97,14 +98,13 @@ from SDFC.tools.__LawParams import LawParams
 ###########
 
 class AbstractLaw:
+	##{{{
 	"""
-	SDFC.AbstractLaw
-	================
-	
-	Base class of SDFC laws
 	
 	Attributes
-	----------
+	==========
+	<param> : np.array
+		Value of param fitted, can be loc, scale, name of param of law, etc.
 	method : string
 		method used to fit
 	coef_  : numpy.ndarray
@@ -115,8 +115,63 @@ class AbstractLaw:
 		Confidence interval, first line is the alpha/2 quantile, and second line the 1 - alpha/2 quantile
 	alpha          : float
 		Level of confidence interval
-	"""
 	
+	
+	Fit method
+	==========
+	
+	The method <law>.fit is generic, and takes arguments of the form <type for param>_<name of param>, see below.
+	In case of Bayesian fit, some others optional parameters are available.
+	
+	Arguments
+	---------
+	
+	Y         : numpy.ndarray
+		Data to fit
+	c_<param> : numpy.ndarray or None
+		Covariate of a param to fit
+	f_<param> : numpy.ndarray or None
+		Fix value of a param
+	l_<param> : SDFC.tools.LinkFct (optional)
+		Link function of a param
+	
+	prior : None or law or prior
+		Prior for Bayesian fit, if None a Multivariate Normal law assuming independence between parameters is used,
+		if you set it, this must be a class which implement the method logpdf(coef), returning the log of probability
+		density function
+	transition: None or function
+		Transition function for MCMC algorithm, if None is given a normal law N(0,0.1) is used.
+	n_mcmc_drawn : None or integer
+		Number of drawn for MCMC algorithm, if None, the value 10000 is used.
+	
+	Example
+	=======
+	Example with a Normal law:
+	>> _,X_loc,X_scale,_ = SDFC.tools.Dataset.covariates(2500)
+	>> loc   = 1. + 0.8 * X_loc
+	>> scale = 0.08 * X_scale
+	>> 
+	>> Y = numpy.random.normal( loc = loc , scale = scale )
+	>> 
+	>> ## Define the Normal law estimator, with the MLE method and 10 bootstrap for confidence interval:
+	>> law = Law( method = "MLE" , n_bootstrap = 10 )
+	>>
+	>> ## Now perform the fit, c_loc is the covariate of loc, and c_scale the covariate of scale, and we pass a link function to scale:
+	>> law.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = SDFC.tools.ExpLink() )
+	>> print(law) ## That print a summary of fit
+	>>
+	>> ## But we can assume that scale is stationary, so no covariates are given:
+	>> law.fit( Y , c_loc = X_loc , l_scale = SDFC.tools.ExpLink() )
+	>> print(law)
+	>>
+	>> ## Or the loc can be given, so we need to fit only the scale:
+	>> law.fit( Y , f_loc = loc , c_scale = X_scale )
+	>>
+	>> ## And that works for all laws defined in SDFC, you can call
+	>> print(law.kinds_params)
+	>> ## to print the name of parameters of each law
+	"""
+	##}}}
 	#####################################################################
 	
 	class _Bootstrap:##{{{
@@ -137,7 +192,12 @@ class AbstractLaw:
 						self.params = LawParams( kinds = self.kinds_params )
 						self.params.add_params( n_samples = Y.size , resample = idx , **kwargs )
 						self._Y = Y.reshape(-1,1)[idx,:]
-						self._fit()
+						if self.method not in [ "mle" , "bayesian" ]:
+							self._fit()
+						elif self.method == "bayesian":
+							self._fit_bayesian()
+						else:
+							self._fit_mle()
 						self.coefs_bootstrap.append( self.coef_ )
 					self.coefs_bootstrap = np.array( self.coefs_bootstrap )
 					self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
@@ -189,6 +249,19 @@ class AbstractLaw:
 	
 	#####################################################################
 	
+	class _Info:##{{{
+		def __init__( self ):
+			self.cov = None
+	##}}}
+	
+	@property
+	def cov(self):##{{{
+		return self._info.cov
+	##}}}
+	
+	
+	#####################################################################
+	
 	def __init__( self , kinds_params , method , n_bootstrap , alpha ):##{{{
 		"""
 		Initialization of AbstractLaw
@@ -209,8 +282,7 @@ class AbstractLaw:
 		self._kinds_params = kinds_params
 		
 		self._bootstrap = AbstractLaw._Bootstrap( n_bootstrap , alpha )
-		
-		self._debug = []
+		self._info      = AbstractLaw._Info()
 		
 	##}}}
 	
@@ -257,8 +329,9 @@ class AbstractLaw:
 	##}}}
 	
 	@kinds_params.setter
-	def kinds_params( self , kp ):
+	def kinds_params( self , kp ):##{{{
 		pass
+	##}}}
 	
 	@property
 	def coef_(self):##{{{
@@ -287,60 +360,90 @@ class AbstractLaw:
 	
 	@_Bootstrap._bootstrap_method
 	def fit( self , Y , **kwargs ): ##{{{
-		"""
-		Generic function to fit
-		
-		Arguments
-		---------
-		
-		Y       : numpy.ndarray
-			Data to fit
-		c_<param> : numpy.ndarray or None
-			Covariate of a param to fit
-		f_<param> : numpy.ndarray or None
-			Fix value of a param
-		l_<param> : SDFC.tools.LinkFct (optional)
-			Link function of a param
-		
-		Notes
-		-----
-		This function is generic, take an example with a Normal law:
-		>> _,X_loc,X_scale,_ = SDFC.tools.Dataset.covariates(2500)
-		>> loc   = 1. + 0.8 * X_loc
-		>> scale = 0.08 * X_scale
-		>> 
-		>> Y = numpy.random.normal( loc = loc , scale = scale )
-		>> 
-		>> ## Define the Normal law estimator, with the MLE method and 10 bootstrap for confidence interval:
-		>> law = Law( method = "MLE" , n_bootstrap = 10 )
-		>>
-		>> ## Now perform the fit, c_loc is the covariate of loc, and c_scale the covariate of scale, and we pass a link function to scale:
-		>> law.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = SDFC.tools.ExpLink() )
-		>> print(law) ## That print a summary of fit
-		>>
-		>> ## But we can assume that scale is stationary, so no covariates are given:
-		>> law.fit( Y , c_loc = X_loc , l_scale = SDFC.tools.ExpLink() )
-		>> print(law)
-		>>
-		>> ## Or the loc can be given, so we need to fit only the scale:
-		>> law.fit( Y , f_loc = loc , c_scale = X_scale )
-		>>
-		>> ## And that works for all laws defined in SDFC, you can call
-		>> print(law.kinds_params)
-		>> ## to print the name of parameters of each law
-		"""
 		
 		## Fit part
 		self.params = LawParams( kinds = self.kinds_params )
 		self.params.add_params( n_samples = Y.size , resample = None , **kwargs )
 		self._Y = Y.reshape(-1,1)
-		self._fit()
+		if self.method not in ["mle","bayesian"]:
+			self._fit()
+		elif self.method == "bayesian":
+			self._fit_bayesian(**kwargs)
+		else:
+			self._fit_mle()
 		del self._Y
 	##}}}
 	
+	def _fit_bayesian( self , **kwargs ):##{{{
+		
+		## Find numbers of features
+		##=========================
+		n_features = 0
+		for k in self.params._dparams:
+			n_features += self.params._dparams[k].n_features
+		
+		## Define prior
+		##=============
+		prior = kwargs.get("prior")
+		if prior is None:
+			prior = sc.multivariate_normal( mean = np.zeros(n_features) , cov = 10 * np.identity(n_features) )
+		
+		## Define transition
+		##==================
+		transition = kwargs.get("transition")
+		if transition is None:
+			transition = lambda x : x + np.random.normal( size = n_features , scale = 0.1 )
+		
+		## Define numbers of iterations of MCMC algorithm
+		##===============================================
+		n_mcmc_drawn = kwargs.get("n_mcmc_drawn")
+		if n_mcmc_drawn is None:
+			n_mcmc_drawn = 10000
+		
+		## MCMC algorithm
+		##===============
+		draw = np.zeros( (n_mcmc_drawn,n_features) )
+		accept = np.zeros( n_mcmc_drawn , dtype = np.bool )
+		
+		draw[0,:]     = np.random.uniform( size = n_features )
+		lll_current   = -self._negloglikelihood(draw[0,:])
+		prior_current = prior.logpdf(draw[0,:]).sum()
+		p_current     = prior_current + lll_current
+		
+		for i in range(1,n_mcmc_drawn):
+			draw[i,:] = transition(draw[i-1,:])
+			
+			## Likelihood and probability of new points
+			lll_next   = - self._negloglikelihood(draw[i,:])
+			prior_next = prior.logpdf(draw[i,:]).sum()
+			p_next     = prior_next + lll_next
+			
+			## Accept or not ?
+			p_accept = np.exp( p_next - p_current )
+			if np.random.uniform() < p_accept:
+				lll_current   = lll_next
+				prior_current = prior_next
+				p_current     = p_next
+				accept[i] = True
+			else:
+				draw[i,:] = draw[i-1,:]
+				accept[i] = False
+		
+		self.params.update_coef( np.mean( draw , axis = 0 ) )
+		
+		## Update information
+		self._info.draw         = draw
+		self._info.accept       = accept
+		self._info.n_mcmc_drawn = n_mcmc_drawn
+		self._info.rate_accept  = np.sum(accept) / n_mcmc_drawn
+		self._info.cov          = np.cov(draw.T)
+	##}}}
+	
 	def _fit_mle( self ):##{{{
-		self.optim_result = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
-		self.coef_ = self.optim_result.x
+		self._initialization_mle()
+		self._info.optim_result = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
+		self.coef_ = self._info.optim_result.x
+		self._info.cov = self._info.optim_result.hess_inv
 	##}}}
 
 

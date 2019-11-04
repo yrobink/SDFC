@@ -93,8 +93,6 @@ import scipy.optimize as sco
 import scipy.special  as scp
 
 from SDFC.__AbstractLaw        import AbstractLaw
-from SDFC.tools.__LawParam     import LawParam
-from SDFC.tools.__LinkFct      import IdLinkFct
 from SDFC.NonParametric.__mean import mean
 from SDFC.NonParametric.__var  import var
 
@@ -105,28 +103,20 @@ from SDFC.NonParametric.__var  import var
 
 class Gamma(AbstractLaw):
 	"""
-	SDFC.Gamma
+	Class to fit a Gamma law with covariates, available methods are:
+	
+	moments  : use empirical estimator of mean and standard deviation to find loc and scale, possibly with least square
+			   regression if covariates are given
+	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of n_mcmc_iteration sample draw from
+	           the posterior P(coef_ | Y)
+	mle      : Maximum likelihood estimation
+	
+	Parameters
 	==========
-	
-	Fit parameters of a Gamma law, possibly with co-variable
-	
-	Attributes
-	----------
-	method : string
-		method used to fit
-	scale  : numpy.ndarray
-		Scale fitted
-	shape  : numpy.ndarray
-		Shape fitted
-	coef_  : numpy.ndarray
-		Coefficients fitted
-	coefs_bootstrap: numpy.ndarray
-		coef_ for each bootstrap
-	confidence interval: numpy.ndarray[ shape = (2,coef_.size) ]
-		Confidence interval, first line is the alpha/2 quantile, and second line the 1 - alpha/2 quantile
-	alpha          : float
-		Level of confidence interval
+	scale : scale parameter
+	shape : shape parameter
 	"""
+	__doc__ += AbstractLaw.__doc__
 	
 	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
 		"""
@@ -242,16 +232,13 @@ class Gamma(AbstractLaw):
 			self.params.update_coef( mean( scale , pscale.design_wo1() , value = False , link = pscale.link ) , "scale" )
 	##}}}
 	
-	def _fit_mle(self):##{{{
+	def _initialization_mle(self):##{{{
 		self._fit_moments()
-		AbstractLaw._fit_mle(self)
 	##}}}
 	
 	def _fit( self ): ##{{{
 		if self.method == "moments":
 			self._fit_moments()
-		else:
-			self._fit_mle()
 	##}}}
 	
 	@AbstractLaw._update_coef

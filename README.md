@@ -10,6 +10,10 @@
 - Support for fit with fix parameters
 - Support for user defined custom link function
 
+## TODO
+- Add optional arguments for MLE
+- Split AbstractLaw in sub class (one for MLE, one for Bayesian, one for Bootstrap)
+- Info class is not public
 
 ## Example
 

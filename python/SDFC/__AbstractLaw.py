@@ -125,7 +125,6 @@ class AbstractLaw:
 	
 	Arguments
 	---------
-	
 	Y         : numpy.ndarray
 		Data to fit
 	c_<param> : numpy.ndarray or None
@@ -135,6 +134,11 @@ class AbstractLaw:
 	l_<param> : SDFC.tools.LinkFct (optional)
 		Link function of a param
 	
+	Optional arguments for MLE fit
+	------------------------------
+	
+	Optional arguments for Bayesian fit
+	-----------------------------------
 	prior : None or law or prior
 		Prior for Bayesian fit, if None a Multivariate Normal law assuming independence between parameters is used,
 		if you set it, this must be a class which implement the method logpdf(coef), returning the log of probability
@@ -154,7 +158,7 @@ class AbstractLaw:
 	>> Y = numpy.random.normal( loc = loc , scale = scale )
 	>> 
 	>> ## Define the Normal law estimator, with the MLE method and 10 bootstrap for confidence interval:
-	>> law = Law( method = "MLE" , n_bootstrap = 10 )
+	>> law = SDFC.Normal( method = "MLE" , n_bootstrap = 10 )
 	>>
 	>> ## Now perform the fit, c_loc is the covariate of loc, and c_scale the covariate of scale, and we pass a link function to scale:
 	>> law.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = SDFC.tools.ExpLink() )

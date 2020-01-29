@@ -143,6 +143,8 @@ class AbstractLaw:
 		Prior for Bayesian fit, if None a Multivariate Normal law assuming independence between parameters is used,
 		if you set it, this must be a class which implement the method logpdf(coef), returning the log of probability
 		density function
+	mcmc_init: None or vector of initial parameters
+		Starting point of the MCMC algorithm. If None, prior.rvs() is called.
 	transition: None or function
 		Transition function for MCMC algorithm, if None is given a normal law N(0,0.1) is used.
 	n_mcmc_drawn : None or integer
@@ -409,7 +411,13 @@ class AbstractLaw:
 		draw = np.zeros( (n_mcmc_drawn,n_features) )
 		accept = np.zeros( n_mcmc_drawn , dtype = np.bool )
 		
-		draw[0,:]     = np.random.uniform( size = n_features )
+		## Init values
+		##============
+		init = kwargs.get("mcmc_init")
+		if init is None:
+			init = prior.rvs()
+		
+		draw[0,:]     = init
 		lll_current   = -self._negloglikelihood(draw[0,:])
 		prior_current = prior.logpdf(draw[0,:]).sum()
 		p_current     = prior_current + lll_current

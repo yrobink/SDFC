@@ -14,6 +14,9 @@ base::rm( list = base::ls() )
 library(R6)
 library(devtools)
 
+try(roxygen2::roxygenize("../R/SDFC"))
+devtools::load_all("../R/SDFC")
+roxygen2::roxygenize("../R/SDFC")
 devtools::load_all("../R/SDFC")
 
 

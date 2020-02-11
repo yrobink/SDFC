@@ -41,7 +41,7 @@ sdfc = ""
 if( build )
 {
 	if( verbose ) cat( "Generation of Rd files with roxygen" )
-	roxygen2::roxygenize("SDFC")
+	try( roxygen2::roxygenize("SDFC") , silent = TRUE )
 	if( verbose ) cat( "Load of SDFC to generate Rd files with Rcpp" )
 	devtools::load_all("SDFC")
 	if( verbose ) cat( "Generation of Rd files for cpp with roxygen" )
@@ -56,7 +56,7 @@ if( build )
 if( check )
 {
 	if( verbose ) cat( "Check SDFC" )
-	devtools::check( "SDFC" )
+	try( devtools::check( "SDFC" ) )
 }
 
 

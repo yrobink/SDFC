@@ -234,6 +234,7 @@ run_all_tests = function()##{{{
 
 #run_all_tests()
 
+ab = SDFC::AbstractParam$new( "loc" , 1000 , l_loc = SDFC::ExpLink$new() ) 
 
 
 plt$wait()

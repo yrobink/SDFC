@@ -189,6 +189,8 @@ class FixParam(AbstractParam):##{{{
 		AbstractParam.__init__( self , kind , n_samples , **kwargs )
 		self.fit_       = np.array( [self.link.inverse( kwargs.get( "f_" + self.kind ) )] ).reshape(-1,1)
 		if self.fit_.size == 1: self.fit_ = np.repeat( self.fit_ , self.n_samples ).reshape(-1,1)
+		if resample is not None:
+			self.fit_ = self.fit_[resample,:]
 	
 	def is_fix(self):
 		return True

@@ -240,7 +240,7 @@ X = data$X
 Y = stats::rnorm( n = 2000 , mean = 2 * X - 1, sd = 0.5 )
 
 
-law = SDFC::Normal$new( "moments" , 100 , 0.05 )
+law = SDFC::Normal$new( "mle" , 100 , 0.05 )
 law$fit( Y , c_loc = X , l_scale = ExpLink$new() )
 print(law$coef_)
 

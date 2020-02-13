@@ -713,9 +713,9 @@ LawParams = R6::R6Class( "LawParams" , ##{{{
 			}
 			else
 			{
-				b = a + self$dparams_[[k]]$n_features
+				b = a + self$dparams_[[k]]$n_features - 1
 				tcoef[[k]] = coef[a:b]
-				a = b
+				a = b + 1
 			}
 		}
 		return(tcoef)
@@ -728,7 +728,7 @@ LawParams = R6::R6Class( "LawParams" , ##{{{
 		{
 			lcoef = self$split_coef(coef)
 			for( k in base::names(self$dparams_) )
-				self$dparams_[[k]]$set_coef(c)
+				self$dparams_[[k]]$set_coef(lcoef[[k]])
 		}
 		else
 		{
@@ -839,15 +839,20 @@ AbstractLaw2 = R6::R6Class( "AbstractLaw2" ,##{{{
 	## Methods
 	##========
 	
-	fit_mle = function()
+	fit_mle = function()##{{{
 	{
-
+		private$initialization_mle()
+		optim_result = stats::optim( self$coef_ , fn = private$negloglikelihood , gr = private$gradient_nlll , method = "BFGS" )
+		self$coef_ = optim_result$par
+#		self._info.cov = self._info.optim_result.hess_inv
 	},
-
-	fit_bayesian = function(...)
+	##}}}
+	
+	fit_bayesian = function(...)##{{{
 	{
 
 	}
+	##}}}
 	
 	),
 	##}}}
@@ -934,7 +939,6 @@ AbstractLaw2 = R6::R6Class( "AbstractLaw2" ,##{{{
 )
 ##}}}
 
-
 Normal = R6::R6Class( "Normal" ,##{{{
 	
 	inherit = AbstractLaw2,
@@ -951,7 +955,7 @@ Normal = R6::R6Class( "Normal" ,##{{{
 	## Methods
 	##========
 	
-	fit_moments = function()
+	fit_moments = function()##{{{
 	{
 		ploc   = self$params$dparams_[["loc"]]
 		pscale = self$params$dparams_[["scale"]]
@@ -961,19 +965,58 @@ Normal = R6::R6Class( "Normal" ,##{{{
 		if( !pscale$is_fix() )
 			self$params$update_coef( np_std( private$Y , pscale$design_wo1() , m_Y = self$loc , value = FALSE , link = pscale$link ) , "scale" )
 	},
+	##}}}
 	
-	initialization_mle = function()
+	initialization_mle = function()##{{{
 	{
-		self$fit_moments()
+		private$fit_moments()
 	},
+	##}}}
 	
-	fit_ = function()
+	fit_ = function()##{{{
 	{
 		if( self$method == "moments" )
 			private$fit_moments()
+	},
+	##}}}
+	
+	negloglikelihood = function( coef )##{{{
+	{
+		self$coef_ = coef
+		if( !base::all( self$scale > 0 ) )
+		{
+			return(Inf)
+		}
+		
+		scale2 = self$scale^2
+		res =  base::sum( base::log( scale2 ) ) / 2. + base::sum( ( private$Y - self$loc )^2 / scale2 ) / 2. 
+		return(res)
+	},
+	##}}}
+	
+	gradient_nlll = function( coef ) ##{{{
+	{
+		self$coef_ = coef
+		ploc   = self$params$dparams_[["loc"]]
+		pscale = self$params$dparams_[["scale"]]
+		
+		Yc = private$Y - self$loc
+		grad = base::c()
+		
+		if( !ploc$is_fix() )
+		{
+			grad_loc = - base::t( ploc$design_  ) %*% ( Yc / self$scale^2 * ploc$gradient() )
+			grad     = base::c( grad , grad_loc )
+		}
+		if( !pscale$is_fix() )
+		{
+			grad_scale = base::t( pscale$design_) %*% ( ( 1. / self$scale - Yc^2 / self$scale^3 ) * pscale$gradient() )
+			grad       = base::c( grad , grad_scale )
+		}
+		
+		return( grad )
 	}
-	
-	
+	##}}}
 	
 	),
 	##}}}
@@ -1009,17 +1052,19 @@ Normal = R6::R6Class( "Normal" ,##{{{
 	
 	active = list(
 	
-	loc = function( l )
+	loc = function( l )##{{{
 	{
 		if( missing(l) )
 			return( self$params$dparams_[["loc"]]$value )
 	},
+	##}}}
 	
-	scale = function( s )
+	scale = function( s )##{{{
 	{
 		if( missing(s) )
 			return( self$params$dparams_[["scale"]]$value )
 	}
+	##}}}
 	
 	)
 	##}}}

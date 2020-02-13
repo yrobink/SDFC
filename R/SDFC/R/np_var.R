@@ -86,11 +86,11 @@
 #'
 #' Compute the variance with covariates and link function
 #'
-#' @param Y  [vector] Dataset to fit
-#' @param X  [vector or NULL] Covariate
-#' @param m  [vector or NULL] mean already (or not) estimated. If NULL, m = base::mean(Y) is called
-#' @param linkFct  [SDFC::LinkFct] link function, default is identity
-#' @param return_coef  [bool] if TRUE return coefficients of the fit, else return variance
+#' @param Y   [vector] Dataset to fit
+#' @param c_Y [vector or NULL] Covariate
+#' @param m_Y [vector or NULL] mean already (or not) estimated. If NULL, m = base::mean(Y) is called
+#' @param link  [SDFC::LinkFct] link function, default is identity
+#' @param value  [bool] if TRUE return variance, else return coefficients of the fit
 #'
 #' @return [vector] Variance or coefficients of regression
 #'
@@ -108,29 +108,28 @@
 #' v = np_var( Y , X = X1 , m = m ) ## Now variance
 #' 
 #' @export
-np_var = function( Y , X = NULL , m = NULL , linkFct = SDFC::IdLinkFct$new() , return_coef = FALSE )
+np_var = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::IdLink$new() , value = TRUE )
 {
 	out  = NULL
 	coef = NULL
-	m    = if( is.null(m) ) base::mean(Y) else as.vector(m)
-	if( is.null(X) )
+	m_Y  = if( is.null(m_Y) ) base::mean(Y) else as.vector(m_Y)
+	if( is.null(c_Y) )
 	{
-		out  = stats::var(Y-m)
-		coef = linkFct$inverse(out)
+		out  = stats::var(Y-m_Y)
+		coef = link$inverse(out)
 	}
 	else
 	{
-		XX   = base::cbind( 1 , X )
-		Yres = linkFct$inverse( (Y - m)^2 )
-		coef = as.vector(stats::lm( Yres ~ X )$coefficients)
-		out  = base::abs(linkFct$eval( XX %*% coef ))
+		Yres = link$inverse( (Y - m_Y)^2 )
+		coef = as.vector(stats::lm( Yres ~ c_Y )$coefficients)
+		out  = base::abs(linkFct$eval( c_Y %*% coef ))
 	}
 	
 	
-	if( return_coef )
-		return(coef)
-	else
+	if( value )
 		return(out)
+	else
+		return(coef)
 }
 
 

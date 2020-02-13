@@ -86,10 +86,10 @@
 #'
 #' Compute the mean with covariates and link function
 #'
-#' @param Y  [vector] Dataset to fit
-#' @param X  [vector or NULL] Covariate
-#' @param linkFct  [SDFC::LinkFct] link function, default is identity
-#' @param return_coef  [bool] if TRUE return coefficients of the fit, else return mean
+#' @param Y   [vector] Dataset to fit
+#' @param c_Y [vector or NULL] Covariate
+#' @param link  [SDFC::LinkFct] link function, default is identity
+#' @param value  [bool] if TRUE return mean, else return coefficients of the fit
 #'
 #' @return [vector] Mean or coefficients of regression
 #'
@@ -101,30 +101,29 @@
 #' loc   = 1. + 2 * X0
 #' Y    = stats::rnorm( n = size , mean = loc , sd = 0.1 )
 #'
-#' m = np_mean( Y , X = X0 )
+#' m = np_mean( Y , c_Y = X0 )
 #' 
 #' @export
-np_mean = function( Y , X = NULL , linkFct = SDFC::IdLinkFct$new() , return_coef = FALSE )
+np_mean = function( Y , c_Y = NULL , link = SDFC::IdLink$new() , value = TRUE )
 {
 	out  = NULL
 	coef = NULL
-	if( is.null(X) )
+	if( is.null(c_Y) )
 	{
 		out  = base::mean(Y)
-		coef = linkFct$inverse(out)
+		coef = link$inverse(out)
 	}
 	else
 	{
-		XX   = base::cbind( 1 , X )
-		YY   = linkFct$inverse(Y)
-		coef = as.vector(stats::lm( YY ~ X )$coefficients)
-		out  = linkFct$eval( XX %*% coef )
+		YY   = link$inverse(Y)
+		coef = as.vector(stats::lm( YY ~ c_Y )$coefficients)
+		out  = link$eval( base::cbind( 1 , c_Y )  %*% coef )
 	}
 	
-	if( return_coef )
-		return(coef)
-	else
+	if( value )
 		return(out)
+	else
+		return(coef)
 }
 
 

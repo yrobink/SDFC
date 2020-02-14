@@ -816,6 +816,9 @@ LawParams = R6::R6Class( "LawParams" , ##{{{
 ##}}}
 
 
+## Prior generic class
+##====================
+
 
 ## Abstract Law
 ##=============
@@ -850,7 +853,7 @@ AbstractLaw2 = R6::R6Class( "AbstractLaw2" ,##{{{
 	
 	fit_bayesian = function(...)##{{{
 	{
-
+		
 	}
 	##}}}
 	
@@ -871,17 +874,17 @@ AbstractLaw2 = R6::R6Class( "AbstractLaw2" ,##{{{
 	
 	## Constructor
 	##============
-	initialize = function( kinds_params , method , n_bootstrap , alpha )
+	initialize = function( kinds_params , method , n_bootstrap , alpha )##{{{
 	{
 		private$kinds_params_ = kinds_params
 		self$method           = method
 	},
-	
+	##}}}
 	
 	## Methods
 	##========
 	
-	fit = function( Y , ... )
+	fit = function( Y , ... ) ##{{{
 	{
 		self$params = LawParams$new( kinds = self$kinds_params )
 		kwargs = list(...)
@@ -900,6 +903,7 @@ AbstractLaw2 = R6::R6Class( "AbstractLaw2" ,##{{{
 		
 		private$Y = NULL
 	}
+	##}}}
 	
 	),
 	##}}}
@@ -911,26 +915,29 @@ AbstractLaw2 = R6::R6Class( "AbstractLaw2" ,##{{{
 	
 	active = list(
 	
-	kinds_params = function( kp )
+	kinds_params = function( kp ) ##{{{
 	{
 		if( missing(kp) )
 			return(private$kinds_params_)
 	},
+	##}}}
 	
-	method = function(m)
+	method = function(m) ##{{{
 	{
 		if( missing(m) )
 			return( private$method_ )
 		
 		private$method_ = base::tolower(m)
 	},
+	##}}}
 	
-	coef_ = function(coef)
+	coef_ = function(coef) ##{{{
 	{
 		if( missing(coef) )
 			return(self$params$coef_)
 		self$params$update_coef(coef)
 	}
+	##}}}
 	
 	)
 	##}}}

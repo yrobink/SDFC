@@ -122,7 +122,7 @@ np_var = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::IdLink$new() , val
 	{
 		Yres = link$inverse( (Y - m_Y)^2 )
 		coef = as.vector(stats::lm( Yres ~ c_Y )$coefficients)
-		out  = base::abs(linkFct$eval( c_Y %*% coef ))
+		out  = base::abs(link$eval( base::cbind( 1 , c_Y ) %*% coef ))
 	}
 	
 	

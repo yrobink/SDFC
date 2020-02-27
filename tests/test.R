@@ -237,12 +237,14 @@ run_all_tests = function()##{{{
 data = Dataset0(2000)
 t = data$t
 X = data$X
-Y = stats::rnorm( n = 2000 , mean = 2 * X - 1, sd = 0.5 )
+Y = stats::rnorm( n = 2000 , mean = -1 + 2 * X , sd = base::exp( 0.5 - 0.3 * X ) )
 
 
-law = SDFC::Normal$new( "mle" , 100 , 0.05 )
-law$fit( Y , c_loc = X , l_scale = ExpLink$new() )
+law = SDFC::Normal$new( "mle" , 100 )
+law$fit( Y , c_loc = X , l_scale = ExpLink$new() , c_scale = X )
 print(law$coef_)
+print(law$bootstrap$confidence_interval)
+#print(law$info)
 
 plt$wait()
 print("Done")

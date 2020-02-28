@@ -219,6 +219,23 @@ test_qr = function( show = FALSE ) ##{{{
 }
 ##}}}
 
+test_lmoments = function() ##{{{
+{
+	size = 2000
+	c_data = Dataset$covariates(size)
+	
+	t       = c_data$t
+	X_loc   = c_data$X_loc
+	X_scale = c_data$X_scale
+	loc   = 0.5 + 2 * X_loc
+	scale =   1 + 2 * X_scale
+	Y = stats::rnorm( size , mean = loc , sd = scale )
+	
+	c_Y = base::cbind( X_loc , X_scale )
+	
+	lmom = np_lmoments( Y , c_Y = c_Y )
+}
+##}}}
 
 run_all_tests = function()##{{{
 {
@@ -244,14 +261,17 @@ c_data = Dataset$covariates(size)
 t       = c_data$t
 X_loc   = c_data$X_loc
 X_scale = c_data$X_scale
-loc   = 0.5 + 2 * X_loc
-scale =   1 + 2 * X_scale
-Y = stats::rnorm( size , mean = loc , sd = scale )
+X_shape = c_data$X_shape
 
-c_Y = base::cbind( X_loc , X_scale )
+loc   = 1.  + 0.8  * X_loc
+scale = 0.2 + 0.08 * X_scale
+shape = 0.  + 0.3  * X_shape
 
-lmom = np_lmoments( Y , c_Y = c_Y )
+Y = SDFC::rgev( size , loc , scale , shape )
 
+gev = SDFC::GEV$new( method = "moments" )
+gev$fit( Y , c_loc = X_loc , c_shape = X_shape , c_scale = X_scale )
+print(gev$coef_)
 
 plt$wait()
 print("Done")

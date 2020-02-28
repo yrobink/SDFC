@@ -298,520 +298,520 @@ rgev = function( n = 1 , loc = 0 , scale = 1 , shape = 0 )
 ########################################################################################################################
 
 
-## GEVLaw {{{
-
-#' GEVLaw (Generalized Extreme Value)
-#'
-#' Class to fit a generalized extreme values law.
-#'
-#' @docType class
-#' @importFrom R6 R6Class
-#'
-#' @param method [string]
-#'        Fit method, "moments", "lmoments", "quantiles" and "MLE" are available.
-#' @param link_fct_loc [SDFC::LinkFct]
-#'        Link function for loc parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
-#' @param link_fct_scale [SDFC::LinkFct]
-#'        Link function for scale parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
-#' @param link_fct_shape [SDFC::LinkFct]
-#'        Link function for shape parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
-#' @param n_bootstrap [int]
-#'        Number of bootstrap, default 0
-#' @param alpha [float]
-#'        Level of confidence interval, default 0.05
-#' @param loc_cov  [matrix or NULL ]
-#'        Location covariate for fit
-#' @param scale_cov  [matrix or NULL]
-#'        Scale covariate for fit
-#' @param shape_cov  [matrix or NULL]
-#'        Shape covariate for fit
-#' @param floc [vector or NULL]
-#'        Value of loc if it is not necessary to fit
-#' @param fscale [vector or NULL]
-#'        Value of scale if it is not necessary to fit
-#' @param fshape [vector or NULL]
-#'        Value of shape if it is not necessary to fit
-#'
-#' @return Object of \code{\link{R6Class}} 
-#' @format \code{\link{R6Class}} object.
-#'
-#' @section Methods:
-#' \describe{
-#'   \item{\code{new(method,link_fct_loc,link_fct_scale,link_fct_shape,n_bootstrap,alpha)}}{Initialize GEV law with code{GEVLaw}}
-#'   \item{\code{fit(Y,loc_cov,scale_cov,shape_cov,floc,fscale,fshape)}}{Fit the GEV law}.
-#' }
-#' @examples
-#' ## Data
-#' size  = 2500
-#' t = base::seq( 0 , 1 , length = size )
-#' X0 = t^2
-#' X2 = base::seq( -1 , 1 , length = size )
-#' loc   = 0.5 + 1.5 * X0
-#' scale = 0.1 + 0.1 * X0
-#' shape = 0.3 * X2
-#' 
-#' Y = SDFC::rgev( n = size , loc = loc , scale = scale , shape = shape )
-#' 
-#' ## Fit
-#' gev = GEVLaw$new( method = "MLE" , n_bootstrap = 10 )
-#' gev$fit( Y , loc_cov = X0  , scale_cov = X0 , shape_cov = X2 )
-#' gev$loc   ## Loc fitted
-#' gev$scale ## Scale fitted
-#' gev$shape ## Shape fitted
-#' @export
-GEVLaw = R6::R6Class( "GEVLaw" , 
-	
-	inherit = AbstractLaw,
-	
-	public = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	loc    = NULL,
-	scale  = NULL,
-	shape  = NULL,
-	loc_   = NULL,
-	scale_ = NULL,
-	shape_ = NULL,
-	
-	
-	#################
-	## Constructor ##
-	#################
-	
-	initialize = function( method = "MLE" , link_fct_loc = IdLinkFct$new() , link_fct_scale = IdLinkFct$new() , link_fct_shape = IdLinkFct$new() , n_bootstrap = 0 , alpha = 0.05 ) ##{{{
-	{
-		super$initialize( method , n_bootstrap , alpha )
-		
-		self$loc       = NULL
-		self$scale     = NULL
-		self$shape     = NULL
-		
-		self$loc_   = LawParam$new( linkFct = link_fct_loc   , kind = "loc"   )
-		self$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
-		self$shape_ = LawParam$new( linkFct = link_fct_shape , kind = "shape" )
-	},
-	##}}}
-	
-	
-	###############
-	## Functions ##
-	###############
-	
-	fit = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL , floc = NULL , fscale = NULL , fshape = NULL ) ##{{{
-	{
-		Y = as.vector(Y)
-		private$size_ = length(Y)
-		
-		##=> Bootstrap here
-		if( self$n_bootstrap > 0 )
-		{
-			if( !is.null(loc_cov) && !is.matrix(loc_cov) )
-				loc_cov = matrix( loc_cov , nrow = private$size_ , ncol = 1 )
-			if( !is.null(scale_cov) && !is.matrix(scale_cov) )
-				scale_cov = matrix( scale_cov , nrow = private$size_ , ncol = 1 )
-			if( !is.null(shape_cov) && !is.matrix(shape_cov) )
-				shape_cov = matrix( shape_cov , nrow = private$size_ , ncol = 1 )
-			
-			self$coefs_bootstrap = base::c()
-			
-			for( i in 1:self$n_bootstrap )
-			{
-				idx = base::sample( 1:private$size_ , private$size_ , replace = TRUE )
-				loc_cov_bs   = if( is.null(loc_cov) )   loc_cov   else loc_cov[idx,]
-				scale_cov_bs = if( is.null(scale_cov) ) scale_cov else scale_cov[idx,]
-				shape_cov_bs = if( is.null(shape_cov) ) shape_cov else shape_cov[idx,]
-				floc_bs      = if( is.null(floc) || length(floc) == 1 )     floc      else floc[idx]
-				fscale_bs    = if( is.null(fscale) || length(fscale) == 1 ) fscale    else fscale[idx]
-				fshape_bs    = if( is.null(fshape) || length(fshape) == 1 ) fshape    else fshape[idx]
-				
-				private$fit_( Y[idx] , loc_cov_bs , scale_cov_bs , shape_cov_bs , floc_bs , fscale_bs , fshape_bs )
-				self$coefs_bootstrap = base::rbind( self$coefs_bootstrap , self$coef_ )
-			}
-			self$confidence_interval = base::apply( self$coefs_bootstrap , 2 , stats::quantile , probs = base::c( self$alpha / 2. , 1. - self$alpha / 2. ) )
-		}
-		
-		private$fit_( Y , loc_cov , scale_cov , shape_cov , floc , fscale , fshape )
-	}
-	##}}}
-	
-	),
-	
-	private = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	
-	
-	###############
-	## Functions ##
-	###############
-	
-	fit_ = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL , floc = NULL , fscale = NULL , fshape = NULL ) ##{{{
-	{
-		private$Y_    = as.vector(Y)
-		
-		self$loc_$init(   X = loc_cov   , fix_values = floc   , size = private$size_ )
-		self$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
-		self$shape_$init( X = shape_cov , fix_values = fshape , size = private$size_ )
-		
-		if( self$method == "moments" )
-		{
-			private$fit_moments()
-		}
-		else if( self$method == "lmoments" )
-		{
-			private$fit_lmoments()
-		}
-		else if( self$method == "quantiles" )
-		{
-			private$fit_quantiles()
-		}
-		else
-		{
-			private$fit_mle()
-		}
-		
-		self$coef_ = private$concat_param()
-	},
-	##}}}
-	
-	fit_moments = function() ##{{{
-	{
-		m = base::mean(private$Y_)
-		s = base::sqrt(6) * stats::sd(private$Y_) / base::pi
-		
-		iloc   = m - 0.57722 * s
-		iscale = base::log(s)
-		ishape = 1e-8
-		
-		self$loc_$set_intercept(   self$loc_$linkFct$inverse( iloc )     )
-		self$scale_$set_intercept( self$scale_$linkFct$inverse( iscale ) )
-		self$shape_$set_intercept( self$shape_$linkFct$inverse( ishape ) )
-		
-		
-		self$loc_$update()
-		self$scale_$update()
-		self$shape_$update()
-		self$loc   = self$loc_$valueLf()
-		self$scale = self$scale_$valueLf()
-		self$shape = self$shape_$valueLf()
-	},
-	##}}}
-	
-	fit_lmoments = function() ##{{{
-	{
-		lmom1 = np_lmoments( private$Y_ , 1 )
-		lmom2 = np_lmoments( private$Y_ , 2 )
-		lmom3 = np_lmoments( private$Y_ , 3 )
-		
-		tau3  = lmom3 / lmom2
-		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
-		kappa = 7.8590 * co + 2.9554 * co**2
-		g     = base::gamma( 1. + kappa )
-		
-		iscale = lmom2 * kappa / ( (1 - 2^(-kappa)) * g )
-		iloc   = lmom1 - iscale * (1 - g) / kappa
-		ishape = - kappa
-		
-		self$loc_$set_intercept(   self$loc_$linkFct$inverse( iloc )     )
-		self$scale_$set_intercept( self$scale_$linkFct$inverse( iscale ) )
-		self$shape_$set_intercept( self$shape_$linkFct$inverse( ishape ) )
-		
-		self$loc_$update()
-		self$scale_$update()
-		self$shape_$update()
-		self$loc   = self$loc_$valueLf()
-		self$scale = self$scale_$valueLf()
-		self$shape = self$shape_$valueLf()
-	},
-	##}}}
-	
-	fit_quantiles = function() ##{{{
-	{
-		## Fit the loc
-		if( self$loc_$not_fixed() )
-		{
-			if( self$loc_$size_ == 1 )
-			{
-				self$loc_$set_intercept( self$loc_$linkFct$inverse( as.vector(stats::quantile( private$Y_ , probs = base::exp(-1) )) ) )
-			}
-			else
-			{
-				loc = as.vector(np_quantile( private$Y_ , ltau = base::c(base::exp(-1)) , X = self$loc_$design_wo1() ))
-				self$loc_$set_coef( np_mean( loc , X = self$loc_$design_wo1() , linkFct = self$loc_$linkFct , return_coef = TRUE ) )
-			}
-		}
-		self$loc_$update()
-		self$loc = self$loc_$valueLf()
-		
-		
-		## Fit the scale
-		if( self$scale_$not_fixed() )
-		{
-			probs = base::c( 0.25 , 0.5 , 0.75 )
-			coef  = - 1. / base::log( - base::log(probs) )
-			if( self$scale_$size_ == 1 )
-			{
-				self$scale_$set_intercept( self$scale_$linkFct$inverse(base::mean( as.vector( stats::quantile( private$Y_ - self$loc , probs ) ) * coef )) )
-			}
-			else
-			{
-				qreg = np_quantile( private$Y_ - self$loc , ltau = probs , X = self$scale_$design_wo1() )
-				fscale = ( qreg %*% coef ) / length(probs)
-				self$scale_$set_coef( np_mean( fscale , X = self$scale_$design_wo1() , linkFct = self$scale_$linkFct , return_coef = TRUE ) )
-			}
-		}
-		self$scale_$update()
-		self$scale = self$scale_$valueLf()
-		
-		
-		## Fit the shape
-		if( self$shape_$not_fixed() )
-		{
-			p0 = 0.1
-			p1 = 0.9
-			llp0 = base::log( - base::log(p0) )
-			llp1 = base::log( - base::log(p1) )
-			if( self$shape_$size_ == 1 )
-			{
-				q = stats::quantile( ( private$Y_ - self$loc ) / self$scale , base::c(p0,p1) )
-				kappa = q[1] / q[2]
-				sh = 2 * (llp0 - kappa * llp1 ) / ( llp0^2 - kappa * llp1^2 )
-				self$shape_$set_intercept( self$shape_$linkFct$inverse(sh) )
-			}
-			else
-			{
-				q = np_quantile( ( private$Y_ - self$loc ) / self$scale , ltau = base::c(p0,p1) , X = self$shape_$design_wo1() )
-				kappa = q[,1] / q[,2]
-				fshape = 2 * (llp0 - kappa * llp1 ) / ( llp0^2 - kappa * llp1^2 )
-				self$shape_$set_coef( np_mean( fshape , X = self$shape_$design_wo1() , linkFct = self$shape_$linkFct , return_coef = TRUE ) )
-			}
-		}
-		self$shape_$update()
-		self$shape = self$shape_$valueLf()
-	},
-	##}}}
-	
-	fit_mle = function() ##{{{
-	{
-		private$fit_quantiles()
-		param_init = private$concat_param()
-		
-		## Test for initial value
-		nll  = private$optim_function(param_init)
-		gnll = private$gradient_optim_function(param_init)
-		
-		if( !is.finite(nll) || !is.finite(gnll) )
-		{
-			self$shape_$set_coef( numeric( self$shape_$size_ ) )
-			param_init = private$concat_param()
-		}
-		
-		optim_result = stats::optim( param_init , fn = private$optim_function , gr = private$gradient_optim_function , method = "BFGS" )
-		private$update_param( optim_result$par )
-	},
-	##}}}
-	
-	split_param = function( param )##{{{
-	{
-		param_loc   = NULL
-		param_scale = NULL
-		param_shape = NULL
-		s0 = self$loc_$size_
-		s1 = self$scale_$size_
-		s2 = self$shape_$size_
-		
-		if( self$loc_$not_fixed() && self$scale_$not_fixed() && self$shape_$not_fixed() )
-		{
-			param_loc   = param[1:s0]
-			param_scale = param[(s0+1):(s0+s1)]
-			param_shape = param[(s0+s1+1):(s0+s1+s2)]
-		}
-		else if( self$loc_$not_fixed() && self$scale_$not_fixed() )
-		{
-			s0 = self$loc_$size_
-			s1 = self$scale_$size_
-			param_loc   = param[1:s0]
-			param_scale = param[(s0+1):(s0+s1)]
-		}
-		else if( self$loc_$not_fixed() && self$shape_$not_fixed() )
-		{
-			s0 = self$loc_$size_
-			s1 = self$shape_$size_
-			param_loc   = param[1:s0]
-			param_shape = param[(s0+1):(s0+s2)]
-		}
-		else if( self$scale_$not_fixed() && self$shape_$not_fixed() )
-		{
-			param_scale = param[1:s1]
-			param_shape = param[(s1+1):(s1+s2)]
-		}
-		else if( self$loc_$not_fixed() )
-		{
-			param_loc = param
-		}
-		else if( self$scale_$not_fixed() )
-		{
-			param_scale = param
-		}
-		else if( self$shape_$not_fixed() )
-		{
-			param_shape = param
-		}
-		
-		return( list( loc = param_loc , scale = param_scale , shape = param_shape ) )
-	},
-	##}}}
-	
-	concat_param = function()##{{{
-	{
-		param = NULL
-		param_loc   = if( self$loc_$not_fixed() )   self$loc_$coef_   else NULL
-		param_scale = if( self$scale_$not_fixed() ) self$scale_$coef_ else NULL
-		param_shape = if( self$shape_$not_fixed() ) self$shape_$coef_ else NULL
-		
-		param = base::c( param_loc , param_scale , param_shape )
-
-#		if( self$loc_$not_fixed() && self$scale_$not_fixed() && self$shape_$not_fixed() )
-#		{
-#			param = base::c( self$loc_$coef_ , self$scale_$coef_ , private$shape$coef_ )
-#		}
-#		else if( self$loc_$not_fixed() && self$scale_$not_fixed() )
-#		{
-#			param = base::c( self$loc_$coef_ , self$scale_$coef_ )
-#		}
-#		else if( self$loc_$not_fixed() && self$shape_$not_fixed() )
-#		{
-#			param = base::c( self$loc_$coef_ , private$shape$coef_ )
-#		}
-#		else if( self$scale_$not_fixed() && self$shape_$not_fixed() )
-#		{
-#			param = base::c( self$scale_$coef_ , private$shape$coef_ )
-#		}
-#		else if( self$loc_$not_fixed() )
-#		{
-#			param = self$loc_$coef_
-#		}
-#		else if( self$scale_$not_fixed() )
-#		{
-#			param = self$scale_$coef_
-#		}
-#		else if( self$shape_$not_fixed() )
-#		{
-#			param = self$shape_$coef_
-#		}
-		
-		return( param )
-	},
-	##}}}
-	
-	update_param = function( param ) ##{{{
-	{
-		param_sp = private$split_param(param)
-		self$loc_$set_coef(   param_sp$loc )
-		self$scale_$set_coef( param_sp$scale )
-		self$shape_$set_coef( param_sp$shape )
-		self$loc_$update()
-		self$scale_$update()
-		self$shape_$update()
-		self$loc   = self$loc_$valueLf()
-		self$scale = self$scale_$valueLf()
-		self$shape = self$shape_$valueLf()
-	},
-	##}}}
-	
-	optim_function = function( param )##{{{
-	{
-		private$update_param(param)
-		return( private$negloglikelihood() )
-	},
-	##}}}
-	
-	negloglikelihood = function() ##{{{
-	{
-		## Impossible scale
-		if( base::any( self$scale <= 0 ) )
-			return(Inf)
-		
-		## Fuck exponential case
-		zero_shape = ( base::abs(self$shape) < 1e-10 )
-		if( base::any(zero_shape) )
-			self$shape[zero_shape] = -1e-10
-		
-		##
-		Z = 1 + self$shape * ( private$Y_ - self$loc ) / self$scale
-		
-		if( base::any(Z <= 0) )
-			return( Inf )
-		
-		res = base::sum( ( 1. + 1. / self$shape ) * base::log(Z) + Z^( - 1. / self$shape ) + base::log(self$scale) )
-		
-		if( is.finite(res) )
-			return(res)
-		else
-			return(Inf)
-	},
-	##}}}
-	
-	logZafun = function( Z , alpha ) ##{{{
-	{
-		return( alpha * base::log( 1. + self$shape * Z ) )
-	},
-	##}}}
-	
-	Zafun = function( Z , alpha ) ##{{{
-	{
-		return( base::exp( private$logZafun( Z , alpha ) ) )
-	},
-	##}}}
-	
-	gradient_optim_function = function( param ) ##{{{
-	{
-		private$update_param(param)
-		
-		## Impossible
-		if( base::any( 1. + self$shape * ( private$Y_ - self$loc ) / self$scale <= 0 ) )
-			return( numeric( length(param) ) + NA )
-		
-		## Usefull values
-		Z      = ( private$Y_ - self$loc ) / self$scale
-		ishape = 1. / self$shape
-		Za1    = private$Zafun( Z , 1. )
-		Zamsi  = private$Zafun( Z , - ishape ) ## Za of Minus Shape Inverse
-		
-		##
-		grad = base::c()
-		if( self$loc_$not_fixed() )
-		{
-			loc_vect = self$loc_$valueGrLf()   * ( Zamsi - 1 - self$shape ) / ( self$scale * Za1 )
-			grad_loc = base::t(self$loc_$design_) %*% loc_vect
-			grad     = base::c(grad,grad_loc)
-		}
-		if( self$scale_$not_fixed() )
-		{
-			scale_vect = self$scale_$valueGrLf() * ( 1. + Z * ( Zamsi - 1 - self$shape ) / Za1 ) / self$scale
-			grad_scale = base::t(self$scale_$design_) %*% scale_vect
-			grad       = base::c(grad,grad_scale)
-		}
-		if( self$shape_$not_fixed() )
-		{
-			shape_vect = self$shape_$valueGrLf() * ( ( Zamsi - 1. ) * base::log(Za1) * ishape^2 + ( 1. + ishape - ishape * Zamsi ) * Z / Za1 )
-			grad_shape = base::t(self$shape_$design_) %*% shape_vect
-			grad       = base::c(grad,grad_shape)
-		}
-		
-		return(grad)
-	}
-	##}}}
-	
-	
-	)
-)
-##}}}
-
-
+## ==> ## GEVLaw {{{
+## ==> 
+## ==> #' GEVLaw (Generalized Extreme Value)
+## ==> #'
+## ==> #' Class to fit a generalized extreme values law.
+## ==> #'
+## ==> #' @docType class
+## ==> #' @importFrom R6 R6Class
+## ==> #'
+## ==> #' @param method [string]
+## ==> #'        Fit method, "moments", "lmoments", "quantiles" and "MLE" are available.
+## ==> #' @param link_fct_loc [SDFC::LinkFct]
+## ==> #'        Link function for loc parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
+## ==> #' @param link_fct_scale [SDFC::LinkFct]
+## ==> #'        Link function for scale parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
+## ==> #' @param link_fct_shape [SDFC::LinkFct]
+## ==> #'        Link function for shape parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
+## ==> #' @param n_bootstrap [int]
+## ==> #'        Number of bootstrap, default 0
+## ==> #' @param alpha [float]
+## ==> #'        Level of confidence interval, default 0.05
+## ==> #' @param loc_cov  [matrix or NULL ]
+## ==> #'        Location covariate for fit
+## ==> #' @param scale_cov  [matrix or NULL]
+## ==> #'        Scale covariate for fit
+## ==> #' @param shape_cov  [matrix or NULL]
+## ==> #'        Shape covariate for fit
+## ==> #' @param floc [vector or NULL]
+## ==> #'        Value of loc if it is not necessary to fit
+## ==> #' @param fscale [vector or NULL]
+## ==> #'        Value of scale if it is not necessary to fit
+## ==> #' @param fshape [vector or NULL]
+## ==> #'        Value of shape if it is not necessary to fit
+## ==> #'
+## ==> #' @return Object of \code{\link{R6Class}} 
+## ==> #' @format \code{\link{R6Class}} object.
+## ==> #'
+## ==> #' @section Methods:
+## ==> #' \describe{
+## ==> #'   \item{\code{new(method,link_fct_loc,link_fct_scale,link_fct_shape,n_bootstrap,alpha)}}{Initialize GEV law with code{GEVLaw}}
+## ==> #'   \item{\code{fit(Y,loc_cov,scale_cov,shape_cov,floc,fscale,fshape)}}{Fit the GEV law}.
+## ==> #' }
+## ==> #' @examples
+## ==> #' ## Data
+## ==> #' size  = 2500
+## ==> #' t = base::seq( 0 , 1 , length = size )
+## ==> #' X0 = t^2
+## ==> #' X2 = base::seq( -1 , 1 , length = size )
+## ==> #' loc   = 0.5 + 1.5 * X0
+## ==> #' scale = 0.1 + 0.1 * X0
+## ==> #' shape = 0.3 * X2
+## ==> #' 
+## ==> #' Y = SDFC::rgev( n = size , loc = loc , scale = scale , shape = shape )
+## ==> #' 
+## ==> #' ## Fit
+## ==> #' gev = GEVLaw$new( method = "MLE" , n_bootstrap = 10 )
+## ==> #' gev$fit( Y , loc_cov = X0  , scale_cov = X0 , shape_cov = X2 )
+## ==> #' gev$loc   ## Loc fitted
+## ==> #' gev$scale ## Scale fitted
+## ==> #' gev$shape ## Shape fitted
+## ==> #' @export
+## ==> GEVLaw = R6::R6Class( "GEVLaw" , 
+## ==> 	
+## ==> 	inherit = AbstractLaw,
+## ==> 	
+## ==> 	public = list(
+## ==> 	
+## ==> 	###############
+## ==> 	## Arguments ##
+## ==> 	###############
+## ==> 	
+## ==> 	loc    = NULL,
+## ==> 	scale  = NULL,
+## ==> 	shape  = NULL,
+## ==> 	loc_   = NULL,
+## ==> 	scale_ = NULL,
+## ==> 	shape_ = NULL,
+## ==> 	
+## ==> 	
+## ==> 	#################
+## ==> 	## Constructor ##
+## ==> 	#################
+## ==> 	
+## ==> 	initialize = function( method = "MLE" , link_fct_loc = IdLinkFct$new() , link_fct_scale = IdLinkFct$new() , link_fct_shape = IdLinkFct$new() , n_bootstrap = 0 , alpha = 0.05 ) ##{{{
+## ==> 	{
+## ==> 		super$initialize( method , n_bootstrap , alpha )
+## ==> 		
+## ==> 		self$loc       = NULL
+## ==> 		self$scale     = NULL
+## ==> 		self$shape     = NULL
+## ==> 		
+## ==> 		self$loc_   = LawParam$new( linkFct = link_fct_loc   , kind = "loc"   )
+## ==> 		self$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
+## ==> 		self$shape_ = LawParam$new( linkFct = link_fct_shape , kind = "shape" )
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	
+## ==> 	###############
+## ==> 	## Functions ##
+## ==> 	###############
+## ==> 	
+## ==> 	fit = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL , floc = NULL , fscale = NULL , fshape = NULL ) ##{{{
+## ==> 	{
+## ==> 		Y = as.vector(Y)
+## ==> 		private$size_ = length(Y)
+## ==> 		
+## ==> 		##=> Bootstrap here
+## ==> 		if( self$n_bootstrap > 0 )
+## ==> 		{
+## ==> 			if( !is.null(loc_cov) && !is.matrix(loc_cov) )
+## ==> 				loc_cov = matrix( loc_cov , nrow = private$size_ , ncol = 1 )
+## ==> 			if( !is.null(scale_cov) && !is.matrix(scale_cov) )
+## ==> 				scale_cov = matrix( scale_cov , nrow = private$size_ , ncol = 1 )
+## ==> 			if( !is.null(shape_cov) && !is.matrix(shape_cov) )
+## ==> 				shape_cov = matrix( shape_cov , nrow = private$size_ , ncol = 1 )
+## ==> 			
+## ==> 			self$coefs_bootstrap = base::c()
+## ==> 			
+## ==> 			for( i in 1:self$n_bootstrap )
+## ==> 			{
+## ==> 				idx = base::sample( 1:private$size_ , private$size_ , replace = TRUE )
+## ==> 				loc_cov_bs   = if( is.null(loc_cov) )   loc_cov   else loc_cov[idx,]
+## ==> 				scale_cov_bs = if( is.null(scale_cov) ) scale_cov else scale_cov[idx,]
+## ==> 				shape_cov_bs = if( is.null(shape_cov) ) shape_cov else shape_cov[idx,]
+## ==> 				floc_bs      = if( is.null(floc) || length(floc) == 1 )     floc      else floc[idx]
+## ==> 				fscale_bs    = if( is.null(fscale) || length(fscale) == 1 ) fscale    else fscale[idx]
+## ==> 				fshape_bs    = if( is.null(fshape) || length(fshape) == 1 ) fshape    else fshape[idx]
+## ==> 				
+## ==> 				private$fit_( Y[idx] , loc_cov_bs , scale_cov_bs , shape_cov_bs , floc_bs , fscale_bs , fshape_bs )
+## ==> 				self$coefs_bootstrap = base::rbind( self$coefs_bootstrap , self$coef_ )
+## ==> 			}
+## ==> 			self$confidence_interval = base::apply( self$coefs_bootstrap , 2 , stats::quantile , probs = base::c( self$alpha / 2. , 1. - self$alpha / 2. ) )
+## ==> 		}
+## ==> 		
+## ==> 		private$fit_( Y , loc_cov , scale_cov , shape_cov , floc , fscale , fshape )
+## ==> 	}
+## ==> 	##}}}
+## ==> 	
+## ==> 	),
+## ==> 	
+## ==> 	private = list(
+## ==> 	
+## ==> 	###############
+## ==> 	## Arguments ##
+## ==> 	###############
+## ==> 	
+## ==> 	
+## ==> 	
+## ==> 	###############
+## ==> 	## Functions ##
+## ==> 	###############
+## ==> 	
+## ==> 	fit_ = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL , floc = NULL , fscale = NULL , fshape = NULL ) ##{{{
+## ==> 	{
+## ==> 		private$Y_    = as.vector(Y)
+## ==> 		
+## ==> 		self$loc_$init(   X = loc_cov   , fix_values = floc   , size = private$size_ )
+## ==> 		self$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
+## ==> 		self$shape_$init( X = shape_cov , fix_values = fshape , size = private$size_ )
+## ==> 		
+## ==> 		if( self$method == "moments" )
+## ==> 		{
+## ==> 			private$fit_moments()
+## ==> 		}
+## ==> 		else if( self$method == "lmoments" )
+## ==> 		{
+## ==> 			private$fit_lmoments()
+## ==> 		}
+## ==> 		else if( self$method == "quantiles" )
+## ==> 		{
+## ==> 			private$fit_quantiles()
+## ==> 		}
+## ==> 		else
+## ==> 		{
+## ==> 			private$fit_mle()
+## ==> 		}
+## ==> 		
+## ==> 		self$coef_ = private$concat_param()
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	fit_moments = function() ##{{{
+## ==> 	{
+## ==> 		m = base::mean(private$Y_)
+## ==> 		s = base::sqrt(6) * stats::sd(private$Y_) / base::pi
+## ==> 		
+## ==> 		iloc   = m - 0.57722 * s
+## ==> 		iscale = base::log(s)
+## ==> 		ishape = 1e-8
+## ==> 		
+## ==> 		self$loc_$set_intercept(   self$loc_$linkFct$inverse( iloc )     )
+## ==> 		self$scale_$set_intercept( self$scale_$linkFct$inverse( iscale ) )
+## ==> 		self$shape_$set_intercept( self$shape_$linkFct$inverse( ishape ) )
+## ==> 		
+## ==> 		
+## ==> 		self$loc_$update()
+## ==> 		self$scale_$update()
+## ==> 		self$shape_$update()
+## ==> 		self$loc   = self$loc_$valueLf()
+## ==> 		self$scale = self$scale_$valueLf()
+## ==> 		self$shape = self$shape_$valueLf()
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	fit_lmoments = function() ##{{{
+## ==> 	{
+## ==> 		lmom1 = np_lmoments( private$Y_ , 1 )
+## ==> 		lmom2 = np_lmoments( private$Y_ , 2 )
+## ==> 		lmom3 = np_lmoments( private$Y_ , 3 )
+## ==> 		
+## ==> 		tau3  = lmom3 / lmom2
+## ==> 		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
+## ==> 		kappa = 7.8590 * co + 2.9554 * co**2
+## ==> 		g     = base::gamma( 1. + kappa )
+## ==> 		
+## ==> 		iscale = lmom2 * kappa / ( (1 - 2^(-kappa)) * g )
+## ==> 		iloc   = lmom1 - iscale * (1 - g) / kappa
+## ==> 		ishape = - kappa
+## ==> 		
+## ==> 		self$loc_$set_intercept(   self$loc_$linkFct$inverse( iloc )     )
+## ==> 		self$scale_$set_intercept( self$scale_$linkFct$inverse( iscale ) )
+## ==> 		self$shape_$set_intercept( self$shape_$linkFct$inverse( ishape ) )
+## ==> 		
+## ==> 		self$loc_$update()
+## ==> 		self$scale_$update()
+## ==> 		self$shape_$update()
+## ==> 		self$loc   = self$loc_$valueLf()
+## ==> 		self$scale = self$scale_$valueLf()
+## ==> 		self$shape = self$shape_$valueLf()
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	fit_quantiles = function() ##{{{
+## ==> 	{
+## ==> 		## Fit the loc
+## ==> 		if( self$loc_$not_fixed() )
+## ==> 		{
+## ==> 			if( self$loc_$size_ == 1 )
+## ==> 			{
+## ==> 				self$loc_$set_intercept( self$loc_$linkFct$inverse( as.vector(stats::quantile( private$Y_ , probs = base::exp(-1) )) ) )
+## ==> 			}
+## ==> 			else
+## ==> 			{
+## ==> 				loc = as.vector(np_quantile( private$Y_ , ltau = base::c(base::exp(-1)) , X = self$loc_$design_wo1() ))
+## ==> 				self$loc_$set_coef( np_mean( loc , X = self$loc_$design_wo1() , linkFct = self$loc_$linkFct , return_coef = TRUE ) )
+## ==> 			}
+## ==> 		}
+## ==> 		self$loc_$update()
+## ==> 		self$loc = self$loc_$valueLf()
+## ==> 		
+## ==> 		
+## ==> 		## Fit the scale
+## ==> 		if( self$scale_$not_fixed() )
+## ==> 		{
+## ==> 			probs = base::c( 0.25 , 0.5 , 0.75 )
+## ==> 			coef  = - 1. / base::log( - base::log(probs) )
+## ==> 			if( self$scale_$size_ == 1 )
+## ==> 			{
+## ==> 				self$scale_$set_intercept( self$scale_$linkFct$inverse(base::mean( as.vector( stats::quantile( private$Y_ - self$loc , probs ) ) * coef )) )
+## ==> 			}
+## ==> 			else
+## ==> 			{
+## ==> 				qreg = np_quantile( private$Y_ - self$loc , ltau = probs , X = self$scale_$design_wo1() )
+## ==> 				fscale = ( qreg %*% coef ) / length(probs)
+## ==> 				self$scale_$set_coef( np_mean( fscale , X = self$scale_$design_wo1() , linkFct = self$scale_$linkFct , return_coef = TRUE ) )
+## ==> 			}
+## ==> 		}
+## ==> 		self$scale_$update()
+## ==> 		self$scale = self$scale_$valueLf()
+## ==> 		
+## ==> 		
+## ==> 		## Fit the shape
+## ==> 		if( self$shape_$not_fixed() )
+## ==> 		{
+## ==> 			p0 = 0.1
+## ==> 			p1 = 0.9
+## ==> 			llp0 = base::log( - base::log(p0) )
+## ==> 			llp1 = base::log( - base::log(p1) )
+## ==> 			if( self$shape_$size_ == 1 )
+## ==> 			{
+## ==> 				q = stats::quantile( ( private$Y_ - self$loc ) / self$scale , base::c(p0,p1) )
+## ==> 				kappa = q[1] / q[2]
+## ==> 				sh = 2 * (llp0 - kappa * llp1 ) / ( llp0^2 - kappa * llp1^2 )
+## ==> 				self$shape_$set_intercept( self$shape_$linkFct$inverse(sh) )
+## ==> 			}
+## ==> 			else
+## ==> 			{
+## ==> 				q = np_quantile( ( private$Y_ - self$loc ) / self$scale , ltau = base::c(p0,p1) , X = self$shape_$design_wo1() )
+## ==> 				kappa = q[,1] / q[,2]
+## ==> 				fshape = 2 * (llp0 - kappa * llp1 ) / ( llp0^2 - kappa * llp1^2 )
+## ==> 				self$shape_$set_coef( np_mean( fshape , X = self$shape_$design_wo1() , linkFct = self$shape_$linkFct , return_coef = TRUE ) )
+## ==> 			}
+## ==> 		}
+## ==> 		self$shape_$update()
+## ==> 		self$shape = self$shape_$valueLf()
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	fit_mle = function() ##{{{
+## ==> 	{
+## ==> 		private$fit_quantiles()
+## ==> 		param_init = private$concat_param()
+## ==> 		
+## ==> 		## Test for initial value
+## ==> 		nll  = private$optim_function(param_init)
+## ==> 		gnll = private$gradient_optim_function(param_init)
+## ==> 		
+## ==> 		if( !is.finite(nll) || !is.finite(gnll) )
+## ==> 		{
+## ==> 			self$shape_$set_coef( numeric( self$shape_$size_ ) )
+## ==> 			param_init = private$concat_param()
+## ==> 		}
+## ==> 		
+## ==> 		optim_result = stats::optim( param_init , fn = private$optim_function , gr = private$gradient_optim_function , method = "BFGS" )
+## ==> 		private$update_param( optim_result$par )
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	split_param = function( param )##{{{
+## ==> 	{
+## ==> 		param_loc   = NULL
+## ==> 		param_scale = NULL
+## ==> 		param_shape = NULL
+## ==> 		s0 = self$loc_$size_
+## ==> 		s1 = self$scale_$size_
+## ==> 		s2 = self$shape_$size_
+## ==> 		
+## ==> 		if( self$loc_$not_fixed() && self$scale_$not_fixed() && self$shape_$not_fixed() )
+## ==> 		{
+## ==> 			param_loc   = param[1:s0]
+## ==> 			param_scale = param[(s0+1):(s0+s1)]
+## ==> 			param_shape = param[(s0+s1+1):(s0+s1+s2)]
+## ==> 		}
+## ==> 		else if( self$loc_$not_fixed() && self$scale_$not_fixed() )
+## ==> 		{
+## ==> 			s0 = self$loc_$size_
+## ==> 			s1 = self$scale_$size_
+## ==> 			param_loc   = param[1:s0]
+## ==> 			param_scale = param[(s0+1):(s0+s1)]
+## ==> 		}
+## ==> 		else if( self$loc_$not_fixed() && self$shape_$not_fixed() )
+## ==> 		{
+## ==> 			s0 = self$loc_$size_
+## ==> 			s1 = self$shape_$size_
+## ==> 			param_loc   = param[1:s0]
+## ==> 			param_shape = param[(s0+1):(s0+s2)]
+## ==> 		}
+## ==> 		else if( self$scale_$not_fixed() && self$shape_$not_fixed() )
+## ==> 		{
+## ==> 			param_scale = param[1:s1]
+## ==> 			param_shape = param[(s1+1):(s1+s2)]
+## ==> 		}
+## ==> 		else if( self$loc_$not_fixed() )
+## ==> 		{
+## ==> 			param_loc = param
+## ==> 		}
+## ==> 		else if( self$scale_$not_fixed() )
+## ==> 		{
+## ==> 			param_scale = param
+## ==> 		}
+## ==> 		else if( self$shape_$not_fixed() )
+## ==> 		{
+## ==> 			param_shape = param
+## ==> 		}
+## ==> 		
+## ==> 		return( list( loc = param_loc , scale = param_scale , shape = param_shape ) )
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	concat_param = function()##{{{
+## ==> 	{
+## ==> 		param = NULL
+## ==> 		param_loc   = if( self$loc_$not_fixed() )   self$loc_$coef_   else NULL
+## ==> 		param_scale = if( self$scale_$not_fixed() ) self$scale_$coef_ else NULL
+## ==> 		param_shape = if( self$shape_$not_fixed() ) self$shape_$coef_ else NULL
+## ==> 		
+## ==> 		param = base::c( param_loc , param_scale , param_shape )
+## ==> 
+## ==> #		if( self$loc_$not_fixed() && self$scale_$not_fixed() && self$shape_$not_fixed() )
+## ==> #		{
+## ==> #			param = base::c( self$loc_$coef_ , self$scale_$coef_ , private$shape$coef_ )
+## ==> #		}
+## ==> #		else if( self$loc_$not_fixed() && self$scale_$not_fixed() )
+## ==> #		{
+## ==> #			param = base::c( self$loc_$coef_ , self$scale_$coef_ )
+## ==> #		}
+## ==> #		else if( self$loc_$not_fixed() && self$shape_$not_fixed() )
+## ==> #		{
+## ==> #			param = base::c( self$loc_$coef_ , private$shape$coef_ )
+## ==> #		}
+## ==> #		else if( self$scale_$not_fixed() && self$shape_$not_fixed() )
+## ==> #		{
+## ==> #			param = base::c( self$scale_$coef_ , private$shape$coef_ )
+## ==> #		}
+## ==> #		else if( self$loc_$not_fixed() )
+## ==> #		{
+## ==> #			param = self$loc_$coef_
+## ==> #		}
+## ==> #		else if( self$scale_$not_fixed() )
+## ==> #		{
+## ==> #			param = self$scale_$coef_
+## ==> #		}
+## ==> #		else if( self$shape_$not_fixed() )
+## ==> #		{
+## ==> #			param = self$shape_$coef_
+## ==> #		}
+## ==> 		
+## ==> 		return( param )
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	update_param = function( param ) ##{{{
+## ==> 	{
+## ==> 		param_sp = private$split_param(param)
+## ==> 		self$loc_$set_coef(   param_sp$loc )
+## ==> 		self$scale_$set_coef( param_sp$scale )
+## ==> 		self$shape_$set_coef( param_sp$shape )
+## ==> 		self$loc_$update()
+## ==> 		self$scale_$update()
+## ==> 		self$shape_$update()
+## ==> 		self$loc   = self$loc_$valueLf()
+## ==> 		self$scale = self$scale_$valueLf()
+## ==> 		self$shape = self$shape_$valueLf()
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	optim_function = function( param )##{{{
+## ==> 	{
+## ==> 		private$update_param(param)
+## ==> 		return( private$negloglikelihood() )
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	negloglikelihood = function() ##{{{
+## ==> 	{
+## ==> 		## Impossible scale
+## ==> 		if( base::any( self$scale <= 0 ) )
+## ==> 			return(Inf)
+## ==> 		
+## ==> 		## Fuck exponential case
+## ==> 		zero_shape = ( base::abs(self$shape) < 1e-10 )
+## ==> 		if( base::any(zero_shape) )
+## ==> 			self$shape[zero_shape] = -1e-10
+## ==> 		
+## ==> 		##
+## ==> 		Z = 1 + self$shape * ( private$Y_ - self$loc ) / self$scale
+## ==> 		
+## ==> 		if( base::any(Z <= 0) )
+## ==> 			return( Inf )
+## ==> 		
+## ==> 		res = base::sum( ( 1. + 1. / self$shape ) * base::log(Z) + Z^( - 1. / self$shape ) + base::log(self$scale) )
+## ==> 		
+## ==> 		if( is.finite(res) )
+## ==> 			return(res)
+## ==> 		else
+## ==> 			return(Inf)
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	logZafun = function( Z , alpha ) ##{{{
+## ==> 	{
+## ==> 		return( alpha * base::log( 1. + self$shape * Z ) )
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	Zafun = function( Z , alpha ) ##{{{
+## ==> 	{
+## ==> 		return( base::exp( private$logZafun( Z , alpha ) ) )
+## ==> 	},
+## ==> 	##}}}
+## ==> 	
+## ==> 	gradient_optim_function = function( param ) ##{{{
+## ==> 	{
+## ==> 		private$update_param(param)
+## ==> 		
+## ==> 		## Impossible
+## ==> 		if( base::any( 1. + self$shape * ( private$Y_ - self$loc ) / self$scale <= 0 ) )
+## ==> 			return( numeric( length(param) ) + NA )
+## ==> 		
+## ==> 		## Usefull values
+## ==> 		Z      = ( private$Y_ - self$loc ) / self$scale
+## ==> 		ishape = 1. / self$shape
+## ==> 		Za1    = private$Zafun( Z , 1. )
+## ==> 		Zamsi  = private$Zafun( Z , - ishape ) ## Za of Minus Shape Inverse
+## ==> 		
+## ==> 		##
+## ==> 		grad = base::c()
+## ==> 		if( self$loc_$not_fixed() )
+## ==> 		{
+## ==> 			loc_vect = self$loc_$valueGrLf()   * ( Zamsi - 1 - self$shape ) / ( self$scale * Za1 )
+## ==> 			grad_loc = base::t(self$loc_$design_) %*% loc_vect
+## ==> 			grad     = base::c(grad,grad_loc)
+## ==> 		}
+## ==> 		if( self$scale_$not_fixed() )
+## ==> 		{
+## ==> 			scale_vect = self$scale_$valueGrLf() * ( 1. + Z * ( Zamsi - 1 - self$shape ) / Za1 ) / self$scale
+## ==> 			grad_scale = base::t(self$scale_$design_) %*% scale_vect
+## ==> 			grad       = base::c(grad,grad_scale)
+## ==> 		}
+## ==> 		if( self$shape_$not_fixed() )
+## ==> 		{
+## ==> 			shape_vect = self$shape_$valueGrLf() * ( ( Zamsi - 1. ) * base::log(Za1) * ishape^2 + ( 1. + ishape - ishape * Zamsi ) * Z / Za1 )
+## ==> 			grad_shape = base::t(self$shape_$design_) %*% shape_vect
+## ==> 			grad       = base::c(grad,grad_shape)
+## ==> 		}
+## ==> 		
+## ==> 		return(grad)
+## ==> 	}
+## ==> 	##}}}
+## ==> 	
+## ==> 	
+## ==> 	)
+## ==> )
+## ==> ##}}}
+## ==> 
+## ==> 

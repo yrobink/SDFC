@@ -177,6 +177,16 @@ Dataset2 = function( size = 2000 , alpha = 0.05 , beta = 0.6 )
 }
 ##}}}
 
-
+Dataset = list(
+	
+	covariates = function( size )
+	{
+		t       = base::seq( 0 , 1 , length = size )
+		X_loc   = t^2 + base::cos( 2 * base::pi * t ) * 0.2
+		X_scale = 2 * t^2 - 2 * t + 1
+		X_shape = 2 / ( 1 + base::exp( - 8 * ( t - 0.5 ) ) ) - 1
+		return( list( t = t , X_loc = X_loc , X_scale = X_scale , X_shape = X_shape ) )
+	}
+)
 
 

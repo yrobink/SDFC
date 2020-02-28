@@ -134,229 +134,78 @@
 #' law$loc   ## Loc fitted
 #' law$scale ## Scale fitted
 #' @export
-NormalLaw = R6::R6Class( "NormalLaw" ,
+Normal = R6::R6Class( "Normal" ,##{{{
 	
 	inherit = AbstractLaw,
 	
-	
-	public = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	loc      = NULL,
-	scale    = NULL,
-	loc_     = NULL,
-	scale_   = NULL,
-	
-	
-	#################
-	## Constructor ##
-	#################
-	
-	initialize = function( method = "MLE" , link_fct_loc = IdLinkFct$new() , link_fct_scale = IdLinkFct$new() , n_bootstrap = 0 , alpha = 0.05 ) ##{{{
-	{
-		super$initialize( method , n_bootstrap , alpha )
-		self$loc       = NULL
-		self$scale     = NULL
-		self$loc_   = LawParam$new( linkFct = link_fct_loc   , kind = "loc"   )
-		self$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
-	},
-	##}}}
-	
-	
-	#############
-	## Methods ##
-	#############
-	
-	fit = function( Y , loc_cov = NULL , scale_cov = NULL , floc = NULL , fscale = NULL )##{{{
-	{
-		Y = as.vector(Y)
-		private$size_ = length(Y)
-		
-		## Bootstrap
-		if( self$n_bootstrap > 0 )
-		{
-			if( !is.null(loc_cov) && !is.matrix(loc_cov) )
-				loc_cov = matrix( loc_cov , nrow = private$size_ , ncol = 1 )
-			if( !is.null(scale_cov) && !is.matrix(scale_cov) )
-				scale_cov = matrix( scale_cov , nrow = private$size_ , ncol = 1 )
-			
-			self$coefs_bootstrap = base::c()
-			
-			for( i in 1:self$n_bootstrap )
-			{
-				idx = base::sample( 1:private$size_ , private$size_ , replace = TRUE )
-				loc_cov_bs   = if( is.null(loc_cov) )   loc_cov   else loc_cov[idx,]
-				scale_cov_bs = if( is.null(scale_cov) ) scale_cov else scale_cov[idx,]
-				floc_bs      = if( is.null(floc) || length(floc) == 1 )     floc      else floc[idx]
-				fscale_bs    = if( is.null(fscale) || length(fscale) == 1 ) fscale    else fscale[idx]
-				
-				private$fit_( Y[idx] , loc_cov_bs , scale_cov_bs , floc_bs , fscale_bs )
-				self$coefs_bootstrap = base::rbind( self$coefs_bootstrap , self$coef_ )
-			}
-			self$confidence_interval = base::apply( self$coefs_bootstrap , 2 , stats::quantile , probs = base::c( self$alpha / 2. , 1. - self$alpha / 2. ) )
-		}
-		
-		
-		## Good fit
-		private$fit_( Y , loc_cov , scale_cov , floc , fscale )
-	}
-	##}}}
-	
-	
-	),
+	##################
+	## Private list ##
+	##{{{
 	
 	private = list(
 	
-	###############
-	## Arguments ##
-	###############
+	## Arguments
+	##==========
 	
-	
-	
-	#############
-	## Methods ##
-	#############
-	
-	fit_ = function( Y , loc_cov , scale_cov , floc , fscale ) ##{{{
-	{
-		private$Y_    = as.vector(Y)
-		
-		self$loc_$init(   X = loc_cov   , fix_values = floc   , size = private$size_ )
-		self$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
-		
-		if( self$method == "moments" )
-		{
-			private$fit_moments()
-		}
-		else
-		{
-			private$fit_mle()
-		}
-		
-		self$coef_ = private$concat_param()
-	},
-	##}}}
+	## Methods
+	##========
 	
 	fit_moments = function()##{{{
 	{
-		if( self$loc_$not_fixed() )
-		{
-			lX = self$loc_$design_wo1()
-			self$loc_$set_coef( np_mean( private$Y_ , lX , return_coef = TRUE , linkFct = self$loc_$linkFct ) )
-			self$loc_$update()
-		}
+		ploc   = self$params$dparams_[["loc"]]
+		pscale = self$params$dparams_[["scale"]]
+		if( !ploc$is_fix() )
+			self$params$update_coef( np_mean( private$Y , ploc$design_wo1() , value = FALSE , link = ploc$link ) , "loc" )
 		
-		if( self$scale_$not_fixed() )
-		{
-			sX = self$scale_$design_wo1()
-			self$scale_$set_coef( np_std( private$Y_ , sX , m = self$loc_$valueLf() , return_coef = TRUE , linkFct = self$scale_$linkFct ) )
-			self$scale_$update()
-		}
-		self$loc   = self$loc_$valueLf()
-		self$scale = self$scale_$valueLf()
+		if( !pscale$is_fix() )
+			self$params$update_coef( np_std( private$Y , pscale$design_wo1() , m_Y = self$loc , value = FALSE , link = pscale$link ) , "scale" )
 	},
 	##}}}
 	
-	fit_mle = function()##{{{
+	initialization_mle = function()##{{{
 	{
 		private$fit_moments()
-		param_init = private$concat_param()
-		optim_result = stats::optim( param_init , fn = private$optim_function , gr = private$gradient_optim_function , method = "BFGS" )
-		private$update_param( optim_result$par )
 	},
 	##}}}
 	
-	split_param = function( param )##{{{
+	fit_ = function()##{{{
 	{
-		param_loc   = NULL
-		param_scale = NULL
-		
-		if( self$loc_$not_fixed() )
-		{
-			param_loc   = param[1:self$loc_$size_]
-			if( self$scale_$not_fixed() )
-			{
-				param_scale = param[(self$loc_$size_+1):length(param)]
-			}
-		}
-		else if( self$scale_$not_fixed() )
-		{
-			param_scale = param[1:self$scale_$size_]
-		}
-		
-		return( list( loc = param_loc , scale = param_scale ) )
+		if( self$method == "moments" )
+			private$fit_moments()
 	},
 	##}}}
 	
-	concat_param = function()##{{{
+	negloglikelihood = function( coef )##{{{
 	{
-		param = NULL
-		if( self$loc_$not_fixed() && self$scale_$not_fixed() )
-		{
-			param = base::c( self$loc_$coef_ , self$scale_$coef_ )
-		}
-		else if( self$loc_$not_fixed() )
-		{
-			param = self$loc_$coef_
-		}
-		else if( self$scale_$not_fixed() )
-		{
-			param = self$scale_$coef_
-		}
-		return( param )
-	},
-	##}}}
-	
-	negloglikelihood = function() ##{{{
-	{
+		self$coef_ = coef
 		if( !base::all( self$scale > 0 ) )
 		{
 			return(Inf)
 		}
 		
 		scale2 = self$scale^2
-		res =  base::sum( base::log( scale2 ) ) / 2. + base::sum( ( private$Y_ - self$loc )^2 / scale2 ) / 2. 
+		res =  base::sum( base::log( scale2 ) ) / 2. + base::sum( ( private$Y - self$loc )^2 / scale2 ) / 2. 
 		return(res)
 	},
 	##}}}
 	
-	update_param = function( param ) ##{{{
+	gradient_nlll = function( coef ) ##{{{
 	{
-		param_sp = private$split_param(param)
-		self$loc_$set_coef(   param_sp$loc )
-		self$scale_$set_coef( param_sp$scale )
-		self$loc_$update()
-		self$scale_$update()
-		self$loc   = self$loc_$valueLf()
-		self$scale = self$scale_$valueLf()
-	},
-	##}}}
-	
-	optim_function = function( param )##{{{
-	{
-		private$update_param(param)
-		return( private$negloglikelihood() )
-	},
-	##}}}
-	
-	gradient_optim_function = function( param ) ##{{{
-	{
-		private$update_param(param)
+		self$coef_ = coef
+		ploc   = self$params$dparams_[["loc"]]
+		pscale = self$params$dparams_[["scale"]]
 		
-		Yc = private$Y_ - self$loc
+		Yc = private$Y - self$loc
 		grad = base::c()
 		
-		if( self$loc_$not_fixed() )
+		if( !ploc$is_fix() )
 		{
-			grad_loc = - base::t( self$loc_$design_  ) %*% ( Yc / self$scale^2 * self$loc_$valueGrLf() )
+			grad_loc = - base::t( ploc$design_  ) %*% ( Yc / self$scale^2 * ploc$gradient() )
 			grad     = base::c( grad , grad_loc )
 		}
-		if( self$scale_$not_fixed() )
+		if( !pscale$is_fix() )
 		{
-			grad_scale = base::t( self$scale_$design_) %*% ( ( 1. / self$scale - Yc^2 / self$scale^3 ) * self$scale_$valueGrLf() )
+			grad_scale = base::t( pscale$design_) %*% ( ( 1. / self$scale - Yc^2 / self$scale^3 ) * pscale$gradient() )
 			grad       = base::c( grad , grad_scale )
 		}
 		
@@ -364,9 +213,59 @@ NormalLaw = R6::R6Class( "NormalLaw" ,
 	}
 	##}}}
 	
+	),
+	##}}}
+	##################
+	
+	#################
+	## Public list ##
+	##{{{
+	
+	public = list(
+	
+	## Arguments
+	##==========
+	
+	## Constructor
+	##============
+	initialize = function( method , n_bootstrap = 0 , alpha = 0.05 )
+	{
+		super$initialize( base::c( "loc" , "scale" ) , method , n_bootstrap , alpha )
+	}
+	
+	
+	## Methods
+	##========
 	
 	),
+	##}}}
+	#################
 	
+	#################
+	## Active list ##
+	##{{{
+	
+	active = list(
+	
+	loc = function( l )##{{{
+	{
+		if( missing(l) )
+			return( self$params$dparams_[["loc"]]$value )
+	},
+	##}}}
+	
+	scale = function( s )##{{{
+	{
+		if( missing(s) )
+			return( self$params$dparams_[["scale"]]$value )
+	}
+	##}}}
+	
+	)
+	##}}}
+	#################
+
 )
+##}}}
 ##}}}
 

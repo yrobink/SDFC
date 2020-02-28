@@ -87,8 +87,9 @@
 #' Compute the quantile with covariates
 #'
 #' @param Y  [vector] Dataset to fit
-#' @param X  [vector or NULL] Covariate
-#' @param return_coef  [bool] if TRUE return coefficients of the fit, else return quantile
+#' @param ltau [vector] vector of quantiles to fit
+#' @param c_Y  [vector or NULL] Covariate
+#' @param value  [bool] if TRUE return variance, else return coefficients of the fit
 #'
 #' @return [vector] Quantile or coefficients of regression
 #'
@@ -100,14 +101,14 @@
 #' loc   = 1. + 2 * X0
 #' Y    = stats::rnorm( n = size , mean = loc , sd = 0.1 )
 #'
-#' q = np_quantile( Y , ltau = base::c(0.25,0.5,0.75) , X = X0 )
+#' q = np_quantile( Y , ltau = base::c(0.25,0.5,0.75) , c_Y = X0 )
 #' 
 #' @export
-np_quantile = function( Y , ltau , X = NULL , return_coef = FALSE )
+np_quantile = function( Y , ltau , c_Y = NULL , value = TRUE )
 {
 	out  = NULL
 	coef = NULL
-	if( is.null(X) )
+	if( is.null(c_Y) )
 	{
 		out  = as.vector( stats::quantile( Y , ltau ) )
 		coef = out
@@ -115,13 +116,13 @@ np_quantile = function( Y , ltau , X = NULL , return_coef = FALSE )
 	else
 	{
 		reg = QuantileRegression$new( ltau )
-		reg$fit( Y , X )
+		reg$fit( Y , c_Y )
 		out = reg$predict()
 		coef = reg$coef()
 	}
 	
-	if( return_coef )
-		return(coef)
-	else
+	if( value )
 		return(out)
+	else
+		return(coef)
 }

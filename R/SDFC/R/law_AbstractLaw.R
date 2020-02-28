@@ -105,61 +105,264 @@
 #' @examples
 #' ## Data
 #' @export
-AbstractLaw = R6::R6Class( "AbstractLaw" ,
-	
-	public = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	method              = NULL,
-	coef_               = NULL,
-	n_bootstrap         = NULL,
-	coefs_bootstrap     = NULL,
-	confidence_interval = NULL,
-	alpha               = NULL,
-	
-	
-	#################
-	## Constructor ##
-	#################
-	
-	initialize = function( method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ) ##{{{
-	{
-		self$method      = method
-		self$n_bootstrap = n_bootstrap
-		self$alpha       = alpha
-		
-	}
-	##}}}
-	
-	
-	#############
-	## Methods ##
-	#############
-	
-	
-	),
+AbstractLaw = R6::R6Class( "AbstractLaw" ,##{{{
+
+	##################
+	## Private list ##
+	##{{{
 	
 	private = list(
 	
-	###############
-	## Arguments ##
-	###############
+	## Arguments
+	##==========
 	
-	Y_       = NULL,
-	size_    = NULL,
-	lparams_ = NULL
+	kinds_params_ = NULL,
+	method_       = NULL,
+	Y             = NULL,
 	
 	
-	#############
-	## Methods ##
-	#############
+	## Methods
+	##========
 	
+	fit_global = function( Y , ... )##{{{
+	{
+		self$params = LawParams$new( kinds = self$kinds_params )
+		kwargs = list(...)
+		kwargs$n_samples = length(Y)
+		
+		base::do.call( self$params$add_params , kwargs )
+		private$Y = matrix( Y , ncol = 1 )
+		
+		if( self$method == "mle" )
+			private$fit_mle()
+		else if( self$method == "bayesian" )
+			base::do.call( private$fit_bayesian , kwargs )
+		else
+			private$fit_()
+		
+		private$Y = NULL
+	},
+	##}}}
+	
+	fit_mle = function()##{{{
+	{
+		private$initialization_mle()
+		self$info$optim_result = stats::optim( self$coef_ , fn = private$negloglikelihood , gr = private$gradient_nlll , method = "BFGS" , hessian = TRUE )
+		self$coef_ = self$info$optim_result$par
+		self$info$cov = base::solve(self$info$optim_result$hessian)
+	},
+	##}}}
+	
+	fit_bayesian = function(...)##{{{
+	{
+		kwargs = list(...)
+		
+		## Find numbers of features
+		##=========================
+		n_features = 0
+		for( k in self$params$dparams_ )
+		{
+			n_features = n_features + k$n_features
+		}
+		
+		## Define prior, default is multivariate normal law
+		##=================================================
+		prior = kwargs$prior
+		if( is.null(prior) )
+		{
+			prior = list()
+			prior$rvs    = function( n = 1 ) { return( matrix( stats::rnorm( n * n_features , mean = 0 , sd = 10 ) , nrow = n ) ) }
+			prior$logpdf = function(x) { base::sum(base::log(stats::dnorm( x , mean = 0 , sd = 10 ))) }
+		}
+		
+		## Define transition
+		##==================
+		transition = kwargs$transition
+		if( is.null(transition) )
+		{
+			transition = function(x) { return( x + stats::rnorm( n = n_features , mean = 0 , sd = 0.1 ) ) }
+		}
+		
+		## Define numbers of iterations of MCMC algorithm
+		##===============================================
+		n_mcmc_drawn = kwargs$n_mcmc_drawn
+		if( is.null(n_mcmc_drawn) )
+		{
+			n_mcmc_drawn = 10000
+		}
+		
+		## MCMC algorithm
+		##===============
+		draw   = matrix( NA , nrow = n_mcmc_drawn , ncol = n_features )
+		accept = base::rep( TRUE , n_mcmc_drawn )
+		
+		## Init values
+		##============
+		init = kwargs$mcmc_init
+		if( is.null(init) )
+		{
+			init = prior$rvs()
+		}
+		
+		repeat
+		{
+			lll_current   = - private$negloglikelihood(init)
+			prior_current = base::sum( prior$logpdf(init) )
+			p_current     = prior_current + lll_current
+			
+			if( is.finite(p_current) )
+				break
+			init = prior$rvs()
+		}
+		draw[1,]  = init
+		
+		## Main loop on MCMC algorithm
+		##============================
+		for( i in 2:n_mcmc_drawn )
+		{
+			draw[i,] = transition(draw[i-1,])
+			
+			## Likelihood and probability of new points
+			lll_next   = - private$negloglikelihood(draw[i,])
+			prior_next = base::sum(prior$logpdf(draw[i,]))
+			p_next     = prior_next + lll_next
+			
+			## Accept or not ?
+			p_accept = base::exp( p_next - p_current )
+			if( stats::runif(1) < p_accept )
+			{
+				lll_current   = lll_next
+				prior_current = prior_next
+				p_current     = p_next
+				accept[i] = TRUE
+			}
+			else
+			{
+				draw[i,] = draw[i-1,]
+				accept[i] = FALSE
+			}
+		}
+		
+		
+		## Exclude 10% of first elements to find a "best estimate"
+		##========================================================
+		start = as.integer( 0.1 * n_mcmc_drawn )
+		self$coef_ = base::apply( draw[start:n_mcmc_drawn,] , 2 , base::mean )
+		
+		## Update information
+		##===================
+		self$info$draw         = draw
+		self$info$accept       = accept
+		self$info$n_mcmc_drawn = n_mcmc_drawn
+		self$info$rate_accept  = base::sum(accept) / n_mcmc_drawn
+		self$info$cov          = stats::cov(draw)
+	}
+	##}}}
+	
+	),
+	##}}}
+	##################
+	
+	#################
+	## Public list ##
+	##{{{
+	
+	public = list(
+	
+	## Arguments
+	##==========
+	
+	params    = NULL,
+	info      = NULL,
+	bootstrap = NULL,
+	
+	## Constructor
+	##============
+	initialize = function( kinds_params , method , n_bootstrap , alpha )##{{{
+	{
+		private$kinds_params_ = kinds_params
+		self$method           = method
+		self$bootstrap = list( n_bootstrap = n_bootstrap , alpha = alpha )
+	},
+	##}}}
+	
+	## Methods
+	##========
+	
+#	print = function(...)
+#	{
+#		invisible(self)
+#	},
+	
+	fit = function( Y , ... ) ##{{{
+	{
+		kwargs = list(...)
+		
+		## Bootstrap
+		##==========
+		if( self$bootstrap$n_bootstrap > 0 )
+		{
+			self$bootstrap$coef_ = NULL
+			n_sample = base::length(Y)
+			for( i in 1:self$bootstrap$n_bootstrap )
+			{
+				kwargs$resample = base::sample( n_sample , n_sample , TRUE )
+				kwargs$Y        = Y[kwargs$resample]
+				base::do.call( private$fit_global , kwargs )
+				self$bootstrap$coef_ = base::rbind( self$bootstrap$coef_ , self$coef_ )
+			}
+			self$bootstrap$confidence_interval = base::apply( self$bootstrap$coef_ , 2 , quantile , probs = base::c( self$bootstrap$alpha / 2 , 1 - self$bootstrap$alpha / 2 ) )
+		}
+		
+		## Classic fit
+		##============
+		kwargs$Y        = Y
+		kwargs$resample = NA
+		base::do.call( private$fit_global , kwargs )
+		
+		invisible(self)
+	}
+	##}}}
+	
+	),
+	##}}}
+	#################
+	
+	#################
+	## Active list ##
+	##{{{
+	
+	active = list(
+	
+	kinds_params = function( kp ) ##{{{
+	{
+		if( missing(kp) )
+			return(private$kinds_params_)
+	},
+	##}}}
+	
+	method = function(m) ##{{{
+	{
+		if( missing(m) )
+			return( private$method_ )
+		
+		private$method_ = base::tolower(m)
+	},
+	##}}}
+	
+	coef_ = function(coef) ##{{{
+	{
+		if( missing(coef) )
+			return(self$params$coef_)
+		self$params$update_coef(coef)
+	}
+	##}}}
 	
 	)
-	
+	##}}}
+	#################
+
 )
+##}}}
 
 

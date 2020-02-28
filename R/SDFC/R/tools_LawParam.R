@@ -85,10 +85,312 @@
 ## Classes ##
 #############
 
+AbstractParam = R6::R6Class( "AbstractParam" , ##{{{
+	
+	#################
+	## Public list ##
+	##{{{
+	
+	public = list(
+	
+	## Arguments
+	##==========
+	kind       = NULL,
+	link       = NULL,
+	n_samples  = NULL,
+	n_features = NULL,
+	coef_      = NULL,
+	fit_       = NULL,
+	
+	## Constructor
+	##============
+	initialize = function( kind , n_samples , ... )
+	{
+		self$kind = kind
+		self$n_samples = n_samples
+		self$n_features = 0
+		self$coef_      = NULL
+		self$fit_       = NULL
+		
+		kwargs = list(...)
+		name_link = base::paste( "l_" , self$kind , sep = "" )
+		if( name_link %in% base::names(kwargs) )
+			self$link = kwargs[[name_link]]
+		else
+			self$link = SDFC::IdLink$new()
+	},
+	
+	
+	## Methods
+	##========
+	is_fix = function()
+	{},
+	
+	gradient = function()
+	{
+		return( self$link$gradient(self$fit_) )
+	},
+	
+	set_coef = function( coef_ )
+	{}
+	
+	),
+	##}}}
+	#################
+	
+	#################
+	## Active list ##
+	##{{{
+	
+	active = list(
+	
+	value = function(value_)
+	{
+		if( missing(value_) )
+			return( self$link$eval(self$fit_) )
+	}
+	
+	)
+	##}}}
+	#################
+)
+##}}}
 
-## LawParam 
+CovariateParam = R6::R6Class( "CovariateParam" , ##{{{
+	
+	inherit = SDFC::AbstractParam,
+	
+	#################
+	## Public list ##
+	##{{{
+	
+	public = list(
+	
+	## Arguments
+	##==========
+	design_ = NULL,
+	
+	## Constructor
+	##============
+	initialize = function( kind , n_samples , resample , ... )
+	{
+		## Initialize mother class
+		kwargs = list(...)
+		kwargs$kind      = kind
+		kwargs$n_samples = n_samples
+		base::do.call( super$initialize , kwargs )
+		
+		## Build design matrix
+		name_cov = base::paste( "c_" , self$kind , sep = "" )
+		X = kwargs[[name_cov]]
+		
+		if( !is.matrix(X) )
+			X = matrix( X , nrow = length(X) , ncol = 1 )
+		self$n_features = base::ncol(X) + 1
+		
+		
+		self$design_ = base::cbind( 1 , X )
+		if( !base::any(is.na(resample)) )
+			self$design_ = self$design_[resample,]
+		
+		self$coef_   = base::rep( 0 , self$n_features )
+		
+		if( base::qr(self$design_)$rank < self$n_features )
+		{
+			self$design_ = matrix( 1 , nrow = self$n_samples , ncol = 1 )
+			self$coef_   = 0
+		}
+	},
+	
+	
+	## Methods
+	##========
+	is_fix = function()
+	{
+		return(FALSE)
+	},
+	
+	update = function()
+	{
+		self$fit_ = matrix( self$design_ %*% self$coef_ , ncol = 1 )
+	},
+	
+	set_intercept = function( coef_ )
+	{
+		self$coef_[1] = coef_
+		self$update()
+	},
+	
+	set_coef = function( coef_ )
+	{
+		self$coef_ = as.vector(coef_)
+		self$update()
+	},
+	
+	design_wo1 = function()
+	{
+		return(self$design_[,2:self$n_features])
+	}
+	
+	),
+	##}}}
+	#################
+	
+	#################
+	## Active list ##
+	##{{{
+	
+	active = list(
+	
+	
+	)
+	##}}}
+	#################
+)
+##}}}
 
-#' LawParam
+StationaryParam = R6::R6Class( "StationaryParam" , ##{{{
+	
+	inherit = SDFC::AbstractParam,
+	
+	#################
+	## Public list ##
+	##{{{
+	
+	public = list(
+	
+	## Arguments
+	##==========
+	design_ = NULL,
+	
+	## Constructor
+	##============
+	initialize = function( kind , n_samples , resample , ... )
+	{
+		## Initialize mother class
+		kwargs = list(...)
+		kwargs$kind      = kind
+		kwargs$n_samples = n_samples
+		base::do.call( super$initialize , kwargs )
+		
+		## Build design matrix
+		self$n_features = 1
+		self$design_ = matrix( 1 , nrow = self$n_samples , ncol = 1 )
+		self$coef_   = 0
+		self$fit_ = matrix( 0 , nrow = self$n_samples , ncol = 1 )
+		
+	},
+	
+	
+	## Methods
+	##========
+	is_fix = function()
+	{
+		return(FALSE)
+	},
+	
+	update = function()
+	{
+		self$fit_ = matrix( base::rep( self$coef_ , self$n_samples ) , ncol = 1 )
+	},
+	
+	set_intercept = function( coef_ )
+	{
+		self$set_coef(coef_)
+	},
+	
+	set_coef = function( coef_ )
+	{
+		self$coef_ = as.vector(coef_)
+		self$update()
+	},
+	
+	design_wo1 = function()
+	{
+		return(NULL)
+	}
+	
+	),
+	##}}}
+	#################
+	
+	#################
+	## Active list ##
+	##{{{
+	
+	active = list(
+	
+	
+	)
+	##}}}
+	#################
+)
+##}}}
+
+FixParam = R6::R6Class( "FixParam" , ##{{{
+	
+	inherit = SDFC::AbstractParam,
+	
+	#################
+	## Public list ##
+	##{{{
+	
+	public = list(
+	
+	## Arguments
+	##==========
+	
+	## Constructor
+	##============
+	initialize = function( kind , n_samples , resample , ... )
+	{
+		## Initialize mother class
+		kwargs = list(...)
+		kwargs$kind      = kind
+		kwargs$n_samples = n_samples
+		base::do.call( super$initialize , kwargs )
+		
+		f_par = kwargs[[base::paste( "f_" , self$kind , sep = "" )]]
+		self$fit_ = as.vector( self$link$inverse(f_par) )
+		if( length(self$fit_) == 1 )
+			self$fit_ = base::rep( self$fit_ , self$n_samples )
+		
+		if( !is.na(resample) )
+			self$fit_ = self$fit_[resample]
+		
+		self$fit_ = matrix( self$fit_ , ncol = 1 )
+		
+	},
+	
+	
+	## Methods
+	##========
+	is_fix = function()
+	{
+		return(TRUE)
+	}
+	
+	),
+	##}}}
+	#################
+	
+	#################
+	## Active list ##
+	##{{{
+	
+	active = list(
+	
+	
+	)
+	##}}}
+	#################
+)
+##}}}
+
+
+## LawParams
+
+#' LawParams
 #'
 #' Class used to describe parameters of law (loc, scale, shape). Internal class, so do not use it
 #'
@@ -122,152 +424,207 @@
 #' @examples
 #'
 #' @export
-LawParam = R6::R6Class( "LawParam" ,
+LawParams = R6::R6Class( "LawParams" , ##{{{
+	
+	#################
+	## Public list ##
+	##{{{
+	
 	public = list(
 	
-	###############
-	## Arguments ##
-	###############
+	## Arguments
+	##==========
 	
-	linkFct = NULL,
-	coef_   = NULL,
-	design_ = NULL,
-	size_   = 0,
-	kind    = NULL,
+	kinds    = NULL,
+	dparams_ = NULL,
+	coef_    = NULL,
 	
-	
-	#################
-	## Constructor ##
-	#################
-	
-	initialize = function( linkFct = IdLinkFct$new() , kind = "Parameter" ) ##{{{
+	## Constructor
+	##============
+	initialize = function( kinds , ... )
 	{
-		self$linkFct = linkFct
-		self$kind    = kind
+		self$kinds    = kinds
+		self$dparams_ = list()
 	},
-	##}}}
 	
-	init = function( X = NULL , fix_values = NULL , size = NULL )##{{{
+	
+	## Methods
+	##========
+	
+	add_params = function( n_samples , resample , ... )##{{{
 	{
-		private$not_fixed_ = is.null(fix_values)
-		if( !private$not_fixed_ )
+		kwargs = list(...)
+		for( kind in self$kinds )
 		{
-			fix_values = as.vector(fix_values)
-			if( length(fix_values) == 1 && !is.null(size) )
-			{
-				private$value_ = self$linkFct$inverse( base::rep( fix_values[1] , size ) )
-			}
-			else if( length(fix_values) > 1 )
-			{
-				private$value_ = self$linkFct$inverse( fix_values )
-			}
-			else
-			{
-				cat( "Error on fix values\n" )
-			}
-		}
-		else
-		{
-			if( is.null(X) && !is.null(size) )
-			{
-				self$coef_   = 1.
-				self$design_ = matrix( 1 , nrow = size , ncol = 1 )
-			}
-			else if( !is.null(X) )
-			{
-				if( !is.matrix(X) )
-					X = matrix( X , nrow = length(X) , ncol = 1 )
-				self$design_ = base::cbind( 1 , X )
-				self$coef_   = base::rep( 0 , base::ncol(self$design_) )
-			}
-			else
-			{
-				cat( "Error\n" )
-			}
-			
-			if( base::qr(self$design_)$rank < base::ncol(self$design_) )
-			{
-				self$design_ = matrix( 1 , nrow = base::nrow(self$design_) , ncol = 1 )
-				self$coef_   = 1
-			}
-			self$size_ = base::ncol( self$design_ )
+			kwargs$kind = kind
+			k_param = base::do.call( self$filter , kwargs )
+			config  = base::do.call( self$infer_configuration , k_param )
+			k_param$kind      = kind
+			k_param$n_samples = n_samples
+			k_param$resample  = resample
+			if( self$is_covariate(config)  ) self$dparams_[[kind]] = base::do.call( CovariateParam$new  , k_param ) 
+			if( self$is_stationary(config) ) self$dparams_[[kind]] = base::do.call( StationaryParam$new , k_param ) 
+			if( self$is_fix(config)        ) self$dparams_[[kind]] = base::do.call( FixParam$new        , k_param ) 
 		}
 	},
 	##}}}
 	
-	not_fixed = function()##{{{
+	merge_covariate = function()##{{{
 	{
-		return(private$not_fixed_)
-	},
-	##}}}
-	
-	set_coef = function( coef_ ) ##{{{
-	{
-		if( private$not_fixed_ )
+		l_c = list()
+		for( k in base::names(self$dparams_) )
 		{
-			self$coef_ = as.vector(coef_)
+			if( "CovariateParam" %in% class(self$dparams_[[k]]) )
+			{
+				l_c[[k]] = matrix( self$dparams_[[k]]$design_wo1() , nrow = self$n_samples )
+			}
 		}
-	},
-	##}}}
-	
-	set_intercept = function( inter ) ##{{{
-	{
-		if( private$not_fixed_ )
+		
+		if( length(l_c) == 0 )
+			return(NULL)
+		
+		C = matrix( 1 , nrow = self$n_samples , ncol = 1 )
+		
+		for( c in l_c )
 		{
-			self$coef_[1] = as.double(inter[1])
+			Cnext = base::cbind( C , c )
+			if( base::qr(Cnext) == base::ncol(Cnext) )
+				C = Cnext
 		}
-	},
-	##}}}
-	
-	design_wo1 = function() ##{{{
-	{
-		if( self$size_ == 1 )
+		
+		if( base::ncol(C) == 1 )
 			return(NULL)
 		else
-			return(self$design_[,2:self$size_])
+			return( C[,2:base::ncol(C)] )
 	},
 	##}}}
 	
-	update = function() ##{{{
+	merge_coef = function()##{{{
 	{
-		if( private$not_fixed_ )
+		self$coef_ = base::c()
+		for( k in base::names(self$dparams_) )
 		{
-			private$value_ = as.vector( self$design_ %*% self$coef_ )
+			if( !self$dparams_[[k]]$is_fix() )
+				self$coef_ = base::c( self$coef_ , self$dparams_[[k]]$coef_ )
 		}
 	},
 	##}}}
 	
-	value = function() ##{{{
+	split_coef = function( coef )##{{{
 	{
-		return( private$value_ )
+		tcoef = list()
+		a = 1
+		b = 1
+		for( k in base::names(self$dparams_) )
+		{
+			if( self$dparams_[[k]]$is_fix() )
+			{
+				tcoef[[k]] = NULL
+			}
+			else
+			{
+				b = a + self$dparams_[[k]]$n_features - 1
+				tcoef[[k]] = coef[a:b]
+				a = b + 1
+			}
+		}
+		return(tcoef)
 	},
 	##}}}
 	
-	valueLf = function()##{{{
+	update_coef = function( coef , kind = NULL )##{{{
 	{
-		return( as.vector( self$linkFct$eval( private$value_ ) ) )
+		if( is.null(kind) )
+		{
+			lcoef = self$split_coef(coef)
+			for( k in base::names(self$dparams_) )
+				self$dparams_[[k]]$set_coef(lcoef[[k]])
+		}
+		else
+		{
+			self$dparams_[[kind]]$set_coef(coef)
+		}
+		self$merge_coef()
 	},
 	##}}}
 	
-	valueGrLf = function() ##{{{
+	set_intercept = function( coef , kind )##{{{
 	{
-		return( as.vector( self$linkFct$gradient( private$value_ ) ) )
+		self$dparams[[kind]]$set_intercept(coef)
+		self$merge_coef()
+	},
+	##}}}
+	
+	
+	
+	## Methods to infer configuration
+	##==============================={{{
+	
+	infer_configuration = function(...)
+	{
+		kwargs = list(...)
+		has_c = FALSE
+		has_s = FALSE
+		has_f = FALSE
+		has_l = FALSE
+		for( k in base::names(kwargs) )
+		{
+			if( base::substr( k , 1 , 2 ) == "c_" ) has_c = TRUE
+			if( base::substr( k , 1 , 2 ) == "f_" ) has_f = TRUE
+			if( base::substr( k , 1 , 2 ) == "l_" ) has_l = TRUE
+		}
+		
+		has_s = length(kwargs) == 0 || ( length(kwargs) == 1 && has_l )
+		
+		return( list( has_c = has_c , has_s = has_s , has_f = has_f , has_l = has_l ) )
+	},
+	
+	is_covariate = function( c )
+	{
+		return( c$has_c && !( c$has_s || c$has_f ) )
+	},
+	
+	is_stationary = function( c )
+	{
+		return( c$has_s && !( c$has_c || c$has_f ) )
+	},
+	
+	is_fix = function( c )
+	{
+		return( c$has_f && !( c$has_c || c$has_s ) )
+	},
+	
+	filter = function( kind , ... )
+	{
+		kwargs = list(...)
+		out = list()
+		for( k in base::names(kwargs) )
+		{
+			if( base::grepl( kind , k , TRUE ) )
+				out[[k]] = kwargs[[k]]
+		}
+		return(out)
 	}
 	##}}}
 	
 	),
 	
-	######################
-	## Private elements ##
-	######################
+	##}}}
+	#################
 	
-	private = list(
+	#################
+	## Active list ##
+	##{{{
 	
-	###############
-	## Arguments ##
-	###############
+	active = list(
 	
-	value_     = NULL,
-	not_fixed_ = NULL
+	
 	)
+	##}}}
+	#################
 )
+##}}}
+
+
+
+

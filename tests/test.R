@@ -96,35 +96,39 @@ plt = PlotTools$new()
 ## Functions ##
 ###############
 
-test_normal = function() ##{{{
+test_normal = function( show = FALSE ) ##{{{
 {
-	size = 2500
-	t    = base::seq( 0 , 1 , length = size )
-	X0    = t^2
-	X1    = base::cos( 2 * base::pi * t )
-	loc   = 1. + 2 * X0
-	scale = 0.6 + 0.5 * X1
-	Y    = stats::rnorm( n = size , mean = loc , sd = scale )
+	size = 2000
+	c_data = Dataset$covariates(size)
+	
+	t       = c_data$t
+	X_loc   = c_data$X_loc
+	X_scale = c_data$X_scale
+	loc   = 0.5 + 2 * X_loc
+	scale =   1 + 2 * X_scale
+	Y = stats::rnorm( size , mean = loc , sd = scale )
 	
 	
-	law = SDFC::NormalLaw$new( method = "MLE" ,  n_bootstrap = 10 )
-	law$fit( Y , loc_cov = X0 , scale_cov = X1 )
+	law = SDFC::Normal$new( "mle" )
+	law$fit( Y , c_loc = X_loc , c_scale = X_scale )
 	
-	plt$new_screen()
-	graphics::par( mfrow = base::c( 2 , 2 ) )
-	
-	## Subplot 1
-	graphics::plot( t , Y , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) )
-	graphics::lines( t , law$loc , col = "red" )
-	graphics::lines( t , law$loc + law$scale , col = "red" )
-	graphics::lines( t , law$loc - law$scale , col = "red" )
-	
-	## Subplot 2
-	graphics::plot( loc , law$loc , type = "p" , col = "blue" )
-	
-	## Subplot 3
-	graphics::plot( scale , law$scale , type = "p" , col = "blue" )
-	
+	if(show)
+	{
+		plt$new_screen()
+		graphics::par( mfrow = base::c( 2 , 2 ) )
+		
+		## Subplot 1
+		graphics::plot(  t , Y       , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) )
+		graphics::lines( t , law$loc , col = "red" )
+		graphics::lines( t , law$loc + law$scale , col = "red" )
+		graphics::lines( t , law$loc - law$scale , col = "red" )
+		
+		## Subplot 2
+		graphics::plot( loc , law$loc , type = "p" , col = "blue" )
+		
+		## Subplot 3
+		graphics::plot( scale , law$scale , type = "p" , col = "blue" )
+	}
 }
 ##}}}
 
@@ -190,33 +194,31 @@ test_gpd = function()##{{{
 }
 ##}}}
 
-test_qr = function() ##{{{
+test_qr = function( show = FALSE ) ##{{{
 {
-	## Generate data
-	size = 2500
-	t    = base::seq( 0 , 1 , length = size )
-	X0   = t^2
-	X1   = base::cos( 2 * base::pi * t )
+	size = 2000
+	c_data = Dataset$covariates(size)
 	
-	loc   = 1. + 2 * X0
-	scale = 0.6 + 0.5 * X1
-	Y     = stats::rnorm( n = size , mean = loc , sd = scale )
+	loc   = 0.5 + 2 * c_data$X_loc
+	scale = 1 + 2 * c_data$X_scale
+	Y = stats::rnorm( size , mean = loc , sd = scale )
 	
-	## QR
-	ltau = base::seq( 0.01 , 0.99 , length = 100 )
-	qr   = SDFC::np_quantile( Y , ltau = ltau , X = base::cbind( X0 , X1 ) )
+	q  = base::seq( 0.01 , 0.99 , length = 100 )
+	Yq = np_quantile( Y , q , base::cbind( c_data$X_loc , c_data$X_scale ) )
 	
-	
-	## Plot
-	plt$new_screen()
-	graphics::par( mfrow = base::c(1,1) )
-	graphics::plot( t , Y , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
-	for( i in 1:100 )
+	if(show)
 	{
-		graphics::lines( t , qr[,i] , col = grDevices::rgb( 0.5 , 0.5 , 0.5 , 0.5 ) )
+		plt$new_screen()
+		graphics::par( mfrow = base::c( 1 , 1 ) )
+		plot( c_data$t , Y , col = "blue" , type = "p" )
+		for( i in 1:length(q) )
+		{
+			lines( c_data$t , Yq[,i] , col = "red" )
+		}
 	}
 }
 ##}}}
+
 
 run_all_tests = function()##{{{
 {
@@ -234,17 +236,22 @@ run_all_tests = function()##{{{
 
 #run_all_tests()
 
-data = Dataset0(2000)
-t = data$t
-X = data$X
-Y = stats::rnorm( n = 2000 , mean = -1 + 2 * X , sd = base::exp( 0.5 - 0.3 * X ) )
+#test_normal(TRUE)
 
+size = 2000
+c_data = Dataset$covariates(size)
 
-law = SDFC::Normal$new( "mle" , 100 )
-law$fit( Y , c_loc = X , l_scale = ExpLink$new() , c_scale = X )
-print(law$coef_)
-print(law$bootstrap$confidence_interval)
-#print(law$info)
+t       = c_data$t
+X_loc   = c_data$X_loc
+X_scale = c_data$X_scale
+loc   = 0.5 + 2 * X_loc
+scale =   1 + 2 * X_scale
+Y = stats::rnorm( size , mean = loc , sd = scale )
+
+c_Y = base::cbind( X_loc , X_scale )
+
+lmom = np_lmoments( Y , c_Y = c_Y )
+
 
 plt$wait()
 print("Done")

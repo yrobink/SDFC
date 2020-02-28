@@ -555,7 +555,7 @@ LawParams = R6::R6Class( "LawParams" , ##{{{
 	
 	set_intercept = function( coef , kind )##{{{
 	{
-		self$dparams[[kind]]$set_intercept(coef)
+		self$dparams_[[kind]]$set_intercept(coef)
 		self$merge_coef()
 	},
 	##}}}

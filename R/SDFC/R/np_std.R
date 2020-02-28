@@ -86,26 +86,26 @@
 #'
 #' Compute the standard deviation with covariates and link function
 #'
-#' @param Y  [vector] Dataset to fit
-#' @param X  [vector or NULL] Covariate
-#' @param m  [vector or NULL] mean already (or not) estimated. If NULL, m = base::mean(Y) is called
-#' @param linkFct  [SDFC::LinkFct] link function, default is identity
-#' @param value  [bool] if TRUE return standard deviation, else return coefficients of the fit
+#' @param Y   [vector] Dataset to fit
+#' @param c_Y [vector or NULL] Covariate
+#' @param m_Y  [vector or NULL] mean already (or not) estimated. If NULL, m = base::mean(Y) is called
+#' @param link  [SDFC::LinkFct] link function, default is identity
+#' @param value  [bool] if TRUE return mean, else return coefficients of the fit
 #'
 #' @return [vector] Standard deviation or coefficients of regression
 #'
 #' @examples
 #' ## Data
-#' size = 2500
-#' t    = base::seq( 0 , 1 , length = size )
+#' size  = 2500
+#' t     = base::seq( 0 , 1 , length = size )
 #' X0    = t^2
 #' X1    = base::cos( 2 * base::pi * t )
 #' loc   = 1. + 2 * X0
 #' scale = 0.6 + 0.5 * X1
-#' Y    = stats::rnorm( n = size , mean = loc , sd = scale )
+#' Y     = stats::rnorm( n = size , mean = loc , sd = scale )
 #'
-#' m = np_mean( Y , X = X0 ) ## First fit mean
-#' s = np_std( Y , X = X1 , m = m ) ## Now standard deviation
+#' m = np_mean( Y , c_Y = X0 ) ## First fit mean
+#' s = np_std( Y , c_Y = X1 , m_Y = m ) ## Now standard deviation
 #' 
 #' @export
 np_std = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::IdLink$new() , value = TRUE )

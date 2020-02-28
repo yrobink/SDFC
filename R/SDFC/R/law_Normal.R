@@ -91,7 +91,7 @@
 #' @importFrom R6 R6Class
 #'
 #' @param method [string]
-#'        Fit method, "moments" and "MLE" are available.
+#'        Fit method, "moments", "MLE" and "Bayesian" are available.
 #' @param n_bootstrap [int]
 #'        Number of bootstrap, default 0
 #' @param alpha [float]
@@ -228,7 +228,7 @@ Normal = R6::R6Class( "Normal" ,##{{{
 	
 	## Constructor
 	##============
-	initialize = function( method , n_bootstrap = 0 , alpha = 0.05 )
+	initialize = function( method = "mle" , n_bootstrap = 0 , alpha = 0.05 )
 	{
 		super$initialize( base::c( "loc" , "scale" ) , method , n_bootstrap , alpha )
 	}

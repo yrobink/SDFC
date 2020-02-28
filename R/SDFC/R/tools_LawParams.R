@@ -85,6 +85,8 @@
 ## Classes ##
 #############
 
+
+#' @export
 AbstractParam = R6::R6Class( "AbstractParam" , ##{{{
 	
 	#################
@@ -156,6 +158,7 @@ AbstractParam = R6::R6Class( "AbstractParam" , ##{{{
 )
 ##}}}
 
+#' @export
 CovariateParam = R6::R6Class( "CovariateParam" , ##{{{
 	
 	inherit = SDFC::AbstractParam,
@@ -249,6 +252,7 @@ CovariateParam = R6::R6Class( "CovariateParam" , ##{{{
 )
 ##}}}
 
+#' @export
 StationaryParam = R6::R6Class( "StationaryParam" , ##{{{
 	
 	inherit = SDFC::AbstractParam,
@@ -327,6 +331,7 @@ StationaryParam = R6::R6Class( "StationaryParam" , ##{{{
 )
 ##}}}
 
+#' @export
 FixParam = R6::R6Class( "FixParam" , ##{{{
 	
 	inherit = SDFC::AbstractParam,

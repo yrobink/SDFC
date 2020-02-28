@@ -177,6 +177,7 @@ Dataset2 = function( size = 2000 , alpha = 0.05 , beta = 0.6 )
 }
 ##}}}
 
+#' @export
 Dataset = list(
 	
 	covariates = function( size )

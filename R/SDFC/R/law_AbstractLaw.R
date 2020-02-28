@@ -88,12 +88,10 @@
 #' @docType class
 #' @importFrom R6 R6Class
 #'
-#' @param method [string]
-#'        Fit method
-#' @param n_bootstrap [integer]
-#'        Number of boostrap for confidence interval
-#' @param alpha [float]
-#'        Level of confidence interval
+#' @param kinds_params [vector] Vector of kind of params from herited law
+#' @param method [string] Fit method
+#' @param n_bootstrap [integer] Number of boostrap for confidence interval
+#' @param alpha [float] Level of confidence interval
 #'
 #' @return Object of \code{\link{R6Class}} 
 #' @format \code{\link{R6Class}} object.

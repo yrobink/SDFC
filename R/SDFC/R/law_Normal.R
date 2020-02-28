@@ -81,9 +81,9 @@
 ##################################################################################
 ##################################################################################
 
-## NormalLaw {{{
+## Normal {{{
 
-#' NormalLaw (Gaussian Law)
+#' Normal (Gaussian Law)
 #'
 #' Class to fit a Normal law.
 #'
@@ -92,47 +92,47 @@
 #'
 #' @param method [string]
 #'        Fit method, "moments" and "MLE" are available.
-#' @param link_fct_loc [SDFC::LinkFct]
-#'        Link function for loc parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
-#' @param link_fct_scale [SDFC::LinkFct]
-#'        Link function for scale parameter. Can be an element of SDFC, or a class based on SDFC::LinkFct
 #' @param n_bootstrap [int]
 #'        Number of bootstrap, default 0
 #' @param alpha [float]
 #'        Level of confidence interval, default 0.05
-#' @param loc_cov  [matrix or NULL ]
-#'        Location covariate for fit
-#' @param scale_cov  [matrix or NULL]
-#'        Scale covariate for fit
-#' @param floc [vector or NULL]
-#'        Value of loc if it is not necessary to fit
-#' @param fscale [vector or NULL]
-#'        Value of scale if it is not necessary to fit
 #'
 #' @return Object of \code{\link{R6Class}} 
 #' @format \code{\link{R6Class}} object.
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(method,link_fct_loc,link_fct_scale,n_bootstrap,alpha)}}{Initialize Normal law with code{NormalLaw}}
-#'   \item{\code{fit(Y,loc_cov,scale_cov,floc,fscale)}}{Fit the Normal law}.
+#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize Normal law with code{NormalLaw}}
+#'   \item{\code{fit(Y,...)}}{Fit the Normal law}.
 #' }
 #' @examples
-#' ## Data
-#' size = 2500
-#' t    = base::seq( 0 , 1 , length = size )
-#' X0    = t^2
-#' X1    = base::cos( 2 * base::pi * t )
-#' loc   = 1. + 2 * X0
-#' scale = 0.6 + 0.5 * X1
-#' Y    = stats::rnorm( n = size , mean = loc , sd = scale )
+#' ## Start by generate non-stationary Normal dataset
+#' size = 2000
+#' c_data = SDFC::Dataset$covariates(size)
 #' 
+#' t       = c_data$t
+#' X_loc   = c_data$X_loc
+#' X_scale = c_data$X_scale
+#' loc   = 0.5 + 2 * X_loc
+#' scale =   1 + 2 * X_scale
+#' Y = stats::rnorm( size , mean = loc , sd = scale )
 #' 
-#' ## Fit
-#' law = SDFC::NormalLaw$new( method = "MLE" ,  n_bootstrap = 10 )
-#' law$fit( Y , loc_cov = X0 , scale_cov = X1 )
-#' law$loc   ## Loc fitted
-#' law$scale ## Scale fitted
+#' ## Regression with MLE
+#' law = SDFC::Normal$new( "mle" )
+#' law$fit( Y , c_loc = X_loc , c_scale = X_scale )
+#' 
+#' ## Assuming scale is known (available for any covariates)
+#' law = SDFC::Normal$new( "mle" )
+#' law$fit( Y , c_loc = X_loc , f_scale = scale )
+#' 
+#' ## And if we want a link function
+#' law = SDFC::Normal$new( "mle" )
+#' law$fit( Y , c_loc = X_loc , c_scale = scale , l_scale = SDFC::ExpLink$new() )
+#' 
+#' ## If we do not give a parameter, it is assumed constant
+#' law = SDFC::Normal$new( "mle" )
+#' law$fit( Y , c_scale = X_scale )
+#' 
 #' @export
 Normal = R6::R6Class( "Normal" ,##{{{
 	

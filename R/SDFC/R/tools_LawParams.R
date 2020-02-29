@@ -443,6 +443,8 @@ LawParams = R6::R6Class( "LawParams" , ##{{{
 	kinds    = NULL,
 	dparams_ = NULL,
 	coef_    = NULL,
+	n_samples = NULL,
+	
 	
 	## Constructor
 	##============
@@ -459,6 +461,7 @@ LawParams = R6::R6Class( "LawParams" , ##{{{
 	add_params = function( n_samples , resample , ... )##{{{
 	{
 		kwargs = list(...)
+		self$n_samples = n_samples
 		for( kind in self$kinds )
 		{
 			kwargs$kind = kind
@@ -493,7 +496,7 @@ LawParams = R6::R6Class( "LawParams" , ##{{{
 		for( c in l_c )
 		{
 			Cnext = base::cbind( C , c )
-			if( base::qr(Cnext) == base::ncol(Cnext) )
+			if( base::qr(Cnext)$rank == base::ncol(Cnext) )
 				C = Cnext
 		}
 		

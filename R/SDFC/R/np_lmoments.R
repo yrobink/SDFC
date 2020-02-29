@@ -164,12 +164,7 @@ np_lmoments = function( Y , c_Y = NULL , order = NULL , lq = base::seq( 0.05 , 0
 		c_Y = matrix( c_Y , nrow = length(c_Y) , ncol = 1 )
 	
 	Yq = np_quantile( Y , lq , c_Y )
-#	lmom = matrix( NA , nrow = length(Y) , ncol = 4 )
-#	
-#	for( i in 1:length(Y) )
-#		lmom[i,] = np_lmoments_stationary(Yq[i,])
-	
-	lmom = base::t( base::apply( Yq , 2 , np_lmoments_stationary ) )
+	lmom = base::t( base::apply( Yq , 1 , np_lmoments_stationary ) )
 	
 	return( lmom[,order] )
 }

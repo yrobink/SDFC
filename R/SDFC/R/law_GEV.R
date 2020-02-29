@@ -473,32 +473,33 @@ GEV = R6::R6Class( "GEV" ,##{{{
 		lmom = np_lmoments( private$Y , c_Y = c_Y )
 		
 		## Find shape
-#		def uni_shape_solver(tau):
-#			bl,bu=-1,1
-#			fct = lambda x : 3 / 2 + tau / 2 - ( 1 - 3**x ) / (1 - 2**x )
-#			while fct(bl) * fct(bu) > 0:
-#				bl *= 2
-#				bu *= 2
-#			opt = sco.root_scalar( fct , method = "brenth" , bracket = [bl , bu] )
-#			return opt.root
-#		shape_solver = np.vectorize(uni_shape_solver)
-#		tau3 = lmom[:,2] / lmom[:,1]
-#		shape = shape_solver(tau3)
-#		
-#		## Find scale
-#		gshape = scs.gamma( 1 - shape )
-#		scale = - lmom[:,1] * shape / ( gshape * ( 1 - 2**shape ) )
-#		
-#		## Find loc
-#		loc = lmom[:,0] - scale * ( gshape - 1 ) / shape
-#		
-#		
-#		if not ploc.is_fix():
-#			self.params.update_coef( mean( loc   , ploc.design_wo1()   , link = ploc.link   , value = False ) , "loc"   )
-#		if not pscale.is_fix():
-#			self.params.update_coef( mean( scale , pscale.design_wo1() , link = pscale.link , value = False ) , "scale" )
-#		if not pshape.is_fix():
-#			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
+		uni_shape_solver = function(tau)
+		{
+			interv = base::c( -1 , 1 )
+			fct = function(x) { 3 / 2 + tau / 2 - ( 1 - 3^x ) / (1 - 2^x ) }
+			while( base::prod(fct(interv)) > 0 )
+			{
+				interv = 2 * interv
+			}
+			opt = stats::uniroot( fct , interv )
+			return( opt$root )
+		}
+		tau3 = matrix( lmom[,3] / lmom[,2] , ncol = 1 )
+		shape = base::apply( tau3 , 1 , uni_shape_solver )
+		
+		## Find scale
+		gshape = base::gamma( 1 - shape )
+		scale = - lmom[,2] * shape / ( gshape * ( 1 - 2^shape ) )
+		
+		## Find loc
+		loc = lmom[,1] - scale * ( gshape - 1 ) / shape
+		
+		if( !ploc$is_fix() )
+			self$params$update_coef( np_mean( loc   , ploc$design_wo1()   , value = FALSE , link = ploc$link   ) , "loc"   )
+		if( !pscale$is_fix() )
+			self$params$update_coef( np_mean( scale , pscale$design_wo1() , value = FALSE , link = pscale$link ) , "scale" )
+		if( !pshape$is_fix() )
+			self$params$update_coef( np_mean( shape , pshape$design_wo1() , value = FALSE , link = pshape$link ) , "shape" )
 	},
 	##}}}
 	

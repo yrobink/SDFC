@@ -267,9 +267,10 @@ loc   = 1.  + 0.8  * X_loc
 scale = 0.2 + 0.08 * X_scale
 shape = 0.  + 0.3  * X_shape
 
+
 Y = SDFC::rgev( size , loc , scale , shape )
 
-gev = SDFC::GEV$new( method = "moments" )
+gev = SDFC::GEV$new( method = "lmoments-experimental" )
 gev$fit( Y , c_loc = X_loc , c_shape = X_shape , c_scale = X_scale )
 print(gev$coef_)
 

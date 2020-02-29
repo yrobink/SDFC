@@ -415,9 +415,96 @@ GEV = R6::R6Class( "GEV" ,##{{{
 	},
 	##}}}
 	
+	fit_lmoments = function() ##{{{
+	{
+		ploc   = self$params$dparams_[["loc"]]
+		pscale = self$params$dparams_[["scale"]]
+		pshape = self$params$dparams_[["shape"]]
+		
+		lmom = np_lmoments( private$Y )
+		
+		tau3  = lmom[3] / lmom[2]
+		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
+		kappa = 7.8590 * co + 2.9554 * co^2
+		g     = base::gamma( 1. + kappa )
+		
+		
+		iscale = lmom[2] * kappa / ( ( 1 - 2^( - kappa ) ) * g )
+		iloc   = lmom[1] - iscale * (1 - g) / kappa
+		ishape = - kappa
+		
+		## Fit scale
+		if( !pscale$is_fix() )
+			self$params$set_intercept( iscale , "scale" )
+		
+		## Fit loc
+		if( !ploc$is_fix() )
+		{
+			if( pscale$is_fix() )
+			{
+				iloc = lmom[1] - pscale$value * (1 - g) / kappa
+				self$params$update_coef( np_mean( iloc , ploc$design_wo1() , value = FALSE , link = ploc$link ) , "loc" )
+			}
+			else
+			{
+				self$params$set_intercept( iloc , "loc" )
+			}
+		}
+		
+		## Fit shape
+		if( !pshape$is_fix() )
+			self$params$set_intercept( ishape , "shape" )
+	},
+	##}}}
+	
+	fit_lmoments_experimental = function()##{{{
+	{
+		c_Y = self$params$merge_covariate()
+		if( is.null(c_Y) )
+		{
+			private$fit_lmoments()
+			return()
+		}
+		ploc   = self$params$dparams_[["loc"]]
+		pscale = self$params$dparams_[["scale"]]
+		pshape = self$params$dparams_[["shape"]]
+		
+		## First step, find lmoments
+		lmom = np_lmoments( private$Y , c_Y = c_Y )
+		
+		## Find shape
+#		def uni_shape_solver(tau):
+#			bl,bu=-1,1
+#			fct = lambda x : 3 / 2 + tau / 2 - ( 1 - 3**x ) / (1 - 2**x )
+#			while fct(bl) * fct(bu) > 0:
+#				bl *= 2
+#				bu *= 2
+#			opt = sco.root_scalar( fct , method = "brenth" , bracket = [bl , bu] )
+#			return opt.root
+#		shape_solver = np.vectorize(uni_shape_solver)
+#		tau3 = lmom[:,2] / lmom[:,1]
+#		shape = shape_solver(tau3)
+#		
+#		## Find scale
+#		gshape = scs.gamma( 1 - shape )
+#		scale = - lmom[:,1] * shape / ( gshape * ( 1 - 2**shape ) )
+#		
+#		## Find loc
+#		loc = lmom[:,0] - scale * ( gshape - 1 ) / shape
+#		
+#		
+#		if not ploc.is_fix():
+#			self.params.update_coef( mean( loc   , ploc.design_wo1()   , link = ploc.link   , value = False ) , "loc"   )
+#		if not pscale.is_fix():
+#			self.params.update_coef( mean( scale , pscale.design_wo1() , link = pscale.link , value = False ) , "scale" )
+#		if not pshape.is_fix():
+#			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
+	},
+	##}}}
+	
 	initialization_mle = function()##{{{
 	{
-		private$fit_moments()
+		private$fit_lmoments()
 	},
 	##}}}
 	
@@ -425,6 +512,10 @@ GEV = R6::R6Class( "GEV" ,##{{{
 	{
 		if( self$method == "moments" )
 			private$fit_moments()
+		else if( self$method == "lmoments" )
+			private$fit_lmoments()
+		else if( self$method == "lmoments-experimental" )
+			private$fit_lmoments_experimental()
 	},
 	##}}}
 	

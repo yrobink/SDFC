@@ -351,7 +351,7 @@ rgev = function( n = 1 , loc = 0 , scale = 1 , shape = 0 )
 #' law$fit( Y , c_scale = X_scale )
 #' 
 #' @export
-GEV = R6::R6Class( "GEV" ,##{{{
+GEV = R6::R6Class( "GEV" ,
 	
 	inherit = AbstractLaw,
 	
@@ -540,7 +540,39 @@ GEV = R6::R6Class( "GEV" ,##{{{
 	
 	initialization_mle = function()##{{{
 	{
-		private$fit_lmoments()
+		private$fit_lmoments_experimental()
+		nlll = private$negloglikelihood(self$coef_)
+		grad = private$gradient_nlll(self$coef_)
+		
+		f_scale = 1
+		f_shape = 1
+		while( !is.finite(nlll) || !base::any(base::is.finite(grad)) )
+		{
+			pscale = self$params$dparams_[["scale"]]
+			pshape = self$params$dparams_[["shape"]]
+			
+			if( pshape$is_fix() && !pscale$is_fix() )
+			{
+				coef_ = base::rep( 0 , pscale$n_features )
+				coef_[1] = pscale$link$inverse(1. * f_scale)
+				self$params$update_coef( coef_ , "scale" )
+			}
+			else if( !pshape$is_fix() )
+			{
+				coef_ = base::rep( 0 , pshape$n_features )
+				coef_[1] = pshape$link$inverse(1e-1 / f_shape)
+				self$params$update_coef( coef_ , "shape" )
+			}
+			else
+			{
+				self$fit_quantiles()
+			}
+			
+			f_scale = f_scale * 2
+			f_shape = f_shape * 2
+			nlll = private$negloglikelihood(self$coef_)
+			grad = private$gradient_nlll(self$coef_)
+		}
 	},
 	##}}}
 	
@@ -688,249 +720,5 @@ GEV = R6::R6Class( "GEV" ,##{{{
 	#################
 
 )
-##}}}
-##}}}
 
 
-
-
-## ==> ## GEVLaw {{{
-## ==> 
-## ==> GEVLaw = R6::R6Class( "GEVLaw" , 
-## ==> 	
-## ==> 	inherit = AbstractLaw,
-## ==> 	
-## ==> 	public = list(
-## ==> 	
-## ==> 	###############
-## ==> 	## Arguments ##
-## ==> 	###############
-## ==> 	
-## ==> 	loc    = NULL,
-## ==> 	scale  = NULL,
-## ==> 	shape  = NULL,
-## ==> 	loc_   = NULL,
-## ==> 	scale_ = NULL,
-## ==> 	shape_ = NULL,
-## ==> 	
-## ==> 	
-## ==> 	#################
-## ==> 	## Constructor ##
-## ==> 	#################
-## ==> 	
-## ==> 	initialize = function( method = "MLE" , link_fct_loc = IdLinkFct$new() , link_fct_scale = IdLinkFct$new() , link_fct_shape = IdLinkFct$new() , n_bootstrap = 0 , alpha = 0.05 ) ##{{{
-## ==> 	{
-## ==> 		super$initialize( method , n_bootstrap , alpha )
-## ==> 		
-## ==> 		self$loc       = NULL
-## ==> 		self$scale     = NULL
-## ==> 		self$shape     = NULL
-## ==> 		
-## ==> 		self$loc_   = LawParam$new( linkFct = link_fct_loc   , kind = "loc"   )
-## ==> 		self$scale_ = LawParam$new( linkFct = link_fct_scale , kind = "scale" )
-## ==> 		self$shape_ = LawParam$new( linkFct = link_fct_shape , kind = "shape" )
-## ==> 	},
-## ==> 	##}}}
-## ==> 	
-## ==> 	
-## ==> 	###############
-## ==> 	## Functions ##
-## ==> 	###############
-## ==> 	
-## ==> 	fit = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL , floc = NULL , fscale = NULL , fshape = NULL ) ##{{{
-## ==> 	{
-## ==> 		Y = as.vector(Y)
-## ==> 		private$size_ = length(Y)
-## ==> 		
-## ==> 		##=> Bootstrap here
-## ==> 		if( self$n_bootstrap > 0 )
-## ==> 		{
-## ==> 			if( !is.null(loc_cov) && !is.matrix(loc_cov) )
-## ==> 				loc_cov = matrix( loc_cov , nrow = private$size_ , ncol = 1 )
-## ==> 			if( !is.null(scale_cov) && !is.matrix(scale_cov) )
-## ==> 				scale_cov = matrix( scale_cov , nrow = private$size_ , ncol = 1 )
-## ==> 			if( !is.null(shape_cov) && !is.matrix(shape_cov) )
-## ==> 				shape_cov = matrix( shape_cov , nrow = private$size_ , ncol = 1 )
-## ==> 			
-## ==> 			self$coefs_bootstrap = base::c()
-## ==> 			
-## ==> 			for( i in 1:self$n_bootstrap )
-## ==> 			{
-## ==> 				idx = base::sample( 1:private$size_ , private$size_ , replace = TRUE )
-## ==> 				loc_cov_bs   = if( is.null(loc_cov) )   loc_cov   else loc_cov[idx,]
-## ==> 				scale_cov_bs = if( is.null(scale_cov) ) scale_cov else scale_cov[idx,]
-## ==> 				shape_cov_bs = if( is.null(shape_cov) ) shape_cov else shape_cov[idx,]
-## ==> 				floc_bs      = if( is.null(floc) || length(floc) == 1 )     floc      else floc[idx]
-## ==> 				fscale_bs    = if( is.null(fscale) || length(fscale) == 1 ) fscale    else fscale[idx]
-## ==> 				fshape_bs    = if( is.null(fshape) || length(fshape) == 1 ) fshape    else fshape[idx]
-## ==> 				
-## ==> 				private$fit_( Y[idx] , loc_cov_bs , scale_cov_bs , shape_cov_bs , floc_bs , fscale_bs , fshape_bs )
-## ==> 				self$coefs_bootstrap = base::rbind( self$coefs_bootstrap , self$coef_ )
-## ==> 			}
-## ==> 			self$confidence_interval = base::apply( self$coefs_bootstrap , 2 , stats::quantile , probs = base::c( self$alpha / 2. , 1. - self$alpha / 2. ) )
-## ==> 		}
-## ==> 		
-## ==> 		private$fit_( Y , loc_cov , scale_cov , shape_cov , floc , fscale , fshape )
-## ==> 	}
-## ==> 	##}}}
-## ==> 	
-## ==> 	),
-## ==> 	
-## ==> 	private = list(
-## ==> 	
-## ==> 	###############
-## ==> 	## Arguments ##
-## ==> 	###############
-## ==> 	
-## ==> 	
-## ==> 	
-## ==> 	###############
-## ==> 	## Functions ##
-## ==> 	###############
-## ==> 	
-## ==> 	fit_ = function( Y , loc_cov = NULL , scale_cov = NULL , shape_cov = NULL , floc = NULL , fscale = NULL , fshape = NULL ) ##{{{
-## ==> 	{
-## ==> 		private$Y_    = as.vector(Y)
-## ==> 		
-## ==> 		self$loc_$init(   X = loc_cov   , fix_values = floc   , size = private$size_ )
-## ==> 		self$scale_$init( X = scale_cov , fix_values = fscale , size = private$size_ )
-## ==> 		self$shape_$init( X = shape_cov , fix_values = fshape , size = private$size_ )
-## ==> 		
-## ==> 		if( self$method == "moments" )
-## ==> 		{
-## ==> 			private$fit_moments()
-## ==> 		}
-## ==> 		else if( self$method == "lmoments" )
-## ==> 		{
-## ==> 			private$fit_lmoments()
-## ==> 		}
-## ==> 		else if( self$method == "quantiles" )
-## ==> 		{
-## ==> 			private$fit_quantiles()
-## ==> 		}
-## ==> 		else
-## ==> 		{
-## ==> 			private$fit_mle()
-## ==> 		}
-## ==> 		
-## ==> 		self$coef_ = private$concat_param()
-## ==> 	},
-## ==> 	##}}}
-## ==> 	
-## ==> 	fit_moments = function() ##{{{
-## ==> 	{
-## ==> 		m = base::mean(private$Y_)
-## ==> 		s = base::sqrt(6) * stats::sd(private$Y_) / base::pi
-## ==> 		
-## ==> 		iloc   = m - 0.57722 * s
-## ==> 		iscale = base::log(s)
-## ==> 		ishape = 1e-8
-## ==> 		
-## ==> 		self$loc_$set_intercept(   self$loc_$linkFct$inverse( iloc )     )
-## ==> 		self$scale_$set_intercept( self$scale_$linkFct$inverse( iscale ) )
-## ==> 		self$shape_$set_intercept( self$shape_$linkFct$inverse( ishape ) )
-## ==> 		
-## ==> 		
-## ==> 		self$loc_$update()
-## ==> 		self$scale_$update()
-## ==> 		self$shape_$update()
-## ==> 		self$loc   = self$loc_$valueLf()
-## ==> 		self$scale = self$scale_$valueLf()
-## ==> 		self$shape = self$shape_$valueLf()
-## ==> 	},
-## ==> 	##}}}
-## ==> 	
-## ==> 	fit_lmoments = function() ##{{{
-## ==> 	{
-## ==> 		lmom1 = np_lmoments( private$Y_ , 1 )
-## ==> 		lmom2 = np_lmoments( private$Y_ , 2 )
-## ==> 		lmom3 = np_lmoments( private$Y_ , 3 )
-## ==> 		
-## ==> 		tau3  = lmom3 / lmom2
-## ==> 		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
-## ==> 		kappa = 7.8590 * co + 2.9554 * co**2
-## ==> 		g     = base::gamma( 1. + kappa )
-## ==> 		
-## ==> 		iscale = lmom2 * kappa / ( (1 - 2^(-kappa)) * g )
-## ==> 		iloc   = lmom1 - iscale * (1 - g) / kappa
-## ==> 		ishape = - kappa
-## ==> 		
-## ==> 		self$loc_$set_intercept(   self$loc_$linkFct$inverse( iloc )     )
-## ==> 		self$scale_$set_intercept( self$scale_$linkFct$inverse( iscale ) )
-## ==> 		self$shape_$set_intercept( self$shape_$linkFct$inverse( ishape ) )
-## ==> 		
-## ==> 		self$loc_$update()
-## ==> 		self$scale_$update()
-## ==> 		self$shape_$update()
-## ==> 		self$loc   = self$loc_$valueLf()
-## ==> 		self$scale = self$scale_$valueLf()
-## ==> 		self$shape = self$shape_$valueLf()
-## ==> 	},
-## ==> 	##}}}
-## ==> 	
-## ==> 	fit_quantiles = function() ##{{{
-## ==> 	{
-## ==> 		## Fit the loc
-## ==> 		if( self$loc_$not_fixed() )
-## ==> 		{
-## ==> 			if( self$loc_$size_ == 1 )
-## ==> 			{
-## ==> 				self$loc_$set_intercept( self$loc_$linkFct$inverse( as.vector(stats::quantile( private$Y_ , probs = base::exp(-1) )) ) )
-## ==> 			}
-## ==> 			else
-## ==> 			{
-## ==> 				loc = as.vector(np_quantile( private$Y_ , ltau = base::c(base::exp(-1)) , X = self$loc_$design_wo1() ))
-## ==> 				self$loc_$set_coef( np_mean( loc , X = self$loc_$design_wo1() , linkFct = self$loc_$linkFct , return_coef = TRUE ) )
-## ==> 			}
-## ==> 		}
-## ==> 		self$loc_$update()
-## ==> 		self$loc = self$loc_$valueLf()
-## ==> 		
-## ==> 		
-## ==> 		## Fit the scale
-## ==> 		if( self$scale_$not_fixed() )
-## ==> 		{
-## ==> 			probs = base::c( 0.25 , 0.5 , 0.75 )
-## ==> 			coef  = - 1. / base::log( - base::log(probs) )
-## ==> 			if( self$scale_$size_ == 1 )
-## ==> 			{
-## ==> 				self$scale_$set_intercept( self$scale_$linkFct$inverse(base::mean( as.vector( stats::quantile( private$Y_ - self$loc , probs ) ) * coef )) )
-## ==> 			}
-## ==> 			else
-## ==> 			{
-## ==> 				qreg = np_quantile( private$Y_ - self$loc , ltau = probs , X = self$scale_$design_wo1() )
-## ==> 				fscale = ( qreg %*% coef ) / length(probs)
-## ==> 				self$scale_$set_coef( np_mean( fscale , X = self$scale_$design_wo1() , linkFct = self$scale_$linkFct , return_coef = TRUE ) )
-## ==> 			}
-## ==> 		}
-## ==> 		self$scale_$update()
-## ==> 		self$scale = self$scale_$valueLf()
-## ==> 		
-## ==> 		
-## ==> 		## Fit the shape
-## ==> 		if( self$shape_$not_fixed() )
-## ==> 		{
-## ==> 			p0 = 0.1
-## ==> 			p1 = 0.9
-## ==> 			llp0 = base::log( - base::log(p0) )
-## ==> 			llp1 = base::log( - base::log(p1) )
-## ==> 			if( self$shape_$size_ == 1 )
-## ==> 			{
-## ==> 				q = stats::quantile( ( private$Y_ - self$loc ) / self$scale , base::c(p0,p1) )
-## ==> 				kappa = q[1] / q[2]
-## ==> 				sh = 2 * (llp0 - kappa * llp1 ) / ( llp0^2 - kappa * llp1^2 )
-## ==> 				self$shape_$set_intercept( self$shape_$linkFct$inverse(sh) )
-## ==> 			}
-## ==> 			else
-## ==> 			{
-## ==> 				q = np_quantile( ( private$Y_ - self$loc ) / self$scale , ltau = base::c(p0,p1) , X = self$shape_$design_wo1() )
-## ==> 				kappa = q[,1] / q[,2]
-## ==> 				fshape = 2 * (llp0 - kappa * llp1 ) / ( llp0^2 - kappa * llp1^2 )
-## ==> 				self$shape_$set_coef( np_mean( fshape , X = self$shape_$design_wo1() , linkFct = self$shape_$linkFct , return_coef = TRUE ) )
-## ==> 			}
-## ==> 		}
-## ==> 		self$shape_$update()
-## ==> 		self$shape = self$shape_$valueLf()
-## ==> 	},
-## ==> 	##}}}
-## ==> 	

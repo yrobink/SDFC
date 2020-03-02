@@ -18,6 +18,7 @@ try(roxygen2::roxygenize("../R/SDFC"))
 devtools::load_all("../R/SDFC")
 roxygen2::roxygenize("../R/SDFC")
 devtools::load_all("../R/SDFC")
+#library(SDFC)
 
 
 ###########################
@@ -132,35 +133,47 @@ test_normal = function( show = FALSE ) ##{{{
 }
 ##}}}
 
-test_gev = function() ##{{{
+test_gev = function( show = FALSE ) ##{{{
 {
-	size  = 2500
-	t = base::seq( 0 , 1 , length = size )
-	X0 = t^2
-	X2 = base::seq( -1 , 1 , length = size )
-	loc   = 0.5 + 1.5 * X0
-	scale = 0.1 + 0.1 * X0
-	shape = 0.3 * X2
+	size = 2000
+	c_data = Dataset$covariates(size)
 	
-	Y = SDFC::rgev( n = size , loc = loc , scale = scale , shape = shape )
+	t       = c_data$t
+	X_loc   = c_data$X_loc
+	X_scale = c_data$X_scale
+	X_shape = c_data$X_shape
 	
-	gev = GEVLaw$new( method = "MLE" , n_bootstrap = 10 )
-	gev$fit( Y , loc_cov = X0  , scale_cov = X0    , shape_cov = X2 )
-	#gev$fit( Y , floc    = loc , scale_cov = X0    , shape_cov = X2 )
-	#gev$fit( Y , loc_cov = X0  , fscale    = scale , shape_cov = X2 )
-	#gev$fit( Y , loc_cov = X0  , scale_cov = X0    , fshape    = shape )
+	loc   = 1.  + 0.8  * X_loc
+	scale = 0.2 + 0.08 * X_scale
+	shape = 0.  + 0.3  * X_shape
 	
-	plt$new_screen()
-	graphics::par( mfrow = base::c( 2 , 2 ) )
 	
-	plot( t , Y , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
+	Y = SDFC::rgev( size , loc , scale , shape )
 	
-	plot( loc , gev$loc , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
+	law = SDFC::GEV$new( method = "mle" )
+	law$fit( Y , c_loc = X_loc , c_shape = X_shape , c_scale = X_scale )
 	
-	plot( scale , gev$scale , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
-	
-	plot( shape , gev$shape , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
-	
+	if(show)
+	{
+		plt$new_screen()
+		graphics::par( mfrow = base::c( 2 , 2 ) )
+		
+		## Subplot 1
+		graphics::plot(  t , Y       , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) )
+		graphics::lines( t , law$loc , col = "red" )
+		graphics::lines( t , law$loc + law$scale , col = "red" )
+		graphics::lines( t , law$loc - law$scale , col = "red" )
+		graphics::lines( t , law$loc - law$scale / law$shape , col = "black" )
+		
+		## Subplot 2
+		graphics::plot( loc , law$loc , type = "p" , col = "blue" )
+		
+		## Subplot 3
+		graphics::plot( scale , law$scale , type = "p" , col = "blue" )
+		
+		## Subplot 4
+		graphics::plot( shape , law$shape , type = "p" , col = "blue" )
+	}
 }
 ##}}}
 
@@ -241,8 +254,9 @@ run_all_tests = function()##{{{
 {
 	test_normal()
 	test_gev()
-	test_gpd()
+#	test_gpd()
 	test_qr()
+	test_lmoments()
 }
 ##}}}
 
@@ -251,28 +265,9 @@ run_all_tests = function()##{{{
 ## main ##
 ##########
 
-#run_all_tests()
-
-#test_normal(TRUE)
-
-size = 2000
-c_data = Dataset$covariates(size)
-
-t       = c_data$t
-X_loc   = c_data$X_loc
-X_scale = c_data$X_scale
-X_shape = c_data$X_shape
-
-loc   = 1.  + 0.8  * X_loc
-scale = 0.2 + 0.08 * X_scale
-shape = 0.  + 0.3  * X_shape
+run_all_tests()
 
 
-Y = SDFC::rgev( size , loc , scale , shape )
-
-gev = SDFC::GEV$new( method = "lmoments-experimental" )
-gev$fit( Y , c_loc = X_loc , c_shape = X_shape , c_scale = X_scale )
-print(gev$coef_)
 
 plt$wait()
 print("Done")

@@ -368,11 +368,11 @@ class GEV(AbstractLaw):
 			
 			if pshape.is_fix() and not pscale.is_fix():
 				coef_ = np.zeros(pscale.n_features)
-				coef_[0] = 1. * f_scale
+				coef_[0] = pscale.link.inverse( 1. * f_scale )
 				self.params.update_coef( coef_ , "scale" )
 			elif not pshape.is_fix():
 				coef_ = np.zeros(pshape.n_features)
-				coef_[0] = 1e-1 / f_shape
+				coef_[0] = pshape.link.inverse( 1e-1 / f_shape )
 				self.params.update_coef( coef_ , "shape" )
 			else:
 				self._fit_quantiles()

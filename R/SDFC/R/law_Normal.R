@@ -134,7 +134,7 @@
 #' law$fit( Y , c_scale = X_scale )
 #' 
 #' @export
-Normal = R6::R6Class( "Normal" ,##{{{
+Normal = R6::R6Class( "Normal" ,
 	
 	inherit = AbstractLaw,
 	
@@ -266,6 +266,4 @@ Normal = R6::R6Class( "Normal" ,##{{{
 	#################
 
 )
-##}}}
-##}}}
 

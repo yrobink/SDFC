@@ -503,6 +503,41 @@ GEV = R6::R6Class( "GEV" ,##{{{
 	},
 	##}}}
 	
+	fit_quantiles = function()##{{{
+	{
+		ploc   = self$params$dparams_[["loc"]]
+		pscale = self$params$dparams_[["scale"]]
+		pshape = self$params$dparams_[["shape"]]
+		
+		if( !ploc$is_fix() )
+		{
+			loc = np_quantile( private$Y , base::c(base::exp(-1)) , c_Y = ploc$design_wo1() , value = TRUE )
+			self$params$update_coef( np_mean( loc , ploc$design_wo1() , link = ploc$link , value = FALSE ) , "loc" )
+		}
+		
+		if( !pscale$is_fix() )
+		{
+			qscale = base::c( 0.25 , 0.5 , 0.75 )
+			coef   = - 1. / base::log( - base::log(qscale) )
+			qreg = np_quantile( private$Y - self$loc , qscale , pscale$design_wo1() )
+			fscale = base::t( base::apply( qreg , 1 , function(x) { coef * x } ) )
+			fscale = base::apply( fscale , 1 , base::mean )
+			fscale[!(fscale > 0)] = 0.1
+			self$params$update_coef( np_mean( fscale , pscale$design_wo1() , link = pscale$link , value = FALSE ) , "scale" )
+		}
+		
+		if( !pshape$is_fix() )
+		{
+			p = base::c( 0.1 , 0.9 )
+			qval = np_quantile( (private$Y - self$loc) / self$scale , p , pshape$design_wo1() )
+			kappa = qval[,1] / qval[,2]
+			llp = base::log( - base::log(p) )
+			shape = ( 2 * (llp[1] - kappa * llp[2] ) / ( llp[1]^2 - kappa * llp[2]^2 ) )
+			self$params$update_coef( np_mean( shape , pshape$design_wo1() , link = pshape$link , value = FALSE ) , "shape" )
+		}
+	},
+	##}}}
+	
 	initialization_mle = function()##{{{
 	{
 		private$fit_lmoments()
@@ -515,7 +550,9 @@ GEV = R6::R6Class( "GEV" ,##{{{
 			private$fit_moments()
 		else if( self$method == "lmoments" )
 			private$fit_lmoments()
-		else if( self$method == "lmoments-experimental" )
+		else if( self$method == "quantiles" )
+			private$fit_quantiles()
+		else
 			private$fit_lmoments_experimental()
 	},
 	##}}}

@@ -14,5 +14,7 @@ rm -f R/SDFC/NAMESPACE
 rm -f R/SDFC/man/*.Rd
 rm -f R/*.tar.gz
 rm -f R/SDFC/src/RcppExports.cpp
+rm -f R/SDFC/R/RcppExports.R
 rm -f R/SDFC/src/*.o
 rm -f R/SDFC/src/*.so
+

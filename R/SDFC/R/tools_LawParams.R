@@ -230,7 +230,7 @@ CovariateParam = R6::R6Class( "CovariateParam" , ##{{{
 	
 	design_wo1 = function()
 	{
-		return(self$design_[,2:self$n_features])
+		return( matrix( self$design_[,2:self$n_features] , ncol = self$n_features - 1 ) )
 	}
 	
 	),
@@ -462,7 +462,7 @@ LawParams = R6::R6Class( "LawParams" , ##{{{
 		if( base::ncol(C) == 1 )
 			return(NULL)
 		else
-			return( C[,2:base::ncol(C)] )
+			return( matrix( C[,2:base::ncol(C)] , ncol = base::ncol(C) - 1 ) )
 	},
 	##}}}
 	

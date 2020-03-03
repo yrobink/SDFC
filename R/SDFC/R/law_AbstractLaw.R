@@ -103,7 +103,7 @@
 #' @examples
 #' ## Data
 #' @export
-AbstractLaw = R6::R6Class( "AbstractLaw" ,##{{{
+AbstractLaw = R6::R6Class( "AbstractLaw" ,
 
 	##################
 	## Private list ##
@@ -287,10 +287,41 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,##{{{
 	## Methods
 	##========
 	
-#	print = function(...)
-#	{
-#		invisible(self)
-#	},
+	print = function(...) ##{{{
+	{
+		## Build header
+		header = base::c( base::paste( class(self)[1] , " (" , self$method , ")" , sep = "" ) )
+		header = base::c( header , "Link" , "Type" , "coef" )
+		
+		tab = Tabular$new()
+		tab$header = header
+		
+		if( !is.null(self$params) )
+		{
+			for( p in self$params$dparams_ )
+			{
+				pline = base::c( p$kind )
+				
+				name_link = class(p$link)[1]
+				pline = base::c( pline , base::substr( name_link , 1 , nchar(name_link) - 4 ) )
+				
+				kind_p = class(p)[1]
+				pline = base::c( pline , base::substr( kind_p , 1 , nchar(kind_p) - 5 ) )
+				
+				if( !is.null(p$coef_) )
+					pline = base::c( pline , base::paste( as.character(round(p$coef_,4)) , collapse = " " ) )
+				else
+					pline = base::c( pline , "NA" )
+				
+				tab$add_row(pline)
+			}
+		}
+		
+		base::cat( tab$draw() )
+		
+		invisible(self)
+	},
+	##}}}
 	
 	fit = function( Y , ... ) ##{{{
 	{
@@ -361,6 +392,5 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,##{{{
 	#################
 
 )
-##}}}
 
 

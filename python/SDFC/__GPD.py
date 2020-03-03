@@ -262,20 +262,54 @@ class GPD(AbstractLaw):
 			itau  = lmom[:,0] / lmom[:,1]
 			scale = lmom[:,0] * ( itau - 1 )
 			shape = 2 - itau
-			self.params.update_coef( mean( scale , pscale.design_wo1() , link = pscale.link , value = False ) , "scale" )
-			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
+			
+			scale_design = pscale.design_wo1()
+			print(scale_design.shape)
+			if scale_design is not None: scale_design = scale_design[idx.squeeze(),:]
+			self.params.update_coef( mean( scale , scale_design , link = pscale.link , value = False ) , "scale" )
+			
+			shape_design = pshape.design_wo1()
+			if shape_design is not None: shape_design = shape_design[idx.squeeze(),:]
+			self.params.update_coef( mean( shape , shape_design , link = pshape.link , value = False ) , "shape" )
 		elif not pscale.is_fix():
 			scale = lmom[:,0].reshape(-1,1) * ( 1 - self.shape )
-			self.params.update_coef( mean( scale , pscale.design_wo1() , link = pscale.link , value = False ) , "scale" )
+			scale_design = pscale.design_wo1()
+			if scale_design is not None: scale_design = scale_design[idx.squeeze(),:]
+			self.params.update_coef( mean( scale , scale_design , link = pscale.link , value = False ) , "scale" )
 		elif not pshape.is_fix():
 			Y    /= self.scale[idx].reshape(-1,1)
 			lmom  = lmoments( Y , pshape.design_wo1() )
 			shape = 2 - lmom[:,0] / lmom[:,1]
-			self.params.update_coef( mean( shape , pshape.design_wo1() , link = pshape.link , value = False ) , "shape" )
+			shape_design = pshape.design_wo1()
+			if shape_design is not None: shape_design = shape_design[idx.squeeze(),:]
+			self.params.update_coef( mean( shape , shape_design , link = pshape.link , value = False ) , "shape" )
 	##}}}
 	
 	def _initialization_mle(self):##{{{
 		self._fit_lmoments_experimental()
+		nlll = self._negloglikelihood(self.coef_)
+		grad = self._gradient_nlll(self.coef_)
+		
+		f_scale = 1
+		f_shape = 1
+		while ( not nlll < np.inf ) or np.any(np.isnan(grad)):
+			pscale = self.params._dparams["scale"]
+			pshape = self.params._dparams["shape"]
+			
+			if pshape.is_fix() and not pscale.is_fix():
+				coef_ = np.zeros(pscale.n_features)
+				coef_[0] = pscale.link.inverse( 1. * f_scale )
+				self.params.update_coef( coef_ , "scale" )
+			elif not pshape.is_fix():
+				coef_ = np.zeros(pshape.n_features)
+				coef_[0] = pshape.link.inverse( 1e-1 / f_shape )
+				self.params.update_coef( coef_ , "shape" )
+			else:
+				self._fit_quantiles()
+			f_scale *= 2
+			f_shape *= 2
+			nlll = self._negloglikelihood(self.coef_)
+			grad = self._gradient_nlll(self.coef_)
 #		self._fit_moments()
 #		nlll_mom = self._negloglikelihood(self.coef_)
 #		grad_mom = np.any(np.isnan(self._gradient_nlll(self.coef_)))

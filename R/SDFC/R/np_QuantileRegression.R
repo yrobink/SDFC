@@ -112,16 +112,17 @@
 #' @examples
 #' ## Data
 #' size = 2000
-#' data = SDFC::Dataset2(size)
-#' t = data$t
-#' X = data$X
-#' Y = data$Y
+#' c_data = Dataset$covariates(size)
 #' 
-#' ## Quantile regression for loc parameters
-#' ltau = base::seq( 0.05 , 0.95 , 0.01 )
-#' qr = SDFC::QuantileRegression$new( ltau )
-#' qr$fit( Y , X )
-#' Yq = if( qr$is_success() ) qr$predict() else NULL 
+#' loc   = 0.5 + 2 * c_data$X_loc
+#' scale = 1 + 2 * c_data$X_scale
+#' Y = stats::rnorm( size , mean = loc , sd = scale )
+#' 
+#' ## Quantile regression
+#' ltau  = base::seq( 0.01 , 0.99 , length = 100 )
+#' qr = SDFC::QuantileRegression$new(ltau)
+#' qr$fit( Y , base::cbind( c_data$X_loc , c_data$X_scale ) )
+#' Yq = if( qr$is_success() ) qr$predict() else NULL
 #' @export
 QuantileRegression = R6::R6Class( "QuantileRegression" ,
 	

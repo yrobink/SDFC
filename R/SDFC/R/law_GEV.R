@@ -596,7 +596,7 @@ GEV = R6::R6Class( "GEV" ,
 		if( !base::all( self$scale > 0 ) )
 			return(Inf)
 		
-		## Fuck exponential case
+		## Remove exponential case
 		shape = self$shape
 		zero_shape = ( base::abs(shape) < 1e-10 )
 		if( base::any(zero_shape) )

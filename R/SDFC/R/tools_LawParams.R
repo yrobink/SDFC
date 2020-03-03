@@ -86,7 +86,6 @@
 #############
 
 
-#' @export
 AbstractParam = R6::R6Class( "AbstractParam" , ##{{{
 	
 	#################
@@ -158,10 +157,9 @@ AbstractParam = R6::R6Class( "AbstractParam" , ##{{{
 )
 ##}}}
 
-#' @export
 CovariateParam = R6::R6Class( "CovariateParam" , ##{{{
 	
-	inherit = SDFC::AbstractParam,
+	inherit = SDFC:::AbstractParam,
 	
 	#################
 	## Public list ##
@@ -252,10 +250,9 @@ CovariateParam = R6::R6Class( "CovariateParam" , ##{{{
 )
 ##}}}
 
-#' @export
 StationaryParam = R6::R6Class( "StationaryParam" , ##{{{
 	
-	inherit = SDFC::AbstractParam,
+	inherit = SDFC:::AbstractParam,
 	
 	#################
 	## Public list ##
@@ -331,10 +328,9 @@ StationaryParam = R6::R6Class( "StationaryParam" , ##{{{
 )
 ##}}}
 
-#' @export
 FixParam = R6::R6Class( "FixParam" , ##{{{
 	
-	inherit = SDFC::AbstractParam,
+	inherit = SDFC:::AbstractParam,
 	
 	#################
 	## Public list ##
@@ -392,43 +388,6 @@ FixParam = R6::R6Class( "FixParam" , ##{{{
 )
 ##}}}
 
-
-## LawParams
-
-#' LawParams
-#'
-#' Class used to describe parameters of law (loc, scale, shape). Internal class, so do not use it
-#'
-#' @docType class
-#' @importFrom R6 R6Class
-#'
-#' @param linkFct [LinkFct] link function
-#' @param kind [str] Name of parameters (loc,scale... etc)
-#' @param X [vector or NULL] covariate
-#' @param fix_values [vector or NULL] fix the values of the param at fix_values
-#' @param size [integer or NULL] size of dataset to fit
-#' @param coef [vector] coefficients
-#' @param inter [vector] Intercept of the coefficients
-#'
-#' @return Object of \code{\link{R6Class}}
-#' @format \code{\link{R6Class}} object.
-#'
-#' @section Methods:
-#' \describe{
-#'   \item{\code{new(linkFct,kind)}}{This method is used to create object of this class with \code{LawParam}}
-#'   \item{\code{init(X,fix_values,size)}}{This method is used to initialize}
-#'   \item{\code{not_fixed()}}{Return true if the param need to be estimate}
-#'   \item{\code{set_coef(coef)}}{Set coefficient}
-#'   \item{\code{set_intercept(inter)}}{Set intercept of coefficients}
-#'   \item{\code{design_wo1()}}{Return design matrix without intercept, NULL if no covariate}
-#'   \item{\code{update()}}{Update value of params}
-#'   \item{\code{value()}}{Return value BEFORE link function}
-#'   \item{\code{valueLf()}}{Return value AFTER link function}
-#'   \item{\code{valueGrLf()}}{Return value of gradient of link function}
-#' }
-#' @examples
-#'
-#' @export
 LawParams = R6::R6Class( "LawParams" , ##{{{
 	
 	#################
@@ -470,9 +429,9 @@ LawParams = R6::R6Class( "LawParams" , ##{{{
 			k_param$kind      = kind
 			k_param$n_samples = n_samples
 			k_param$resample  = resample
-			if( self$is_covariate(config)  ) self$dparams_[[kind]] = base::do.call( CovariateParam$new  , k_param ) 
-			if( self$is_stationary(config) ) self$dparams_[[kind]] = base::do.call( StationaryParam$new , k_param ) 
-			if( self$is_fix(config)        ) self$dparams_[[kind]] = base::do.call( FixParam$new        , k_param ) 
+			if( self$is_covariate(config)  ) self$dparams_[[kind]] = base::do.call( SDFC:::CovariateParam$new  , k_param ) 
+			if( self$is_stationary(config) ) self$dparams_[[kind]] = base::do.call( SDFC:::StationaryParam$new , k_param ) 
+			if( self$is_fix(config)        ) self$dparams_[[kind]] = base::do.call( SDFC:::FixParam$new        , k_param ) 
 		}
 	},
 	##}}}

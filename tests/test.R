@@ -69,7 +69,7 @@ PlotTools = R6::R6Class( "PlotTools" , ##{{{
 		invisible(tolower(os))
 	},
 	
-	new_screen = function()
+	new_screen = function( nrow = 1 , ncol = 1 )
 	{
 		if( self$os == "osx" )
 		{
@@ -79,6 +79,8 @@ PlotTools = R6::R6Class( "PlotTools" , ##{{{
 		{
 			grDevices::X11()
 		}
+		
+		graphics::par( mfrow = base::c( nrow , ncol ) )
 	},
 	
 	wait = function()
@@ -177,33 +179,47 @@ test_gev = function( show = FALSE ) ##{{{
 }
 ##}}}
 
-test_gpd = function()##{{{
+test_gpd = function( show = FALSE )##{{{
 {
-	size  = 2500
-	t = base::seq( 0 , 1 , length = size )
-	X0 = t^2
-	X2 = base::seq( -1 , 1 , length = size )
-	loc   = 0.5 + 1.5 * X0
-	scale = 0.1 + 0.1 * X0
-	shape = 0.3 * X2
+	size = 2000
+	c_data = Dataset$covariates(size)
 	
-	Y = rgpd( n = size , loc = loc , scale = scale , shape = shape )
+	t       = c_data$t
+	X_loc   = c_data$X_loc
+	X_scale = c_data$X_scale
+	X_shape = c_data$X_shape
 	
-	gpd = GPDLaw$new( method = "MLE" , n_bootstrap = 10 )
-	gpd$fit( Y , loc = loc , scale_cov = X0 , shape_cov = X2 )
+	loc   = 1.  + 0.8  * X_loc
+	scale = 0.2 + 0.08 * X_scale
+	shape = 0   - 0.2  * X_shape
 	
 	
-	plt$new_screen()
-	graphics::par( mfrow = base::c( 2 , 2 ) )
+	Y = SDFC::rgpd( size , loc , scale , shape )
 	
-	plot( t , Y , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
+	law = GPD$new( method = "mle" )
+	law$fit( Y , f_loc = loc , c_scale = X_scale , c_shape = X_shape )
 	
-	plot( loc , gpd$loc , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
-	
-	plot( scale , gpd$scale , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
-	
-	plot( shape , gpd$shape , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) , type = "p" )
-	
+	if( show )
+	{
+		plt$new_screen(2,2)
+		
+		## Subplot 1
+		graphics::plot(  t , Y       , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) )
+		graphics::lines( t , law$loc , col = "red" )
+		graphics::lines( t , law$loc + law$scale , col = "red" )
+		graphics::lines( t , law$loc - law$scale , col = "red" )
+		graphics::lines( t , law$loc - law$scale / law$shape , col = "black" )
+		
+		## Subplot 2
+		graphics::plot( loc , law$loc , type = "p" , col = "blue" )
+		
+		## Subplot 3
+		graphics::plot( scale , law$scale , type = "p" , col = "blue" )
+		
+		## Subplot 4
+		graphics::plot( shape , law$shape , type = "p" , col = "blue" )
+		
+	}
 }
 ##}}}
 
@@ -250,12 +266,12 @@ test_lmoments = function() ##{{{
 }
 ##}}}
 
-run_all_tests = function()##{{{
+run_all_tests = function( show = TRUE )##{{{
 {
-	test_normal()
-	test_gev()
-#	test_gpd()
-	test_qr()
+	test_normal(show)
+	test_gev(show)
+	test_gpd(show)
+	test_qr(show)
 	test_lmoments()
 }
 ##}}}
@@ -265,10 +281,10 @@ run_all_tests = function()##{{{
 ## main ##
 ##########
 
-run_all_tests()
-
+#run_all_tests()
 
 
 plt$wait()
+
 print("Done")
 

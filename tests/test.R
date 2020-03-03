@@ -135,6 +135,36 @@ test_normal = function( show = FALSE ) ##{{{
 }
 ##}}}
 
+test_exponential = function( show = FALSE )##{{{
+{
+	size = 10000
+	c_data = Dataset$covariates(size)
+	
+	t       = c_data$t
+	X_scale = c_data$X_scale
+	
+	scale = 1.5 + 0.5 * X_scale
+	
+	
+	Y = rexp( size , rate = 1. / scale )
+	
+	law = SDFC::Exponential$new( method = "mle" )
+	law$fit( Y , c_scale = X_scale )
+	
+	if(show)
+	{
+		plt$new_screen( 1 , 2 )
+		
+		## Subplot 1
+		graphics::plot(  t , Y       , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) )
+		graphics::lines( t , law$scale , col = "red" )
+		
+		## Subplot 2
+		graphics::plot( scale , law$scale , type = "p" , col = "blue" )
+	}
+}
+##}}}
+
 test_gev = function( show = FALSE ) ##{{{
 {
 	size = 2000
@@ -269,6 +299,7 @@ test_lmoments = function() ##{{{
 run_all_tests = function( show = TRUE )##{{{
 {
 	test_normal(show)
+	test_exponential(show)
 	test_gev(show)
 	test_gpd(show)
 	test_qr(show)

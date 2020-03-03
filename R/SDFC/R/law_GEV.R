@@ -298,7 +298,7 @@ rgev = function( n = 1 , loc = 0 , scale = 1 , shape = 0 )
 ########################################################################################################################
 
 
-## GEV {{{
+## GEV
 
 #' GEV (Generalized Extreme Value distribution
 #'
@@ -519,7 +519,7 @@ GEV = R6::R6Class( "GEV" ,
 		{
 			qscale = base::c( 0.25 , 0.5 , 0.75 )
 			coef   = - 1. / base::log( - base::log(qscale) )
-			qreg = np_quantile( private$Y - self$loc , qscale , pscale$design_wo1() )
+			qreg = matrix( np_quantile( private$Y - self$loc , qscale , pscale$design_wo1() ) , ncol = 3 )
 			fscale = base::t( base::apply( qreg , 1 , function(x) { coef * x } ) )
 			fscale = base::apply( fscale , 1 , base::mean )
 			fscale[!(fscale > 0)] = 0.1
@@ -529,7 +529,7 @@ GEV = R6::R6Class( "GEV" ,
 		if( !pshape$is_fix() )
 		{
 			p = base::c( 0.1 , 0.9 )
-			qval = np_quantile( (private$Y - self$loc) / self$scale , p , pshape$design_wo1() )
+			qval = matrix( np_quantile( (private$Y - self$loc) / self$scale , p , pshape$design_wo1() ) , ncol = 2 )
 			kappa = qval[,1] / qval[,2]
 			llp = base::log( - base::log(p) )
 			shape = ( 2 * (llp[1] - kappa * llp[2] ) / ( llp[1]^2 - kappa * llp[2]^2 ) )

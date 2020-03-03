@@ -124,7 +124,7 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 	
 	fit_global = function( Y , ... )##{{{
 	{
-		self$params = LawParams$new( kinds = self$kinds_params )
+		self$params = SDFC:::LawParams$new( kinds = self$kinds_params )
 		kwargs = list(...)
 		kwargs$n_samples = length(Y)
 		

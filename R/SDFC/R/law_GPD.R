@@ -334,7 +334,7 @@ rgpd = function( n = 1 , loc = 0 , scale = 1 , shape = 0 )
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize GPD law with code{GPDLaw}}
+#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize GPD law with code{GPD}}
 #'   \item{\code{fit(Y,...)}}{Fit the GPD law}.
 #' }
 #' @examples
@@ -386,19 +386,6 @@ GPD = R6::R6Class( "GPD" ,
 	
 	## Methods
 	##========
-	
-	logZafun = function( Z , alpha ) ##{{{
-	{
-		return( alpha * base::log( 1. + self$shape * Z ) )
-	},
-	##}}}
-	
-	Zafun = function( Z , alpha ) ##{{{
-	{
-		return( base::exp( private$logZafun( Z , alpha ) ) )
-	},
-	##}}}
-	
 	
 	fit_moments = function()##{{{
 	{

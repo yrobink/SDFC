@@ -352,7 +352,7 @@ rgpd = function( n = 1 , loc = 0 , scale = 1 , shape = 0 )
 #' shape = 0.  + 0.3  * X_shape
 #' 
 #' 
-#' Y = SDFC::rgev( size , loc , scale , shape )
+#' Y = SDFC::rgpd( size , loc , scale , shape )
 #' 
 #' ## Regression with MLE
 #' law = SDFC::GPD$new( "mle" )
@@ -618,7 +618,7 @@ GPD = R6::R6Class( "GPD" ,
 		if( !pscale$is_fix() )
 		{
 			scale_vect = pscale$gradient() * ( - exponent * shape * Z / ZZ / scale + 1. / scale )
-			grad_scale = base::t(pscale$design_[idx,]) %*% scale_vect
+			grad_scale = base::t( matrix( pscale$design_[idx,] , ncol = pscale$n_features ) ) %*% scale_vect
 			grad       = base::c( grad , grad_scale )
 		}
 		
@@ -629,7 +629,7 @@ GPD = R6::R6Class( "GPD" ,
 			if( base::all(ZZ > 0) )
 			{
 				shape_vect = pshape$gradient() * ( - base::log(ZZ) / shape^2 + exponent * Z / ZZ )
-				grad_shape = base::t(pshape$design_[idx,]) %*% shape_vect
+				grad_shape = base::t( matrix( pshape$design_[idx,] , ncol = pshape$n_features ) ) %*% shape_vect
 			}
 			grad       = base::c( grad , grad_shape )
 		}

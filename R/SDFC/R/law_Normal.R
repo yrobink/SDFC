@@ -81,7 +81,7 @@
 ##################################################################################
 ##################################################################################
 
-## Normal {{{
+## Normal
 
 #' Normal (Gaussian Law)
 #'
@@ -127,7 +127,7 @@
 #' 
 #' ## And if we want a link function
 #' law = SDFC::Normal$new( "mle" )
-#' law$fit( Y , c_loc = X_loc , c_scale = scale , l_scale = SDFC::ExpLink$new() )
+#' law$fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = SDFC::ExpLink$new() )
 #' 
 #' ## If we do not give a parameter, it is assumed constant
 #' law = SDFC::Normal$new( "mle" )

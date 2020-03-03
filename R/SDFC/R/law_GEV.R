@@ -298,9 +298,7 @@ rgev = function( n = 1 , loc = 0 , scale = 1 , shape = 0 )
 ########################################################################################################################
 
 
-## GEV
-
-#' GEV (Generalized Extreme Value distribution
+#' GEV (Generalized Extreme Value distribution)
 #'
 #' Class to fit a GEV law.
 #'
@@ -319,35 +317,40 @@ rgev = function( n = 1 , loc = 0 , scale = 1 , shape = 0 )
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize Normal law with code{NormalLaw}}
-#'   \item{\code{fit(Y,...)}}{Fit the Normal law}.
+#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize GEV law with code{GEVLaw}}
+#'   \item{\code{fit(Y,...)}}{Fit the GEV law}.
 #' }
 #' @examples
-#' ## Start by generate non-stationary Normal dataset
+#' ## Start by generate non-stationary GEV dataset
 #' size = 2000
-#' c_data = SDFC::Dataset$covariates(size)
+#' c_data = Dataset$covariates(size)
 #' 
 #' t       = c_data$t
 #' X_loc   = c_data$X_loc
 #' X_scale = c_data$X_scale
-#' loc   = 0.5 + 2 * X_loc
-#' scale =   1 + 2 * X_scale
-#' Y = stats::rnorm( size , mean = loc , sd = scale )
+#' X_shape = c_data$X_shape
+#' 
+#' loc   = 1.  + 0.8  * X_loc
+#' scale = 0.2 + 0.08 * X_scale
+#' shape = 0.  + 0.3  * X_shape
+#' 
+#' 
+#' Y = SDFC::rgev( size , loc , scale , shape )
 #' 
 #' ## Regression with MLE
-#' law = SDFC::Normal$new( "mle" )
-#' law$fit( Y , c_loc = X_loc , c_scale = X_scale )
+#' law = SDFC::GEV$new( "mle" )
+#' law$fit( Y , c_loc = X_loc , c_scale = X_scale , c_shape = X_shape )
 #' 
 #' ## Assuming scale is known (available for any covariates)
-#' law = SDFC::Normal$new( "mle" )
-#' law$fit( Y , c_loc = X_loc , f_scale = scale )
+#' law = SDFC::GEV$new( "mle" )
+#' law$fit( Y , c_loc = X_loc , f_scale = scale , c_shape = X_shape )
 #' 
 #' ## And if we want a link function
-#' law = SDFC::Normal$new( "mle" )
-#' law$fit( Y , c_loc = X_loc , c_scale = scale , l_scale = SDFC::ExpLink$new() )
+#' law = SDFC::GEV$new( "mle" )
+#' law$fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = SDFC::ExpLink$new() , c_shape = X_shape )
 #' 
 #' ## If we do not give a parameter, it is assumed constant
-#' law = SDFC::Normal$new( "mle" )
+#' law = SDFC::GEV$new( "mle" )
 #' law$fit( Y , c_scale = X_scale )
 #' 
 #' @export

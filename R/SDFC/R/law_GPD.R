@@ -165,7 +165,7 @@ dgpd = function( x , loc = 0 , scale = 1 , shape = 0 , log = FALSE )
 #' @param shape  [vector] Shape parameter
 #' @param lower.tail [bool] Return CDF if TRUE, else return survival function
 #'
-#' @return [vector] CDF (or SF) of GEV at x
+#' @return [vector] CDF (or SF) of GPD at x
 #'
 #' @examples
 #' ## Data
@@ -315,6 +315,61 @@ rgpd = function( n = 1 , loc = 0 , scale = 1 , shape = 0 )
 
 
 
+#' GPD (Generalized Extreme Value distribution)
+#'
+#' Class to fit a GPD law. WARNING: f_loc must by fit function!
+#'
+#' @docType class
+#' @importFrom R6 R6Class
+#'
+#' @param method [string]
+#'        Fit method, "moments", "lmoments", "lmoments_experimental", "MLE" and "bayesian" are available.
+#' @param n_bootstrap [int]
+#'        Number of bootstrap, default 0
+#' @param alpha [float]
+#'        Level of confidence interval, default 0.05
+#'
+#' @return Object of \code{\link{R6Class}} 
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize GPD law with code{GPDLaw}}
+#'   \item{\code{fit(Y,...)}}{Fit the GPD law}.
+#' }
+#' @examples
+#' ## Start by generate non-stationary GPD dataset
+#' size = 2000
+#' c_data = Dataset$covariates(size)
+#' 
+#' t       = c_data$t
+#' X_loc   = c_data$X_loc
+#' X_scale = c_data$X_scale
+#' X_shape = c_data$X_shape
+#' 
+#' loc   = 1.  + 0.8  * X_loc
+#' scale = 0.2 + 0.08 * X_scale
+#' shape = 0.  + 0.3  * X_shape
+#' 
+#' 
+#' Y = SDFC::rgev( size , loc , scale , shape )
+#' 
+#' ## Regression with MLE
+#' law = SDFC::GPD$new( "mle" )
+#' law$fit( Y , f_loc = loc , c_scale = X_scale , c_shape = X_shape )
+#' 
+#' ## Assuming scale is known (available for any covariates)
+#' law = SDFC::GPD$new( "mle" )
+#' law$fit( Y , f_loc = loc , f_scale = scale , c_shape = X_shape )
+#' 
+#' ## And if we want a link function
+#' law = SDFC::GPD$new( "mle" )
+#' law$fit( Y , f_loc = loc , c_scale = X_scale , l_scale = SDFC::ExpLink$new() , c_shape = X_shape )
+#' 
+#' ## If we do not give a parameter, it is assumed constant
+#' law = SDFC::GPD$new( "mle" )
+#' law$fit( Y , f_loc = loc , c_scale = X_scale )
+#' 
 #' @export
 GPD = R6::R6Class( "GPD" ,
 	

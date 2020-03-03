@@ -102,7 +102,7 @@
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize Normal law with code{NormalLaw}}
+#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize Normal law with code{Normal}}
 #'   \item{\code{fit(Y,...)}}{Fit the Normal law}.
 #' }
 #' @examples

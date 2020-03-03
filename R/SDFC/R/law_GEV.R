@@ -317,7 +317,7 @@ rgev = function( n = 1 , loc = 0 , scale = 1 , shape = 0 )
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize GEV law with code{GEVLaw}}
+#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize GEV law with code{GEV}}
 #'   \item{\code{fit(Y,...)}}{Fit the GEV law}.
 #' }
 #' @examples

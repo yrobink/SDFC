@@ -143,7 +143,7 @@ test_exponential = function( show = FALSE )##{{{
 	t       = c_data$t
 	X_scale = c_data$X_scale
 	
-	scale = 1.5 + 0.5 * X_scale
+	scale = 0.5 + 1.5 * X_scale
 	
 	
 	Y = rexp( size , rate = 1. / scale )
@@ -314,6 +314,25 @@ run_all_tests = function( show = TRUE )##{{{
 
 #run_all_tests()
 
+
+size = 2000
+c_data = Dataset$covariates(size)
+
+t       = c_data$t
+X_scale = c_data$X_scale
+X_shape = c_data$X_shape
+
+scale = 0.2 + 0.08 * X_scale
+shape = 0.4 + 0.3  * X_shape
+
+
+Y = rgamma( size , shape = shape , scale = scale )
+
+## Regression with MLE
+law = SDFC::Gamma$new( "moments" )
+law$fit( Y , c_scale = X_scale , c_shape = X_shape )
+
+print(law)
 
 plt$wait()
 

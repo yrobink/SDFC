@@ -200,8 +200,8 @@ class Gamma(AbstractLaw):
 				for j in range(pshape.n_features):
 					mX = np.hstack( (mX,np.reshape( pscale.design_[:,i]    * pshape.design_[:,j] , (n_samples,1) ) ) )
 					vX = np.hstack( (vX,np.reshape( pscale.design_[:,i]**2 * pshape.design_[:,j] , (n_samples,1) ) ) )
-			m = mean( self._Y , mX )
-			v = var(  self._Y , vX )
+			m = mean( self._Y , mX[:,1:] )
+			v = var(  self._Y , vX[:,1:] )
 			
 			idx  = np.logical_or( np.abs(m) < 1e-8 , v < 1e-8 )
 			cidx = np.logical_not(idx)

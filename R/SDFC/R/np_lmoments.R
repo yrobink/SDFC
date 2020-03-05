@@ -81,19 +81,7 @@
 ##################################################################################
 ##################################################################################
 
-#' np_lmoments_stationary
-#'
-#' Compute the four first L-Moments
-#'
-#' @param Y  [vector] Dataset
-#'
-#' @return [lmom] L-Moments
-#'
-#' @examples
-#' ## Data
-#' Y    = stats::rexp( n = 10000 )
-#' lmom = SDFC::np_lmoments_stationary(Y)
-#' @export
+
 np_lmoments_stationary = function(Y)
 {
 	Ys = Y[order(Y)]
@@ -156,7 +144,7 @@ np_lmoments = function( Y , c_Y = NULL , order = NULL , lq = base::seq( 0.05 , 0
 	
 	if( is.null(c_Y) )
 	{
-		lmom = np_lmoments_stationary(Y)
+		lmom = SDFC:::np_lmoments_stationary(Y)
 		return(lmom[order])
 	}
 	

@@ -114,7 +114,7 @@
 #' 
 #' scale = 0.2 + 0.08 * X_scale
 #' 
-#' Y = SDFC::rexp( size , rate = 1. / scale )
+#' Y = rexp( size , rate = 1. / scale )
 #' 
 #' ## Regression with MLE
 #' law = SDFC::Exponential$new( "mle" )

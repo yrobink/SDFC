@@ -187,6 +187,22 @@ Gamma = R6::R6Class( "Gamma" ,
 			self$params$update_coef( np_mean( scale , pscale$design_wo1() , value = FALSE , link = pscale$link ) , "scale" )
 			self$params$update_coef( np_mean( shape , pshape$design_wo1() , value = FALSE , link = pshape$link ) , "shape" )
 		}
+		else if( pscale$is_fix() )
+		{
+			m   = np_mean( private$Y , pshape$design_wo1() * self$scale   )
+			v   = np_var(  private$Y , pshape$design_wo1() * self$scale^2 )
+			
+			shape = m^2 / v
+			self$params$update_coef( np_mean( shape , pshape$design_wo1() , value = FALSE , link = pshape$link ) , "shape" )
+		}
+		else if( pshape$is_fix() )
+		{
+			m   = np_mean( private$Y , pscale$design_wo1()   * self$shape )
+			v   = np_var(  private$Y , pscale$design_wo1()^2 * self$shape )
+			
+			scale = v / m
+			self$params$update_coef( np_mean( scale , pscale$design_wo1() , value = FALSE , link = pscale$link ) , "scale" )
+		}
 	},
 	##}}}
 	

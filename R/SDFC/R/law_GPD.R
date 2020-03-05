@@ -340,7 +340,7 @@ rgpd = function( n = 1 , loc = 0 , scale = 1 , shape = 0 )
 #' @examples
 #' ## Start by generate non-stationary GPD dataset
 #' size = 2000
-#' c_data = Dataset$covariates(size)
+#' c_data = dataset.covariates(size)
 #' 
 #' t       = c_data$t
 #' X_loc   = c_data$X_loc

@@ -82,17 +82,32 @@
 ##################################################################################
 
 
+#' dataset.covariates
+#'
+#' Function used to generate examples of covariates
+#'
+#' @usage dataset.covariates(size)
+#'
+#' @param size   [int]    Numbers of values generated
+#'
+#' @return [list] list containing three covariates and a time axis
+#'
+#' @examples
+#' ## Data
+#' c_data = dataset.covariates(2000)
+#' c_data$t       ## Time axis
+#' c_data$t       ## Covariate for loc
+#' c_data$t       ## Covariate for scale
+#' c_data$t       ## Covariate for shape
 #' @export
-Dataset = list(
-	
-	covariates = function( size )
-	{
-		t       = base::seq( 0 , 1 , length = size )
-		X_loc   = t^2 + base::cos( 2 * base::pi * t ) * 0.2
-		X_scale = 2 * t^2 - 2 * t + 1
-		X_shape = 2 / ( 1 + base::exp( - 8 * ( t - 0.5 ) ) ) - 1
-		return( list( t = t , X_loc = X_loc , X_scale = X_scale , X_shape = X_shape ) )
-	}
-)
+dataset.covariates = function( size )
+{
+	t       = base::seq( 0 , 1 , length = size )
+	X_loc   = t^2 + base::cos( 2 * base::pi * t ) * 0.2
+	X_scale = 2 * t^2 - 2 * t + 1
+	X_shape = 2 / ( 1 + base::exp( - 8 * ( t - 0.5 ) ) ) - 1
+	return( list( t = t , X_loc = X_loc , X_scale = X_scale , X_shape = X_shape ) )
+}
+
 
 

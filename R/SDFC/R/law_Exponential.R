@@ -107,7 +107,7 @@
 #' @examples
 #' ## Start by generate non-stationary Exponential dataset
 #' size = 2000
-#' c_data = Dataset$covariates(size)
+#' c_data = dataset.covariates(size)
 #' 
 #' t       = c_data$t
 #' X_scale = c_data$X_scale

@@ -108,7 +108,7 @@
 #' @examples
 #' ## Start by generate non-stationary Normal dataset
 #' size = 2000
-#' c_data = SDFC::Dataset$covariates(size)
+#' c_data = SDFC::dataset.covariates(size)
 #' 
 #' t       = c_data$t
 #' X_loc   = c_data$X_loc

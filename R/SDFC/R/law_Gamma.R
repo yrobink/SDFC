@@ -116,7 +116,7 @@
 #' shape = 0.4 + 0.3  * X_shape
 #' 
 #' 
-#' Y = SDFC::rgamma( size , shape = shape , scale = scale )
+#' Y = rgamma( size , shape = shape , scale = scale )
 #' 
 #' ## Regression with MLE
 #' law = SDFC::Gamma$new( "mle" )

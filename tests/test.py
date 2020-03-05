@@ -20,11 +20,7 @@ import scipy.stats as sc
 import scipy.optimize as sco
 
 import matplotlib as mpl
-try:
-	import matplotlib.pyplot as plt
-except:
-	mpl.use("Qt5Agg")
-	import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 #import SDFC                as sdo
 import SDFC               as sd
@@ -233,7 +229,7 @@ def run_all_tests( method = "MLE" , size = 2500 ):##{{{
 if __name__ == "__main__":
 	
 	print(sd.__version__)
-#	run_all_tests()
+	run_all_tests()
 	
 	print("Done")
 

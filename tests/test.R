@@ -165,6 +165,44 @@ test_exponential = function( show = FALSE )##{{{
 }
 ##}}}
 
+test_gamma = function( show = FALSE )##{{{
+{
+	size = 2000
+	c_data = Dataset$covariates(size)
+	
+	t       = c_data$t
+	X_scale = c_data$X_scale
+	X_shape = c_data$X_shape
+	
+	scale = 0.2 + 0.08 * X_scale
+	shape = 0.4 + 0.3  * X_shape
+	
+	
+	Y = rgamma( size , shape = shape , scale = scale )
+	
+	# Regression with MLE
+	law = SDFC::Gamma$new( "mle" )
+	law$fit( Y , c_scale = X_scale , c_shape = X_shape )
+	
+	if( show )
+	{
+		plt$new_screen(2,2)
+		
+		## Subplot 1
+		graphics::plot(  t , Y       , col = grDevices::rgb( 0 , 0 , 1 , 0.5 ) )
+		graphics::lines( t ,  law$scale , col = "red" )
+		graphics::lines( t , -law$scale , col = "red" )
+		
+		## Subplot 2
+		graphics::plot( scale , law$scale , type = "p" , col = "blue" )
+		
+		## Subplot 3
+		graphics::plot( shape , law$shape , type = "p" , col = "blue" )
+		
+	}
+}
+##}}}
+
 test_gev = function( show = FALSE ) ##{{{
 {
 	size = 2000
@@ -300,6 +338,7 @@ run_all_tests = function( show = TRUE )##{{{
 {
 	test_normal(show)
 	test_exponential(show)
+	test_gamma(show)
 	test_gev(show)
 	test_gpd(show)
 	test_qr(show)
@@ -313,26 +352,6 @@ run_all_tests = function( show = TRUE )##{{{
 ##########
 
 #run_all_tests()
-
-
-size = 2000
-c_data = Dataset$covariates(size)
-
-t       = c_data$t
-X_scale = c_data$X_scale
-X_shape = c_data$X_shape
-
-scale = 0.2 + 0.08 * X_scale
-shape = 0.4 + 0.3  * X_shape
-
-
-Y = rgamma( size , shape = shape , scale = scale )
-
-## Regression with MLE
-law = SDFC::Gamma$new( "moments" )
-law$fit( Y , c_scale = X_scale , c_shape = X_shape )
-
-print(law)
 
 plt$wait()
 

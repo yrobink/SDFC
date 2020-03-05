@@ -265,6 +265,10 @@ class AbstractLaw:
 		return self._info.cov
 	##}}}
 	
+	@property
+	def info(self):##{{{
+		return self._info
+	##}}}
 	
 	#####################################################################
 	

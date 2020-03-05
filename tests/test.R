@@ -102,7 +102,7 @@ plt = PlotTools$new()
 test_normal = function( show = FALSE ) ##{{{
 {
 	size = 2000
-	c_data = Dataset$covariates(size)
+	c_data = dataset.covariates(size)
 	
 	t       = c_data$t
 	X_loc   = c_data$X_loc
@@ -138,7 +138,7 @@ test_normal = function( show = FALSE ) ##{{{
 test_exponential = function( show = FALSE )##{{{
 {
 	size = 10000
-	c_data = Dataset$covariates(size)
+	c_data = dataset.covariates(size)
 	
 	t       = c_data$t
 	X_scale = c_data$X_scale
@@ -168,7 +168,7 @@ test_exponential = function( show = FALSE )##{{{
 test_gamma = function( show = FALSE )##{{{
 {
 	size = 2000
-	c_data = Dataset$covariates(size)
+	c_data = dataset.covariates(size)
 	
 	t       = c_data$t
 	X_scale = c_data$X_scale
@@ -206,7 +206,7 @@ test_gamma = function( show = FALSE )##{{{
 test_gev = function( show = FALSE ) ##{{{
 {
 	size = 2000
-	c_data = Dataset$covariates(size)
+	c_data = dataset.covariates(size)
 	
 	t       = c_data$t
 	X_loc   = c_data$X_loc
@@ -250,7 +250,7 @@ test_gev = function( show = FALSE ) ##{{{
 test_gpd = function( show = FALSE )##{{{
 {
 	size = 2000
-	c_data = Dataset$covariates(size)
+	c_data = dataset.covariates(size)
 	
 	t       = c_data$t
 	X_loc   = c_data$X_loc
@@ -294,7 +294,7 @@ test_gpd = function( show = FALSE )##{{{
 test_qr = function( show = FALSE ) ##{{{
 {
 	size = 2000
-	c_data = Dataset$covariates(size)
+	c_data = dataset.covariates(size)
 	
 	loc   = 0.5 + 2 * c_data$X_loc
 	scale = 1 + 2 * c_data$X_scale
@@ -319,7 +319,7 @@ test_qr = function( show = FALSE ) ##{{{
 test_lmoments = function() ##{{{
 {
 	size = 2000
-	c_data = Dataset$covariates(size)
+	c_data = dataset.covariates(size)
 	
 	t       = c_data$t
 	X_loc   = c_data$X_loc

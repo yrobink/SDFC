@@ -264,7 +264,6 @@ class GPD(AbstractLaw):
 			shape = 2 - itau
 			
 			scale_design = pscale.design_wo1()
-			print(scale_design.shape)
 			if scale_design is not None: scale_design = scale_design[idx.squeeze(),:]
 			self.params.update_coef( mean( scale , scale_design , link = pscale.link , value = False ) , "scale" )
 			

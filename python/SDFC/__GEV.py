@@ -360,26 +360,37 @@ class GEV(AbstractLaw):
 		nlll = self._negloglikelihood(self.coef_)
 		grad = self._gradient_nlll(self.coef_)
 		
-		f_scale = 1
-		f_shape = 1
-		while ( not nlll < np.inf ) or np.any(np.isnan(grad)):
-			pscale = self.params._dparams["scale"]
-			pshape = self.params._dparams["shape"]
-			
-			if pshape.is_fix() and not pscale.is_fix():
-				coef_ = np.zeros(pscale.n_features)
-				coef_[0] = pscale.link.inverse( 1. * f_scale )
-				self.params.update_coef( coef_ , "scale" )
-			elif not pshape.is_fix():
-				coef_ = np.zeros(pshape.n_features)
-				coef_[0] = pshape.link.inverse( 1e-1 / f_shape )
-				self.params.update_coef( coef_ , "shape" )
-			else:
-				self._fit_quantiles()
-			f_scale *= 2
-			f_shape *= 2
-			nlll = self._negloglikelihood(self.coef_)
-			grad = self._gradient_nlll(self.coef_)
+		coef_ = self.coef_.copy()
+		n_features = coef_.size
+		
+		nit = 0
+		scale = 0.1
+		while (not (np.isfinite(nlll) and np.isfinite(grad).all() )) and nit < 400:
+			nit += 1
+			rcoef_ = coef_ + np.random.normal( loc = 0 , scale = scale , size = n_features )
+			nlll = self._negloglikelihood(rcoef_)
+			grad = self._gradient_nlll(rcoef_)
+			if nit % 100 == 0: scale *= 5
+#		f_scale = 1
+#		f_shape = 1
+#		while ( not nlll < np.inf ) or np.any(np.isnan(grad)):
+#			pscale = self.params._dparams["scale"]
+#			pshape = self.params._dparams["shape"]
+#			
+#			if pshape.is_fix() and not pscale.is_fix():
+#				coef_ = np.zeros(pscale.n_features)
+#				coef_[0] = pscale.link.inverse( 1. * f_scale )
+#				self.params.update_coef( coef_ , "scale" )
+#			elif not pshape.is_fix():
+#				coef_ = np.zeros(pshape.n_features)
+#				coef_[0] = pshape.link.inverse( 1e-1 / f_shape )
+#				self.params.update_coef( coef_ , "shape" )
+#			else:
+#				self._fit_quantiles()
+#			f_scale *= 2
+#			f_shape *= 2
+#			nlll = self._negloglikelihood(self.coef_)
+#			grad = self._gradient_nlll(self.coef_)
 	##}}}
 	
 	def _fit( self ):##{{{

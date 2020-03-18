@@ -230,7 +230,7 @@ class GEV(AbstractLaw):
 		
 		## Fit scale
 		if not pscale.is_fix():
-			self.params.set_intercept( iscale , "scale" )
+			self.params.set_intercept( pscale.link.inverse(iscale) , "scale" )
 		
 		## Fit loc
 		if not ploc.is_fix():
@@ -238,11 +238,11 @@ class GEV(AbstractLaw):
 				iloc = m - 0.57722 * np.exp(pscale.value)
 				self.params.update_coef( mean( iloc , ploc.design_wo1() , value = False , link = ploc.link ) , "loc" )
 			else:
-				self.params.set_intercept( iloc , "loc" )
+				self.params.set_intercept( ploc.link.inverse(iloc) , "loc" )
 		
 		## Fit shape
 		if not pshape.is_fix():
-			self.params.set_intercept( ishape , "shape" )
+			self.params.set_intercept( pshape.link.inverse(ishape) , "shape" )
 		
 	##}}}
 	
@@ -266,7 +266,7 @@ class GEV(AbstractLaw):
 		
 		## Fit scale
 		if not pscale.is_fix():
-			self.params.set_intercept( iscale , "scale" )
+			self.params.set_intercept( pscale.link.inverse(iscale) , "scale" )
 		
 		## Fit loc
 		if not ploc.is_fix():
@@ -274,11 +274,11 @@ class GEV(AbstractLaw):
 				iloc = lmom[0] - pscale.value * (1 - g) / kappa
 				self.params.update_coef( mean( iloc , ploc.design_wo1() , value = False , link = ploc.link ) , "loc" )
 			else:
-				self.params.set_intercept( iloc , "loc" )
+				self.params.set_intercept( ploc.link.inverse(iloc) , "loc" )
 		
 		## Fit shape
 		if not pshape.is_fix():
-			self.params.set_intercept( ishape , "shape" )
+			self.params.set_intercept( pshape.link.inverse(ishape) , "shape" )
 	##}}}
 	
 	def _fit_lmoments_experimental(self):##{{{

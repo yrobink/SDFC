@@ -1,6 +1,5 @@
 #!/bin/sh
 
-
 ## Delete python temporary files
 rm -rf python/SDFC.egg*
 rm -rf python/build

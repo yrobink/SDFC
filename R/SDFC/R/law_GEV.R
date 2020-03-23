@@ -397,7 +397,7 @@ GEV = R6::R6Class( "GEV" ,
 		ishape = 1e-8
 		
 		if( !pscale$is_fix() )
-			self$params$set_intercept( iscale , "scale" )
+			self$params$set_intercept( pscale$link$inverse(iscale) , "scale" )
 		
 		if( !ploc$is_fix() )
 		{
@@ -408,12 +408,12 @@ GEV = R6::R6Class( "GEV" ,
 			}
 			else
 			{
-				self$params$set_intercept( iloc , "loc" )
+				self$params$set_intercept( ploc$link$inverse(iloc) , "loc" )
 			}
 		}
 		
 		if( !pshape$is_fix() )
-			self$params$set_intercept( ishape , "shape" )
+			self$params$set_intercept( pshape$link$inverse(ishape) , "shape" )
 		
 	},
 	##}}}
@@ -438,7 +438,7 @@ GEV = R6::R6Class( "GEV" ,
 		
 		## Fit scale
 		if( !pscale$is_fix() )
-			self$params$set_intercept( iscale , "scale" )
+			self$params$set_intercept( pscale$link$inverse(iscale) , "scale" )
 		
 		## Fit loc
 		if( !ploc$is_fix() )
@@ -450,13 +450,13 @@ GEV = R6::R6Class( "GEV" ,
 			}
 			else
 			{
-				self$params$set_intercept( iloc , "loc" )
+				self$params$set_intercept( ploc$link$inverse(iloc) , "loc" )
 			}
 		}
 		
 		## Fit shape
 		if( !pshape$is_fix() )
-			self$params$set_intercept( ishape , "shape" )
+			self$params$set_intercept( pshape$link$inverse(ishape) , "shape" )
 	},
 	##}}}
 	

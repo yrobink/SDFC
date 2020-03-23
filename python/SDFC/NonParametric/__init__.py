@@ -92,5 +92,6 @@ from SDFC.NonParametric.__std                import std
 from SDFC.NonParametric.__cov                import cov
 from SDFC.NonParametric.__quantile           import quantile
 from SDFC.NonParametric.__lmoments           import lmoments
+from SDFC.NonParametric.__lmoments           import lmoments_matrix
 from SDFC.NonParametric.__NonParametric_cpp  import QuantileRegression
 

@@ -95,29 +95,39 @@ from SDFC.NonParametric.__quantile import quantile
 ## Functions ##
 ###############
 
-def _lmoments_stationary( Y ):##{{{
-	Ys = np.sort(Y.squeeze())
-	lmom = np.zeros(4)
-	
-	## Order 2
-	C0 = scs.binom( range( Y.size ) , 1 )
-	C1 = scs.binom( range( Y.size - 1 , -1 , -1 ) , 1 )
+def lmoments_matrix( size ):##{{{
+	"""
+		SDFC.NonParametric.lmoments_matrix
+		==================================
+		
+		Build a matrix to infer L-Moments in stationary case. If M = lmoments_matrix(Y.size), then
+		the fourth first L-Moments are just M.T @ np.sort(Y)
+		
+	"""
+	C0 = scs.binom( range( size ) , 1 )
+	C1 = scs.binom( range( size - 1 , -1 , -1 ) , 1 )
 	
 	## Order 3
-	C2 = scs.binom( range( Y.size ) , 2 )
-	C3 = scs.binom( range( Y.size - 1 , -1 , -1 ) , 2 )
+	C2 = scs.binom( range( size ) , 2 )
+	C3 = scs.binom( range( size - 1 , -1 , -1 ) , 2 )
 	
 	## Order 4
-	C4 = scs.binom( range( Y.size ) , 3 )
-	C5 = scs.binom( range( Y.size - 1 , -1 , -1 ) , 3 )
+	C4 = scs.binom( range( size ) , 3 )
+	C5 = scs.binom( range( size - 1 , -1 , -1 ) , 3 )
 	
+	M = np.zeros( (size,4) )
+	M[:,0] = 1. / size
+	M[:,1] = ( C0 - C1 ) / ( 2 * scs.binom( size , 2 ) )
+	M[:,2] = ( C2 - 2 * C0 * C1 + C3 ) / ( 3 * scs.binom( size , 3 ) )
+	M[:,3] = ( C4 - 3 * C2 * C1 + 3 * C0 * C3 - C5 ) / ( 4 * scs.binom( size , 4 ) )
 	
-	lmom[0] = np.mean(Ys)
-	lmom[1] = np.sum( ( C0 - C1 ) * Ys ) / ( 2 * scs.binom( Y.size , 2 ) )
-	lmom[2] = np.sum( ( C2 - 2 * C0 * C1 + C3 ) * Ys ) / ( 3 * scs.binom( Y.size , 3 ) )
-	lmom[3] = np.sum( (C4 - 3 * C2 * C1 + 3 * C0 * C3 - C5 ) * Ys ) / ( 4 * scs.binom( Y.size , 4 ) )
-	
-	return lmom
+	return M
+##}}}
+
+def _lmoments_stationary( Y ):##{{{
+	Ys = np.sort(Y.squeeze())
+	M = lmoments_matrix( Y.size )
+	return M.T @ Ys
 ##}}}
 
 def lmoments( Y , c_Y = None , order = None , lq = np.arange( 0.05 , 0.96 , 0.01 ) ):##{{{
@@ -153,9 +163,8 @@ def lmoments( Y , c_Y = None , order = None , lq = np.arange( 0.05 , 0.96 , 0.01
 		Y = Y.reshape(-1,1)
 		if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
 		Yq = quantile( Y , lq , c_Y )
-		lmom = np.zeros((Y.size,4))
-		for i in range(Y.size):
-			lmom[i,:] = _lmoments_stationary(Yq[i,:])
+		M  = lmoments_matrix(Yq.shape[1])
+		lmom = np.transpose( M.T @ Yq.T )
 		if order is None:
 			return lmom
 		else:

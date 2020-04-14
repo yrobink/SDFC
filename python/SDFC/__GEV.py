@@ -354,8 +354,10 @@ class GEV(AbstractLaw):
 	##}}}
 	
 	def _initialization_mle(self):##{{{
-		
-		self._fit_lmoments_experimental()
+		try:
+			self._fit_lmoments_experimental()
+		except:
+			self._fit_quantiles()
 		
 		nlll = self._negloglikelihood(self.coef_)
 		grad = self._gradient_nlll(self.coef_)

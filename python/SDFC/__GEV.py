@@ -305,7 +305,11 @@ class GEV(AbstractLaw):
 			return opt.root
 		shape_solver = np.vectorize(uni_shape_solver)
 		tau3 = lmom[:,2] / lmom[:,1]
-		shape = shape_solver(tau3)
+		try:
+			shape = shape_solver(tau3)
+		except:
+			co    = 2. / ( 3. + tau3 ) - np.log(2) / np.log(3)
+			shape = - 7.8590 * co - 2.9554 * co**2
 		
 		## Find scale
 		gshape = scs.gamma( 1 - shape )

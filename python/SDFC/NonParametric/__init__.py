@@ -89,7 +89,9 @@
 from SDFC.NonParametric.__mean               import mean
 from SDFC.NonParametric.__median             import median
 from SDFC.NonParametric.__std                import std
+from SDFC.NonParametric.__cov                import cov
 from SDFC.NonParametric.__quantile           import quantile
 from SDFC.NonParametric.__lmoments           import lmoments
+from SDFC.NonParametric.__lmoments           import lmoments_matrix
 from SDFC.NonParametric.__NonParametric_cpp  import QuantileRegression
 

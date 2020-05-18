@@ -1,4 +1,4 @@
- 
+
 ##################################################################################
 ##################################################################################
 ##                                                                              ##
@@ -81,13 +81,10 @@
 ##################################################################################
 ##################################################################################
 
-#############
-## Classes ##
-#############
 
-## Base class for LinkFct {{{
+## Base class for Link {{{
 
-#' Base class for LinkFct
+#' Base class for Link function
 #'
 #' Base class used to define generic link function
 #'
@@ -109,7 +106,7 @@
 #' @examples
 #'
 #' @export
-LinkFct = R6::R6Class( "LinkFct" ,
+AbstractLink = R6::R6Class( "AbstractLink" ,
 	public = list(
 	
 	###############
@@ -154,9 +151,9 @@ LinkFct = R6::R6Class( "LinkFct" ,
 )
 ##}}}
 
-## ChainLinkFct {{{
+## ChainLink {{{
 
-#' ChainLinkFct
+#' ChainLink
 #'
 #' Chain link function to chain two link functions
 #'
@@ -164,25 +161,25 @@ LinkFct = R6::R6Class( "LinkFct" ,
 #' @importFrom R6 R6Class
 #'
 #' @param x [vector]
-#' @param linFct1 [LinkFct] Second link function to apply
-#' @param linFct0 [LinkFct] First link function to apply
+#' @param link0 [LinkFct] First link function to apply
+#' @param link1 [LinkFct] Second link function to apply
 #'
 #' @return Object of \code{\link{R6Class}}
 #' @format \code{\link{R6Class}} object.
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(linkFct1,linkFct0)}}{This method is used to create object of this class with \code{IdLinkFct}}
-#'   \item{\code{eval(x)}}{Evaluation of IdLinkFct at x}
-#'   \item{\code{inverse(x)}}{Inverse of IdLinkFct at x}
-#'   \item{\code{gradient(x)}}{Gradient of IdLinkFct at x}
+#'   \item{\code{new(link1,link0)}}{This method is used to create object of this class with \code{ChainLink}}
+#'   \item{\code{eval(x)}}{Evaluation of ChainLink at x}
+#'   \item{\code{inverse(x)}}{Inverse of ChainLink at x}
+#'   \item{\code{gradient(x)}}{Gradient of ChainLink at x}
 #' }
 #' @examples
 #'
 #' @export
-ChainLinkFct = R6::R6Class( "ChainLinkFct" ,
+ChainLink = R6::R6Class( "ChainLink" ,
 	
-	inherit = SDFC::LinkFct,
+	inherit = SDFC::AbstractLink,
 	
 	
 	public = list(
@@ -191,34 +188,34 @@ ChainLinkFct = R6::R6Class( "ChainLinkFct" ,
 	## Arguments ##
 	###############
 	
-	linkFct0 = NULL,
-	linkFct1 = NULL,
+	link0 = NULL,
+	link1 = NULL,
 	
 	
 	#################
 	## Constructor ##
 	#################
 	
-	initialize = function( linkFct1 , linkFct0 )
+	initialize = function( link1 , link0 )
 	{
 		super$initialize()
-		self$linkFct0 = linkFct0
-		self$linkFct1 = linkFct1
+		self$link0 = link0
+		self$link1 = link1
 	},
 	
 	eval = function(x)
 	{
-		return( self$linkFct1$eval( self$linkFct0$eval(x) ) )
+		return( self$link1$eval( self$link0$eval(x) ) )
 	},
 	
 	inverse = function(x)
 	{
-		return( self$linkFct0$inverse( self$linkFct1$inverse(x) ) )
+		return( self$link0$inverse( self$link1$inverse(x) ) )
 	},
 	
 	gradient = function(x)
 	{
-		return( self$linkFct0$gradient(x) * self$linkFct1$gradient( self$linkFct0$eval(x) ) )
+		return( self$link0$gradient(x) * self$link1$gradient( self$link0$eval(x) ) )
 	}
 	
 	
@@ -239,9 +236,9 @@ ChainLinkFct = R6::R6Class( "ChainLinkFct" ,
 )
 ##}}}
 
-## IdLinkFct {{{
+## IdLink {{{
 
-#' IdLinkFct
+#' IdLink
 #'
 #' Identity link function
 #'
@@ -255,17 +252,17 @@ ChainLinkFct = R6::R6Class( "ChainLinkFct" ,
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new()}}{This method is used to create object of this class with \code{IdLinkFct}}
-#'   \item{\code{eval(x)}}{Evaluation of IdLinkFct at x}
-#'   \item{\code{inverse(x)}}{Inverse of IdLinkFct at x}
-#'   \item{\code{gradient(x)}}{Gradient of IdLinkFct at x}
+#'   \item{\code{new()}}{This method is used to create object of this class with \code{IdLink}}
+#'   \item{\code{eval(x)}}{Evaluation of IdLink at x}
+#'   \item{\code{inverse(x)}}{Inverse of IdLink at x}
+#'   \item{\code{gradient(x)}}{Gradient of IdLink at x}
 #' }
 #' @examples
 #'
 #' @export
-IdLinkFct = R6::R6Class( "IdLinkFct" ,
+IdLink = R6::R6Class( "IdLink" ,
 	
-	inherit = SDFC::LinkFct,
+	inherit = SDFC::AbstractLink,
 	
 	
 	public = list(
@@ -316,86 +313,9 @@ IdLinkFct = R6::R6Class( "IdLinkFct" ,
 )
 ##}}}
 
-## InverseLinkFct {{{
+## ExpLink {{{
 
-#' InverseLinkFct
-#'
-#' Inverse link function
-#'
-#' @docType class
-#' @importFrom R6 R6Class
-#'
-#' @param x [vector]
-#'
-#' @return Object of \code{\link{R6Class}}
-#' @format \code{\link{R6Class}} object.
-#'
-#' @section Methods:
-#' \describe{
-#'   \item{\code{new()}}{This method is used to create object of this class with \code{InverseLinkFct}}
-#'   \item{\code{eval(x)}}{Evaluation of InverseLinkFct at x}
-#'   \item{\code{inverse(x)}}{Inverse of InverseLinkFct at x}
-#'   \item{\code{gradient(x)}}{Gradient of InverseLinkFct at x}
-#' }
-#' @examples
-#'
-#' @export
-InverseLinkFct = R6::R6Class( "InverseLinkFct" ,
-	
-	inherit = SDFC::LinkFct,
-	
-	
-	public = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	#################
-	## Constructor ##
-	#################
-	
-	initialize = function()
-	{
-		super$initialize()
-	},
-	
-	eval = function(x)
-	{
-		return( 1. / x )
-	},
-	
-	inverse = function(x)
-	{
-		return( 1. / x )
-	},
-	
-	gradient = function(x)
-	{
-		return( - 1. / x^2 )
-	}
-	
-	
-	),
-	
-	
-	######################
-	## Private elements ##
-	######################
-	
-	private = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	)
-)
-##}}}
-
-## ExpLinkFct {{{
-
-#' ExpLinkFct
+#' ExpLink
 #'
 #' Exponential link function
 #'
@@ -409,17 +329,17 @@ InverseLinkFct = R6::R6Class( "InverseLinkFct" ,
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new()}}{This method is used to create object of this class with \code{ExpLinkFct}}
-#'   \item{\code{eval(x)}}{Evaluation of ExpLinkFct at x}
-#'   \item{\code{inverse(x)}}{Inverse of ExpLinkFct at x}
-#'   \item{\code{gradient(x)}}{Gradient of ExpLinkFct at x}
+#'   \item{\code{new()}}{This method is used to create object of this class with \code{ExpLink}}
+#'   \item{\code{eval(x)}}{Evaluation of ExpLink at x}
+#'   \item{\code{inverse(x)}}{Inverse of ExpLink at x}
+#'   \item{\code{gradient(x)}}{Gradient of ExpLink at x}
 #' }
 #' @examples
 #'
 #' @export
-ExpLinkFct = R6::R6Class( "ExpLinkFct" ,
+ExpLink = R6::R6Class( "ExpLink" ,
 	
-	inherit = SDFC::LinkFct,
+	inherit = SDFC::AbstractLink,
 	
 	
 	public = list(
@@ -470,9 +390,86 @@ ExpLinkFct = R6::R6Class( "ExpLinkFct" ,
 )
 ##}}}
 
-## LogitLinkFct {{{
+## InverseLink {{{
 
-#' LogitLinkFct
+#' InverseLink
+#'
+#' Inverse link function
+#'
+#' @docType class
+#' @importFrom R6 R6Class
+#'
+#' @param x [vector]
+#'
+#' @return Object of \code{\link{R6Class}}
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new()}}{This method is used to create object of this class with \code{InverseLink}}
+#'   \item{\code{eval(x)}}{Evaluation of InverseLink at x}
+#'   \item{\code{inverse(x)}}{Inverse of InverseLink at x}
+#'   \item{\code{gradient(x)}}{Gradient of InverseLink at x}
+#' }
+#' @examples
+#'
+#' @export
+InverseLink = R6::R6Class( "InverseLink" ,
+	
+	inherit = SDFC::AbstractLink,
+	
+	
+	public = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	#################
+	## Constructor ##
+	#################
+	
+	initialize = function()
+	{
+		super$initialize()
+	},
+	
+	eval = function(x)
+	{
+		return( 1. / x )
+	},
+	
+	inverse = function(x)
+	{
+		return( 1. / x )
+	},
+	
+	gradient = function(x)
+	{
+		return( - 1. / x^2 )
+	}
+	
+	
+	),
+	
+	
+	######################
+	## Private elements ##
+	######################
+	
+	private = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	)
+)
+##}}}
+
+## LogitLink {{{
+
+#' LogitLink
 #'
 #' Logit link function
 #'
@@ -489,17 +486,17 @@ ExpLinkFct = R6::R6Class( "ExpLinkFct" ,
 #'
 #' @section Methods:
 #' \describe{
-#'   \item{\code{new(a,b,s)}}{This method is used to create object of this class with \code{LogitLinkFct}}
-#'   \item{\code{eval(x)}}{Evaluation of LogitLinkFct at x}
-#'   \item{\code{inverse(x)}}{Inverse of LogitLinkFct at x}
-#'   \item{\code{gradient(x)}}{Gradient of LogitLinkFct at x}
+#'   \item{\code{new(a,b,s)}}{This method is used to create object of this class with \code{LogitLink}}
+#'   \item{\code{eval(x)}}{Evaluation of LogitLink at x}
+#'   \item{\code{inverse(x)}}{Inverse of LogitLink at x}
+#'   \item{\code{gradient(x)}}{Gradient of LogitLink at x}
 #' }
 #' @examples
 #'
 #' @export
-LogitLinkFct = R6::R6Class( "LogitLinkFct" ,
+LogitLink = R6::R6Class( "LogitLink" ,
 	
-	inherit = SDFC::LinkFct,
+	inherit = SDFC::AbstractLink,
 	
 	
 	public = list(
@@ -561,4 +558,5 @@ LogitLinkFct = R6::R6Class( "LogitLinkFct" ,
 	)
 )
 ##}}}
+
 

@@ -81,49 +81,268 @@
 ##################################################################################
 ##################################################################################
 
-
-#' np_mean
+#' Gamma distribution
 #'
-#' Compute the mean with covariates and link function
+#' Class to fit a Gamma law.
 #'
-#' @param Y   [vector] Dataset to fit
-#' @param c_Y [vector or NULL] Covariate
-#' @param link  [SDFC::LinkFct] link function, default is identity
-#' @param value  [bool] if TRUE return mean, else return coefficients of the fit
+#' @docType class
+#' @importFrom R6 R6Class
 #'
-#' @return [vector] Mean or coefficients of regression
+#' @param method [string]
+#'        Fit method, "moments", "lmoments", "lmoments_experimental", "MLE" and "bayesian" are available.
+#' @param n_bootstrap [int]
+#'        Number of bootstrap, default 0
+#' @param alpha [float]
+#'        Level of confidence interval, default 0.05
 #'
+#' @return Object of \code{\link{R6Class}} 
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize Gamma law with code{Gamma}}
+#'   \item{\code{fit(Y,...)}}{Fit the Gamma law}.
+#' }
 #' @examples
-#' ## Data
-#' size = 2500
-#' t    = base::seq( 0 , 1 , length = size )
-#' X0    = t^2
-#' loc   = 1. + 2 * X0
-#' Y    = stats::rnorm( n = size , mean = loc , sd = 0.1 )
-#'
-#' m = np_mean( Y , c_Y = X0 )
+#' ## Start by generate non-stationary Gamma dataset
+#' size = 2000
+#' c_data = dataset.covariates(size)
+#' 
+#' t       = c_data$t
+#' X_scale = c_data$X_scale
+#' X_shape = c_data$X_shape
+#' 
+#' scale = 0.2 + 0.08 * X_scale
+#' shape = 0.4 + 0.3  * X_shape
+#' 
+#' 
+#' Y = rgamma( size , shape = shape , scale = scale )
+#' 
+#' ## Regression with MLE
+#' law = SDFC::Gamma$new( "mle" )
+#' law$fit( Y , c_scale = X_scale , c_shape = X_shape )
+#' 
+#' ## Assuming scale is known (available for any covariates)
+#' law = SDFC::Gamma$new( "mle" )
+#' law$fit( Y , f_scale = scale , c_shape = X_shape )
+#' 
+#' ## And if we want a link function
+#' law = SDFC::Gamma$new( "mle" )
+#' law$fit( Y , c_scale = X_scale , l_scale = SDFC::ExpLink$new() , c_shape = X_shape )
+#' 
+#' ## If we do not give a parameter, it is assumed constant
+#' law = SDFC::Gamma$new( "mle" )
+#' law$fit( Y , c_scale = X_scale )
 #' 
 #' @export
-np_mean = function( Y , c_Y = NULL , link = SDFC::IdLink$new() , value = TRUE )
-{
-	out  = NULL
-	coef = NULL
-	if( is.null(c_Y) )
+Gamma = R6::R6Class( "Gamma" ,
+	
+	inherit = AbstractLaw,
+	
+	##################
+	## Private list ##
+	##{{{
+	
+	private = list(
+	
+	## Arguments
+	##==========
+	
+	## Methods
+	##========
+	
+	fit_moments = function()##{{{
 	{
-		out  = base::mean(Y)
-		coef = link$inverse(out)
+		pscale = self$params$dparams_[["scale"]]
+		pshape = self$params$dparams_[["shape"]]
+		
+		
+		if( !pscale$is_fix() && !pshape$is_fix() )
+		{
+			mX = numeric( self$params$n_samples ) + 1
+			vX = numeric( self$params$n_samples ) + 1
+			for( i in 2:pscale$n_features )
+			{
+				for( j in 1:pshape$n_features )
+				{
+					mX = base::cbind( mX , pscale$design_[,i]   * pshape$design_[,j] )
+					vX = base::cbind( vX , pscale$design_[,i]^2 * pshape$design_[,j] )
+				}
+			}
+			
+			m   = np_mean( private$Y , mX[,2:base::ncol(mX)] )
+			v   = np_var(  private$Y , vX[,2:base::ncol(vX)] )
+			idx = ( abs(m) < 1e-8 ) | v < 1e-8
+			
+			scale = numeric(self$params$n_samples)
+			shape = numeric(self$params$n_samples)
+			scale[!idx] = v[!idx] / m[!idx]
+			shape[!idx] = m[!idx]^2 / v[!idx]
+			
+			if( base::any(idx) )
+			{
+				scale[idx] = base::min(scale[!idx])
+				shape[idx] = base::min(shape[!idx])
+			}
+			self$params$update_coef( np_mean( scale , pscale$design_wo1() , value = FALSE , link = pscale$link ) , "scale" )
+			self$params$update_coef( np_mean( shape , pshape$design_wo1() , value = FALSE , link = pshape$link ) , "shape" )
+		}
+		else if( pscale$is_fix() )
+		{
+			m   = np_mean( private$Y , pshape$design_wo1() * self$scale   )
+			v   = np_var(  private$Y , pshape$design_wo1() * self$scale^2 )
+			
+			shape = m^2 / v
+			self$params$update_coef( np_mean( shape , pshape$design_wo1() , value = FALSE , link = pshape$link ) , "shape" )
+		}
+		else if( pshape$is_fix() )
+		{
+			m   = np_mean( private$Y , pscale$design_wo1()   * self$shape )
+			v   = np_var(  private$Y , pscale$design_wo1()^2 * self$shape )
+			
+			scale = v / m
+			self$params$update_coef( np_mean( scale , pscale$design_wo1() , value = FALSE , link = pscale$link ) , "scale" )
+		}
+	},
+	##}}}
+	
+	initialization_mle = function()##{{{
+	{
+		private$fit_moments()
+	},
+	##}}}
+	
+	fit_ = function()##{{{
+	{
+		private$fit_moments()
+	},
+	##}}}
+	
+	negloglikelihood = function( coef )##{{{
+	{
+		self$coef_ = coef
+		## Impossible scale
+		if( !base::all( self$scale > 0 ) || !base::all( self$shape > 0 ) || !base::all( private$Y > 0 ) )
+			return(Inf)
+		
+		res = base::sum( private$Y / self$scale + base::lgamma(self$shape) + self$shape * base::log(self$scale) - (self$shape-1) * base::log(private$Y) )
+		
+		if( is.finite(res) )
+			return(res)
+		else
+			return(Inf)
+	},
+	##}}}
+	
+	gradient_nlll = function( coef ) ##{{{
+	{
+		self$coef_ = coef
+		
+		if( !base::all( self$scale > 0 ) || !base::all( self$shape > 0 ) || !base::all( private$Y > 0 ) )
+		{
+			return( base::rep( NaN , length(coef) ) )
+		}
+		
+		pscale = self$params$dparams_[["scale"]]
+		pshape = self$params$dparams_[["shape"]]
+		
+		
+		grad = base::c()
+		if( !pscale$is_fix() )
+		{
+			scale_vect = pscale$gradient() * ( self$shape / self$scale - private$Y / self$shape^2 )
+			grad_scale = base::t(pscale$design_) %*% scale_vect
+			grad       = base::c( grad , grad_scale )
+		}
+		if( !pshape$is_fix() )
+		{
+			shape_vect = pshape$gradient() * ( base::digamma(self$shape) + base::log(self$scale) - base::log(private$Y) )
+			grad_shape = base::t(pshape$design_) %*% shape_vect
+			grad       = base::c( grad , grad_shape )
+		}
+		
+		return( grad )
 	}
-	else
+	##}}}
+	
+	),
+	##}}}
+	##################
+	
+	#################
+	## Public list ##
+	##{{{
+	
+	public = list(
+	
+	## Arguments
+	##==========
+	
+	## Constructor
+	##============
+	initialize = function( method = "mle" , n_bootstrap = 0 , alpha = 0.05 )
 	{
-		YY   = link$inverse(Y)
-		coef = as.vector(stats::lm( YY ~ c_Y )$coefficients)
-		out  = link$eval( base::cbind( 1 , c_Y )  %*% coef )
+		super$initialize( base::c( "scale" , "shape" ) , method , n_bootstrap , alpha )
 	}
 	
-	if( value )
-		return(out)
-	else
-		return(coef)
-}
+	
+	## Methods
+	##========
+	
+	),
+	##}}}
+	#################
+	
+	#################
+	## Active list ##
+	##{{{
+	
+	active = list(
+	
+	scale = function( s )##{{{
+	{
+		if( missing(s) )
+			return( self$params$dparams_[["scale"]]$value )
+	},
+	##}}}
+	
+	shape = function( s )##{{{
+	{
+		if( missing(s) )
+			return( self$params$dparams_[["shape"]]$value )
+	}
+	##}}}
+	
+	)
+	##}}}
+	#################
+
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

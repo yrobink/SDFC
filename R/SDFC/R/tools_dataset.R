@@ -1,4 +1,4 @@
- 
+
 ##################################################################################
 ##################################################################################
 ##                                                                              ##
@@ -81,193 +81,33 @@
 ##################################################################################
 ##################################################################################
 
-#############
-## Classes ##
-#############
 
-
-## LawParam 
-
-#' LawParam
+#' dataset.covariates
 #'
-#' Class used to describe parameters of law (loc, scale, shape). Internal class, so do not use it
+#' Function used to generate examples of covariates
 #'
-#' @docType class
-#' @importFrom R6 R6Class
+#' @usage dataset.covariates(size)
 #'
-#' @param linkFct [LinkFct] link function
-#' @param kind [str] Name of parameters (loc,scale... etc)
-#' @param X [vector or NULL] covariate
-#' @param fix_values [vector or NULL] fix the values of the param at fix_values
-#' @param size [integer or NULL] size of dataset to fit
-#' @param coef [vector] coefficients
-#' @param inter [vector] Intercept of the coefficients
+#' @param size   [int]    Numbers of values generated
 #'
-#' @return Object of \code{\link{R6Class}}
-#' @format \code{\link{R6Class}} object.
+#' @return [list] list containing three covariates and a time axis
 #'
-#' @section Methods:
-#' \describe{
-#'   \item{\code{new(linkFct,kind)}}{This method is used to create object of this class with \code{LawParam}}
-#'   \item{\code{init(X,fix_values,size)}}{This method is used to initialize}
-#'   \item{\code{not_fixed()}}{Return true if the param need to be estimate}
-#'   \item{\code{set_coef(coef)}}{Set coefficient}
-#'   \item{\code{set_intercept(inter)}}{Set intercept of coefficients}
-#'   \item{\code{design_wo1()}}{Return design matrix without intercept, NULL if no covariate}
-#'   \item{\code{update()}}{Update value of params}
-#'   \item{\code{value()}}{Return value BEFORE link function}
-#'   \item{\code{valueLf()}}{Return value AFTER link function}
-#'   \item{\code{valueGrLf()}}{Return value of gradient of link function}
-#' }
 #' @examples
-#'
+#' ## Data
+#' c_data = dataset.covariates(2000)
+#' c_data$t       ## Time axis
+#' c_data$t       ## Covariate for loc
+#' c_data$t       ## Covariate for scale
+#' c_data$t       ## Covariate for shape
 #' @export
-LawParam = R6::R6Class( "LawParam" ,
-	public = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	linkFct = NULL,
-	coef_   = NULL,
-	design_ = NULL,
-	size_   = 0,
-	kind    = NULL,
-	
-	
-	#################
-	## Constructor ##
-	#################
-	
-	initialize = function( linkFct = IdLinkFct$new() , kind = "Parameter" ) ##{{{
-	{
-		self$linkFct = linkFct
-		self$kind    = kind
-	},
-	##}}}
-	
-	init = function( X = NULL , fix_values = NULL , size = NULL )##{{{
-	{
-		private$not_fixed_ = is.null(fix_values)
-		if( !private$not_fixed_ )
-		{
-			fix_values = as.vector(fix_values)
-			if( length(fix_values) == 1 && !is.null(size) )
-			{
-				private$value_ = self$linkFct$inverse( base::rep( fix_values[1] , size ) )
-			}
-			else if( length(fix_values) > 1 )
-			{
-				private$value_ = self$linkFct$inverse( fix_values )
-			}
-			else
-			{
-				cat( "Error on fix values\n" )
-			}
-		}
-		else
-		{
-			if( is.null(X) && !is.null(size) )
-			{
-				self$coef_   = 1.
-				self$design_ = matrix( 1 , nrow = size , ncol = 1 )
-			}
-			else if( !is.null(X) )
-			{
-				if( !is.matrix(X) )
-					X = matrix( X , nrow = length(X) , ncol = 1 )
-				self$design_ = base::cbind( 1 , X )
-				self$coef_   = base::rep( 0 , base::ncol(self$design_) )
-			}
-			else
-			{
-				cat( "Error\n" )
-			}
-			
-			if( base::qr(self$design_)$rank < base::ncol(self$design_) )
-			{
-				self$design_ = matrix( 1 , nrow = base::nrow(self$design_) , ncol = 1 )
-				self$coef_   = 1
-			}
-			self$size_ = base::ncol( self$design_ )
-		}
-	},
-	##}}}
-	
-	not_fixed = function()##{{{
-	{
-		return(private$not_fixed_)
-	},
-	##}}}
-	
-	set_coef = function( coef_ ) ##{{{
-	{
-		if( private$not_fixed_ )
-		{
-			self$coef_ = as.vector(coef_)
-		}
-	},
-	##}}}
-	
-	set_intercept = function( inter ) ##{{{
-	{
-		if( private$not_fixed_ )
-		{
-			self$coef_[1] = as.double(inter[1])
-		}
-	},
-	##}}}
-	
-	design_wo1 = function() ##{{{
-	{
-		if( self$size_ == 1 )
-			return(NULL)
-		else
-			return(self$design_[,2:self$size_])
-	},
-	##}}}
-	
-	update = function() ##{{{
-	{
-		if( private$not_fixed_ )
-		{
-			private$value_ = as.vector( self$design_ %*% self$coef_ )
-		}
-	},
-	##}}}
-	
-	value = function() ##{{{
-	{
-		return( private$value_ )
-	},
-	##}}}
-	
-	valueLf = function()##{{{
-	{
-		return( as.vector( self$linkFct$eval( private$value_ ) ) )
-	},
-	##}}}
-	
-	valueGrLf = function() ##{{{
-	{
-		return( as.vector( self$linkFct$gradient( private$value_ ) ) )
-	}
-	##}}}
-	
-	),
-	
-	######################
-	## Private elements ##
-	######################
-	
-	private = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	value_     = NULL,
-	not_fixed_ = NULL
-	)
-)
+dataset.covariates = function( size )
+{
+	t       = base::seq( 0 , 1 , length = size )
+	X_loc   = t^2 + base::cos( 2 * base::pi * t ) * 0.2
+	X_scale = 2 * t^2 - 2 * t + 1
+	X_shape = 2 / ( 1 + base::exp( - 8 * ( t - 0.5 ) ) ) - 1
+	return( list( t = t , X_loc = X_loc , X_scale = X_scale , X_shape = X_shape ) )
+}
+
+
+

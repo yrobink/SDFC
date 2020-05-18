@@ -128,11 +128,12 @@ class Dataset:
 		Y = np.random.normal( loc = X , scale = np.repeat( 0.1 , size ) )
 		return t,X,Y
 	
-	def normal_moving_scale( size ):
+	def covariates( size ):
 		"""
-		SDFC.Dataset.normal_moving_scale
-		================================
+		SDFC.Dataset.covariates
+		=======================
 		
+		Return 3 covariates, one for loc, one for scale and one for shape.
 		
 		Parameters
 		----------
@@ -141,14 +142,18 @@ class Dataset:
 		
 		Returns
 		-------
-		t : np.array
+		t       : np.array
 			A "time" axis
-		X : np.array
-			A covariate
-		Y :
-			The dataset to fit
+		X_loc   : np.array
+			A covariate for loc
+		X_scale : np.array
+			A covariate for loc
+		X_shape : np.array
+			A covariate for loc
 		
 		"""
 		t = np.linspace( 0 , 1 , size )
-		X = t**2 + np.cos( 2* np.pi * t ) * 0.2
-
+		X_loc   = t**2 + np.cos( 2* np.pi * t ) * 0.2
+		X_scale = 2 * t**2 - 2 * t + 1
+		X_shape = 2 / ( 1 + np.exp( - 8 * (t-0.5) ) ) - 1
+		return t,X_loc,X_scale,X_shape

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 ##################################################################################
 ##################################################################################
@@ -82,126 +81,189 @@
 ##################################################################################
 ##################################################################################
 
-###############
-## Libraries ##
-###############
+## Normal
 
-import numpy as np
-from SDFC.tools.__LinkFct import IdLinkFct
-
-
-###########
-## Class ##
-###########
-
-class LawParam:
-	"""
-	Internal class, do not use
-	"""
-	def __init__( self , linkFct = IdLinkFct() , kind = "Parameter" ):##{{{
-		self.linkFct    = linkFct
-		self.coef_      = None
-		self.design_    = None
-		self.size       = 0
-		self._value     = None
-		self._not_fixed = None
-		self.kind       = kind
-	##}}}
+#' Normal (Gaussian Law)
+#'
+#' Class to fit a Normal law.
+#'
+#' @docType class
+#' @importFrom R6 R6Class
+#'
+#' @param method [string]
+#'        Fit method, "moments", "MLE" and "Bayesian" are available.
+#' @param n_bootstrap [int]
+#'        Number of bootstrap, default 0
+#' @param alpha [float]
+#'        Level of confidence interval, default 0.05
+#'
+#' @return Object of \code{\link{R6Class}} 
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new(method,n_bootstrap,alpha)}}{Initialize Normal law with code{Normal}}
+#'   \item{\code{fit(Y,...)}}{Fit the Normal law}.
+#' }
+#' @examples
+#' ## Start by generate non-stationary Normal dataset
+#' size = 2000
+#' c_data = SDFC::dataset.covariates(size)
+#' 
+#' t       = c_data$t
+#' X_loc   = c_data$X_loc
+#' X_scale = c_data$X_scale
+#' loc   = 0.5 + 2 * X_loc
+#' scale =   1 + 2 * X_scale
+#' Y = stats::rnorm( size , mean = loc , sd = scale )
+#' 
+#' ## Regression with MLE
+#' law = SDFC::Normal$new( "mle" )
+#' law$fit( Y , c_loc = X_loc , c_scale = X_scale )
+#' 
+#' ## Assuming scale is known (available for any covariates)
+#' law = SDFC::Normal$new( "mle" )
+#' law$fit( Y , c_loc = X_loc , f_scale = scale )
+#' 
+#' ## And if we want a link function
+#' law = SDFC::Normal$new( "mle" )
+#' law$fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = SDFC::ExpLink$new() )
+#' 
+#' ## If we do not give a parameter, it is assumed constant
+#' law = SDFC::Normal$new( "mle" )
+#' law$fit( Y , c_scale = X_scale )
+#' 
+#' @export
+Normal = R6::R6Class( "Normal" ,
 	
-	def copy(self):##{{{
-		p = LawParam( self.linkFct , self.kind )
-		p.coef_ = np.copy(self.coef_) if self.coef_ is not None else None
-		p.design_ = np.copy(self.design_) if self.design_ is not None else None
-		p.size = self.size
-		p._value = np.copy(self._value) if self._value is not None else None
-		p._not_fixed = self._not_fixed
-		return p
-	##}}}
+	inherit = AbstractLaw,
 	
-	def init( self , X = None , fix_values = None , size = None ): ##{{{
-		self._not_fixed = fix_values is None
-		if fix_values is not None:
-			fix_values = np.array( [fix_values] ).ravel()
-			if fix_values.size == 1 and size is not None:
-				self._value = self.linkFct.inverse( np.repeat( fix_values , size ).ravel() )
-			elif fix_values.size > 1:
-				self._value = self.linkFct.inverse( fix_values )
-			else:
-				print( "Error" )
-		else:
-			if X is None and size is not None:
-				self.coef_   = np.zeros( (1,) )
-				self.design_ = np.ones( (size,1) )
-			elif X is not None:
-				size = X.shape[0]
-				if X.ndim == 1:
-					X = X.reshape( (size,1) )
-				self.design_ = np.hstack( ( np.ones( (size,1) ) , X ) )
-				self.coef_   = np.zeros( (X.shape[1]+1) )
-			else:
-				print( "Error" )
-			
-			if np.linalg.matrix_rank(self.design_) < self.design_.shape[1]:
-				print( "SDFC.LawParam: singular design matrix" )
-				self.coef_   = np.zeros( (1,) )
-				self.design = np.ones( (size,1) )
-			self.size = self.coef_.size
-	##}}}
+	##################
+	## Private list ##
+	##{{{
 	
-	def __str__(self):##{{{
-		val  = "SDFC.LawParam\n"
-		val += "-------------\n"
-		val += "* kind     : {}\n".format(self.kind)
-		val += "* fixed    : {}\n".format(not self._not_fixed)
-		val += "* link_fct : {}\n".format(str(self.linkFct))
-		val += "* coef_    : {}\n".format(self.coef_)
+	private = list(
+	
+	## Arguments
+	##==========
+	
+	## Methods
+	##========
+	
+	fit_moments = function()##{{{
+	{
+		ploc   = self$params$dparams_[["loc"]]
+		pscale = self$params$dparams_[["scale"]]
+		if( !ploc$is_fix() )
+			self$params$update_coef( np_mean( private$Y , ploc$design_wo1() , value = FALSE , link = ploc$link ) , "loc" )
 		
-		return val
+		if( !pscale$is_fix() )
+			self$params$update_coef( np_std( private$Y , pscale$design_wo1() , m_Y = self$loc , value = FALSE , link = pscale$link ) , "scale" )
+	},
 	##}}}
 	
-	def __repr__(self):##{{{
-		return self.__str__()
+	initialization_mle = function()##{{{
+	{
+		private$fit_moments()
+	},
 	##}}}
 	
-	def not_fixed(self):##{{{
-		return self._not_fixed
+	fit_ = function()##{{{
+	{
+		if( self$method == "moments" )
+			private$fit_moments()
+	},
 	##}}}
 	
-	def set_coef( self , coef ):##{{{
-		if self._not_fixed:
-			self.coef_ = coef.ravel()
+	negloglikelihood = function( coef )##{{{
+	{
+		self$coef_ = coef
+		if( !base::all( self$scale > 0 ) )
+		{
+			return(Inf)
+		}
+		
+		scale2 = self$scale^2
+		res =  base::sum( base::log( scale2 ) ) / 2. + base::sum( ( private$Y - self$loc )^2 / scale2 ) / 2. 
+		return(res)
+	},
 	##}}}
 	
-	def set_intercept( self , intercept ):##{{{
-		if self._not_fixed:
-			self.coef_[0] = intercept
+	gradient_nlll = function( coef ) ##{{{
+	{
+		self$coef_ = coef
+		ploc   = self$params$dparams_[["loc"]]
+		pscale = self$params$dparams_[["scale"]]
+		
+		Yc = private$Y - self$loc
+		grad = base::c()
+		
+		if( !ploc$is_fix() )
+		{
+			grad_loc = - base::t( ploc$design_  ) %*% ( Yc / self$scale^2 * ploc$gradient() )
+			grad     = base::c( grad , grad_loc )
+		}
+		if( !pscale$is_fix() )
+		{
+			grad_scale = base::t( pscale$design_) %*% ( ( 1. / self$scale - Yc^2 / self$scale^3 ) * pscale$gradient() )
+			grad       = base::c( grad , grad_scale )
+		}
+		
+		return( grad )
+	}
 	##}}}
 	
-	def design_wo1( self ):##{{{
-		"""
-		Return design matrix without intercept
-		"""
-		return None if self.size == 1 else self.design_[:,1:]
+	),
+	##}}}
+	##################
+	
+	#################
+	## Public list ##
+	##{{{
+	
+	public = list(
+	
+	## Arguments
+	##==========
+	
+	## Constructor
+	##============
+	initialize = function( method = "mle" , n_bootstrap = 0 , alpha = 0.05 )
+	{
+		super$initialize( base::c( "loc" , "scale" ) , method , n_bootstrap , alpha )
+	}
+	
+	
+	## Methods
+	##========
+	
+	),
+	##}}}
+	#################
+	
+	#################
+	## Active list ##
+	##{{{
+	
+	active = list(
+	
+	loc = function( l )##{{{
+	{
+		if( missing(l) )
+			return( self$params$dparams_[["loc"]]$value )
+	},
 	##}}}
 	
-	def update(self):##{{{
-		if self._not_fixed:
-#			print("LawParam.design.shape={}".format(self.design_.shape))
-#			print("LawParam.coef.shape={}".format(self.coef_.shape))
-#			print("LawParam.coef={}".format(self.coef_))
-			self._value = np.ravel( self.design_ @ self.coef_ )
+	scale = function( s )##{{{
+	{
+		if( missing(s) )
+			return( self$params$dparams_[["scale"]]$value )
+	}
 	##}}}
 	
-	def value( self ):##{{{
-		return np.ravel( self._value )
+	)
 	##}}}
-	
-	def valueLf( self ):##{{{
-		return np.ravel( self.linkFct( self._value ) )
-	##}}}
-	
-	def valueGrLf( self ):##{{{
-		return self.linkFct.gradient( self._value )
-	##}}}
+	#################
 
+)
 

@@ -7,7 +7,7 @@
 ## yoann.robin.k@gmail.com                                                      ##
 ##                                                                              ##
 ## This software is a computer program that is part of the SDFC (Statistical    ##
-## Distribution Fit with Covariates) library. This library makes it possible    ##
+## Distribution Fitted with Covariates) library. This library makes it possible ##
 ## to regress the parameters of some statistical law with co-variates.          ##
 ##                                                                              ##
 ## This software is governed by the CeCILL-C license under French law and       ##
@@ -47,7 +47,7 @@
 ## yoann.robin.k@gmail.com                                                      ##
 ##                                                                              ##
 ## Ce logiciel est un programme informatique faisant partie de la librairie     ##
-## SDFC (Statistical Distribution Fit with Covariates). Cette librairie         ##
+## SDFC (Statistical Distribution Fitted with Covariates). Cette librairie      ##
 ## permet de calculer de regresser les parametres de lois statistiques selon    ##
 ## plusieurs co-variables                                                       ##
 ##                                                                              ##
@@ -81,206 +81,21 @@
 ##################################################################################
 ##################################################################################
 
-###############
-## Functions ##
-###############
+cmake_minimum_required(VERSION 3.0)
 
-## binwidth_estimator {{{
-
-#' binwidth_estimator method
-#'
-#' Lenght of cell to compute an histogram
-#'
-#' @param X  [matrix]
-#'        A matrix containing data (time in column, variables in row)
-#'
-#' @param method [string]
-#'        Method to estimate bin_width, values are "auto", "FD" (Friedman Draconis, robust over outliners) or "Sturges". If "auto" is used and if ncol(X) < 1000, "Sturges" is used, else "FD" is used.
-#'        
-#' @return [vector] Lenght of bins
-#'
-#' @importFrom stats quantile
-#' @export
-binwidth_estimator = function( X , method = "auto" ) 
-{
-	if( class(X) == "numeric" )
-	{
-		X = matrix( X , nrow = 1 , ncol = length(X) )
-	}
-	Dim = dim(X)[1]
-	size = dim(X)[2]
-	
-	## Find method to use
-	if( method == "auto" && size < 1000 )
-	{
-		method = "Sturges"
-	}
-	
-	## Find bin_width
-	bin_width = rep( 0 , Dim )
-	if( method == "Sturges" )
-	{
-		nh = log2(size) + 1
-		bin_width = rep( 1. / nh , Dim )
-	}
-	else ## FD (Freedman Diaconis) method, robust over outliers
-	{
-		pow = size^(1./3.)
-		for( i in 1:Dim )
-		{
-			q = quantile( X[i,] , probs = c(0.25 , 0.75) )
-			bin_width[i] = 2. * ( q[2] - q[1] ) / pow
-		}
-	}
-	
-	invisible(bin_width)
-}
-##}}}
+# Notre projet est étiqueté hello
+project(SDFC)
+set(CMAKE_CXX_STANDARD 14)
+find_package(Eigen3)# 3.3.6 REQUIRED NO_MODULE)
 
 
-#############
-## Classes ##
-#############
-
-## Univariate Random Variable from histogram {{{
-
-#' Univariate Random Variable from histogram
-#'
-#' Build an univariate random variable from an histogram of a dataset X.
-#'
-#' @docType class
-#' @importFrom R6 R6Class
-#'
-#' @param bins [vector of NULL]
-#'        A vector of bins.
-#'        If NULL, it is estimating.
-#' @param X [vector]
-#'        Vector of data
-#' @param q [vector]
-#'        Vector of quantiles
-#'
-#' @return Object of \code{\link{R6Class}}
-#' @format \code{\link{R6Class}} object.
-#'
-#' @section Methods:
-#' \describe{
-#'   \item{\code{new(X,bins)}}{This method is used to create object of this class with \code{rv_histogram}}
-#'   \item{\code{rvs(size)}}{Random values generator from histogram estimated}.
-#'   \item{\code{cdf(X)}}{Cumulative Distribution Function.}.
-#'   \item{\code{icdf(X)}}{Inverse of Cumulative Distribution Function.}.
-#'   \item{\code{sf(X)}}{Survival Function (1-CDF).}.
-#'   \item{\code{isf(X)}}{Inverse of Survival Function.}.
-#' }
-#' @examples
-#' ## Realizations of a random variable
-#' X = stats::rnorm( 10000 )
-#'
-#' ## Estimation of random variable
-#' rvX = SDFC::rv_histogram$new(X)
-#' 
-#' ## cdf and sf
-#' x = base::seq( -2 , 2 , 0.001 )
-#' cdfx = rvX$cdf(x)
-#' sfx = rvX$sf(x)
-#'
-#' ## icdf and isf
-#' q = base::seq( 0 , 1 , 0.001 )
-#' icdfq = rvX$icdf(q)
-#' isfq = rvX$isf(q)
-#'
-#' @export
-rv_histogram = R6::R6Class( "rv_histogram" ,
-	public = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	bins  = NULL,
-	min   = NULL,
-	max   = NULL,
-	p     = NULL,
-	c     = NULL,
-	nbins = NULL,
-	
-	#################
-	## Constructor ##
-	#################
-	
-	initialize = function( X , bins = NULL )
-	{
-		self$min = base::min(X)
-		self$max = base::max(X)
-		
-		## Bins construction
-		bin_width = 0
-		if( is.null(bins) )
-		{
-			bin_width = SDFC::binwidth_estimator(X)
-			self$bins = base::seq( self$min - bin_width , self$max + bin_width , bin_width )
-		}
-		else
-		{
-			bin_width = min( diff(bins) )
-			self$bins = bins
-		}
-		
-		## Histogram
-		hist = graphics::hist( X , breaks = self$bins , plot = FALSE )
-		self$p = hist$density / base::sum(hist$density)
-		self$c = hist$mids
-		self$nbins = length(self$p)
-		
-		## CDF and iCDF function
-		private$cdffn = stats::ecdf(X)
-		x = base::seq( self$min - bin_width , self$max + bin_width , 1e-3 * bin_width )
-		quants = private$cdffn(x)
-		private$icdffn = stats::approxfun( quants , x , yleft = self$min - bin_width , yright = self$max + bin_width )
-	},
-	
-	rvs = function( size )
-	{
-		idx = sample( 1:self$nbins , size = size , replace = TRUE , prob = self$p )
-		invisible(self$c[idx])
-	},
-	
-	cdf = function( X )
-	{
-		invisible(private$cdffn(X))
-	},
-	
-	icdf = function( q )
-	{
-		invisible(private$icdffn(q))
-	},
-	
-	sf = function( X )
-	{
-		invisible( 1. - private$cdffn(X) )
-	},
-	
-	isf = function( q )
-	{
-		invisible(private$icdffn(1. - q))
-	}
-	
-	),
-	
-	
-	######################
-	## Private elements ##
-	######################
-	
-	private = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	cdffn = NULL,
-	icdffn = NULL
+set(SRCS
+	main.cpp
 	)
-)
-##}}}
 
+#set(HEADERS
+#	hello.h
+#	)
 
+add_executable(main.exe ${SRCS} )#${HEADERS})
+target_link_libraries(main.exe Eigen3::Eigen)

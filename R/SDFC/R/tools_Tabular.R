@@ -81,102 +81,210 @@
 ##################################################################################
 ##################################################################################
 
-## Dataset 0 {{{
 
-#' Dataset0
+
+#' Tabular class
 #'
-#' Generate a test dataset, Y is a Gaussian law where location move with time, but scale is fixed at 0.2, X is the location parameter
+#' Class used to print tabular in terminal
 #'
-#' @param size  [integer] length of dataset
+#' @docType class
+#' @importFrom R6 R6Class
 #'
-#' @return [list(t,X,Y)] Dataset Y, with covariate X and time axis t
+#' @param x [vector]
 #'
+#' @return Object of \code{\link{R6Class}}
+#' @format \code{\link{R6Class}} object.
+#'
+#' @section Methods:
+#' \describe{
+#'   \item{\code{new()}}{This method is used to create object of this class with \code{Tabular}}
+#'   \item{\code{add_row(row)}}{add a row to tabular}
+#'   \item{\code{draw()}}{Return a character containing tabular}
+#' }
 #' @examples
-#' ## Data
-#' size = 2000
-#' data = Dataset0(size)
-#' t = data$t  ## Time axis
-#' X = data$X  ## Covariate
-#' Y = data$Y  ## Dataset to fit
+#'
+#' A = matrix( rnorm(20) , nrow = 5 , ncol = 4 )
+#' tab = SDFC::Tabular$new()
+#' tab$header = base::c( "A","B","C","D")
+#' for( i in 1:5 )
+#'     tab$add_row( A[i,] )
+#' print(tab$draw())
+#' 
 #' @export
-Dataset0 = function( size = 2000 )
-{
-	t = base::seq( 0 , 1 , length = size )
-	X = t^2 + base::cos( 2 * base::pi * t ) * 0.2
-	Y = X + stats::rnorm( size , mean = 0 , sd = 0.1 )
-	X = matrix( X , nrow = size , ncol = 1 )
-	return( list( t = t , X = X , Y = Y ) )
-}
-##}}}
-
-## Dataset 1 {{{
-
-#' Dataset1
-#'
-#' Generate a test dataset, Y is a Gaussian law where location and scale move with time, X is the location parameter
-#'
-#' @param size  [integer] length of dataset
-#'
-#' @param alpha  [double] Minima of the scale
-#'
-#' @param beta  [double] Maxima of the scale
-#'
-#' @return [list(t,X,Y)] Dataset Y, with covariate X and time axis t
-#'
-#' @examples
-#' ## Data
-#' size = 2000
-#' data = Dataset1(size)
-#' t = data$t  ## Time axis
-#' X = data$X  ## Covariate
-#' Y = data$Y  ## Dataset to fit
-#' @export
-Dataset1 = function( size = 2000 , alpha = 0.05 , beta = 0.6 )
-{
-	t = base::seq( 0 , 1 , length = size )
-	X = (beta - alpha) * base::cos( 2 * base::pi * t ) / 2.
-	sigma = X + (beta - alpha) / 2.
-	X = X + t^2
-	Y = X + stats::rnorm( size , mean = 0 , sd = sigma )
-	X = matrix( X , nrow = size , ncol = 1 )
-	return( list( t = t , X = X , Y = Y ) )
-}
-##}}}
-
-## Dataset 2 {{{
-
-#' Dataset2
-#'
-#' Generate a test dataset, Y is a Gaussian law where location and scale move with time, X is the location and the scale parameter
-#'
-#' @param size  [integer] length of dataset
-#'
-#' @param alpha  [double] Minima of the scale
-#'
-#' @param beta  [double] Maxima of the scale
-#'
-#' @return [list(t,X,Y)] Dataset Y, with covariate X and time axis t
-#'
-#' @examples
-#' ## Data
-#' size = 2000
-#' data = Dataset2(size)
-#' t = data$t  ## Time axis
-#' X = data$X  ## Covariate
-#' Y = data$Y  ## Dataset to fit
-#' @export
-Dataset2 = function( size = 2000 , alpha = 0.05 , beta = 0.6 )
-{
-	t = base::seq( 0 , 1 , length = size )
-	X = matrix( 0 , nrow = size , ncol = 2 )
-	X[,1] = (beta - alpha) * base::cos( 2 * base::pi * t ) / 2.
-	X[,2] = X[,1] + (beta - alpha) / 2.
-	X[,1] = X[,1] + t^2
-	Y = X[,1] + stats::rnorm( size , mean = 0 , sd = X[,2] )
-	return( list( t = t , X = X , Y = Y ) )
-}
-##}}}
-
-
-
-
+Tabular = R6::R6Class( "Tabular" ,
+	
+	## Private list
+	##=========={{{
+	
+	private = list(
+	
+	.header = NULL,
+	.rows   = NULL,
+	.ncol   = NULL,
+	
+	build_size_cells = function() ##{{{
+	{
+			size_cells = base::rep( 0 , self$ncol )
+		
+		if( !is.null(self$header) )
+		{
+			i = 1
+			for( h in self$header )
+			{
+				size_cells[i] = max( size_cells[i] , base::nchar(as.character(h)) )
+				i = i + 1
+			}
+		}
+		
+		for( row in private$.rows )
+		{
+			i = 1
+			for( r in row )
+			{
+				size_cells[i] = max( size_cells[i] , base::nchar(as.character(r)) )
+				i = i + 1
+			}
+		}
+		return(size_cells)
+	},
+	##}}}
+	
+	build_separator = function( size_cells , kind )##{{{
+	{
+		separator = base::c("+")
+		for( k in size_cells )
+			separator = base::c( separator , base::rep( kind , k + 2 ) , "+")
+		separator = base::paste( separator , collapse = "" )
+		return(separator)
+	},
+	##}}}
+	
+	build_line = function( row , size_cells , align = "right" )##{{{
+	{
+		line = base::c("|")
+		i = 1
+		for( r in row )
+		{
+			if( align == "right" )
+				line = base::c( line , base::rep( " " , size_cells[i] - nchar(r) + 1 ) , as.character(r) , " |" )
+			if( align == "center" )
+			{
+				nblanks = size_cells[i] - nchar(r)
+				nblanks_left  = as.integer(base::round(nblanks/2))
+				nblanks_right = nblanks - nblanks_left
+				line = base::c( line , base::rep( " " , nblanks_left + 1 ) , as.character(r) , base::rep( " " , nblanks_right + 1 ) ,  "|" )
+			}
+			if( align == "left" )
+				line = base::c( line , " " , as.character(r) , base::rep( " " , size_cells[i] - nchar(r) ) , " |" )
+			i = i + 1
+		}
+		line = base::paste( line , collapse = "" )
+		return(line)
+	}
+	##}}}
+	
+	),
+	##}}}
+	
+	## Active list
+	##========={{{
+	
+	active  = list(
+	
+	header = function(value)##{{{
+	{
+		if( base::missing(value) )
+		{
+			return(private$.header)
+		}
+		else
+		{
+			if( is.null(self$ncol) )
+			{
+				private$.ncol   = length(value)
+				private$.header = value
+			}
+			else if( length(value) == self$ncol )
+			{
+				private$.header = row
+			}
+		}
+	},
+	##}}}
+	
+	ncol = function(value)##{{{
+	{
+		if( base::missing(value) )
+		{
+			return(private$.ncol)
+		}
+	},
+	##}}}
+	
+	nrow = function(value)##{{{
+	{
+		if( base::missing(value) )
+			return( length(private$.rows) )
+	}
+	##}}}
+	
+	),
+	##}}}
+	
+	## Public list
+	##========={{{
+	
+	public  = list(
+	
+	initialize = function()##{{{
+	{
+		private$.rows  = list()
+	},
+	##}}}
+	
+	add_row = function( row )##{{{
+	{
+		if( is.null(self$ncol) )
+		{
+			private$.ncol      = length(row)
+			private$.rows[[1]] = row
+		}
+		else if( length(row) == self$ncol )
+		{
+			private$.rows[[self$nrow + 1]] = row
+		}
+		invisible(NULL)
+	},
+	##}}}
+	
+	draw = function() ##{{{
+	{
+		tabular = ""
+		size_cells = private$build_size_cells()
+		sep_header = private$build_separator(size_cells,"=")
+		sep_lines  = private$build_separator(size_cells,"-")
+		
+		if( !is.null(self$header) )
+		{
+			line = private$build_line( self$header , size_cells , align = "center" )
+			tabular = base::paste( sep_header , line , sep_header , sep = "\n" )
+		}
+		
+		if( self$nrow > 0 )
+		{
+			for( row in private$.rows )
+			{
+				line = private$build_line( row , size_cells )
+				tabular = base::paste( tabular , line , sep_lines , sep = "\n" )
+			}
+		}
+		
+		tabular = base::paste( tabular , "\n" , sep = "" )
+		
+		invisible(tabular)
+	}
+	##}}}
+	
+	)
+	##}}}
+)

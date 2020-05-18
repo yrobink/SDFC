@@ -88,108 +88,87 @@
 
 import numpy         as np
 import scipy.special as scs
+from SDFC.NonParametric.__quantile import quantile
 
 
 ###############
 ## Functions ##
 ###############
 
-## TODO: vectorialize and use symmetrie to optimize methods
-## TODO: add order 4?
-
-def _lmoments2(X):
-	Y    = np.sort(X)
-	size = Y.size
-	res  = 0
-	for i in range(size):
-		res += ( scs.binom( i , 1 ) - scs.binom( size - i + 1 , 1 ) ) * Y[i]
+def lmoments_matrix( size ):##{{{
+	"""
+		SDFC.NonParametric.lmoments_matrix
+		==================================
+		
+		Build a matrix to infer L-Moments in stationary case. If M = lmoments_matrix(Y.size), then
+		the fourth first L-Moments are just M.T @ np.sort(Y)
+		
+	"""
+	C0 = scs.binom( range( size ) , 1 )
+	C1 = scs.binom( range( size - 1 , -1 , -1 ) , 1 )
 	
-	res = res / ( 2 * scs.binom( size , 2 ) )
+	## Order 3
+	C2 = scs.binom( range( size ) , 2 )
+	C3 = scs.binom( range( size - 1 , -1 , -1 ) , 2 )
 	
-	return res
-
-
-def _lmoments3(X):
-	Y    = np.sort(X)
-	size = Y.size
-	res  = 0
-	for i in range(size):
-		res += ( scs.binom( i , 2 ) - scs.binom( i , 1 ) * scs.binom( size - i + 1 , 1 ) + scs.binom( size - i + 1 , 2 ) ) * Y[i]
+	## Order 4
+	C4 = scs.binom( range( size ) , 3 )
+	C5 = scs.binom( range( size - 1 , -1 , -1 ) , 3 )
 	
-	res = res / ( 3 * scs.binom( size , 3 ) )
+	M = np.zeros( (size,4) )
+	M[:,0] = 1. / size
+	M[:,1] = ( C0 - C1 ) / ( 2 * scs.binom( size , 2 ) )
+	M[:,2] = ( C2 - 2 * C0 * C1 + C3 ) / ( 3 * scs.binom( size , 3 ) )
+	M[:,3] = ( C4 - 3 * C2 * C1 + 3 * C0 * C3 - C5 ) / ( 4 * scs.binom( size , 4 ) )
 	
-	return res
+	return M
+##}}}
 
+def _lmoments_stationary( Y ):##{{{
+	Ys = np.sort(Y.squeeze())
+	M = lmoments_matrix( Y.size )
+	return M.T @ Ys
+##}}}
 
-def lmoments( X , order = 0 ):
+def lmoments( Y , c_Y = None , order = None , lq = np.arange( 0.05 , 0.96 , 0.01 ) ):##{{{
 	"""
 		SDFC.NonParametric.lmoments
 		===========================
 		
-		Estimate the lmoments of order 1, 2, 3
+		Estimate the lmoments of orders 1 to 4. If a covariate is given, a quantile regression is performed
+		and the instantaneous L-Moments are estimated from the quantile fitted.
 		
 		Parameters
 		----------
-		X     : np.array
+		Y     : np.array
 			Dataset to fit the lmoments
-		order : integer
-			An integer between 1 and 3.
-		
+		c_Y   : np.array or None
+			Covariate
+		order : integer, list of integer or None
+			Integers between 1 and 4
+		lq    : np.array
+			Quantiles for quantile regression, only used if a covariate is given. Default is np.arange(0.05,0.96,0.01)
 		
 		Returns
 		-------
-		The lmoments. if order is 1,2,3 or 4, return the corresponding values, else return a tuple with the four first lmoments
+		The lmoments.
 	"""
 	
-	if order == 1:
-		return np.mean(X)
-	elif order == 2:
-		return _lmoments2(X)
-	elif order == 3:
-		return _lmoments3(X)
+	order = order if order is None else np.array( [order] , dtype = np.int ).squeeze() - 1
+	
+	if c_Y is None:
+		lmom = _lmoments_stationary(Y)
+		return lmom if order is None else lmom[order]
 	else:
-		return np.nan
-
-
-
-def _lmoments_origin( X , order = 0 ):##{{{
-	l1,l2,l3,l4 = 0,0,0,0
-	Y = np.sort(X)
-	N = Y.size
-	
-	for i in range(N):
-		cl1 = i - 1
-		cl2 = cl1 * ( i - 1 - 1 ) / 2
-		cl3 = cl2 * ( i - 1 - 2 ) / 3
-		cr1 = N - 1
-		cr2 = cr1 * ( N - i - 1 ) / 2
-		cr3 = cr2 * ( N - i - 2 ) / 3
-		
-		l1 += Y[i]
-		l2 += ( cl1 - cr1 ) * Y[i]
-		l3 += ( cl2 - 2 * cl1 * cr1 + cr2 ) * Y[i]
-		l4 += ( cl3 - 3 * cl2 * cr1 + 3 * cl1 * cr2 - cr3 ) * Y[i]
-	
-	c1 = N
-	c2 = c1 * ( N - 1 ) / 2
-	c3 = c2 * ( N - 2 ) / 3
-	c4 = c3 * ( N - 3 ) / 4
-	
-	l1 = l1 / c1
-	l2 = l2 / c2 / 2
-	l3 = l3 / c3 / 3
-	l4 = l4 / c4 / 4
-	
-	if order == 1:
-		return l1
-	elif order == 2:
-		return l2
-	elif order == 3:
-		return l3
-	elif order == 4:
-		return l4
-	else:
-		return (l1,l2,l3,l4)
+		Y = Y.reshape(-1,1)
+		if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
+		Yq = quantile( Y , lq , c_Y )
+		M  = lmoments_matrix(Yq.shape[1])
+		lmom = np.transpose( M.T @ Yq.T )
+		if order is None:
+			return lmom
+		else:
+			return lmom[:,order]
 ##}}}
 
 

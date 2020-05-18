@@ -86,284 +86,58 @@
 ## Libraries ##
 ###############
 
-import numpy as np
+import numpy        as np
+import scipy.linalg as scl
+
+from SDFC.tools.__Link import IdLink
 
 
-###########
-## Class ##
-###########
+###############
+## Functions ##
+###############
 
-class LinkFct:##{{{
+def cov( Y0 , Y1 , c_Y = None , m_Y0 = None , m_Y1 = None , link = IdLink() , value = True ):
 	"""
-	SDFC.tools.LinkFct
-	==================
-	
-	Abstract base class for link function
-	
-	"""
-	def __init__( self ):
-		pass
-	
-	def __str__(self):
-		return "SDFC.tools.LinkFct"
-	
-	def __repr__(self):
-		return self.__str__()
-	
-	def __call__( self , x ):
-		"""
-		Evaluation of link function
-		"""
-		pass
-	
-	def gradient( self , x ):
-		"""
-		Gradient of link function
-		"""
-		pass
-	
-	def inverse( self , x ):
-		"""
-		Inverse of link function
-		"""
-		pass
-##}}}
-
-class ChainLinkFct(LinkFct): ##{{{
-	"""
-	SDFC.tools.ChainLinkFct
-	=======================
-	
-	This class is used to chain two link functions, i.e. $linkFct1 \circ linkFct0$
-	
-	"""
-	def __init__( self , linkFct1 , linkFct0 ):
-		self.linkFct1 = linkFct1
-		self.linkFct0 = linkFct0
-	
-	def __str__(self):
-		return "SDFC.tools.ChainLinkFct between {} and {}".format(str(self.linkFct1,self.linkFct2))
-	
-	def __repr__(self):
-		return self.__str__()
-	
-	def __call__( self , x ):
-		return self.linkFct1( self.linkFct0( x ) )
-	
-	def gradient( self , x ):
-		return self.linkFct0.gradient(x) * self.linkFct1.gradient( self.linkFct0(x) )
-	
-	def inverse( self , x ):
-		return self.linkFct0.inverse( self.linkFct1.inverse( x ) )
-##}}}
-
-class IdLinkFct(LinkFct): ##{{{
-	"""
-	SDFC.tools.IdLinkFct
-	====================
-	
-	Identity link function
-	
-	"""
-	
-	def __init__(self):
-		pass
-	
-	def __str__(self):
-		return "SDFC.tools.IdLinkFct"
-	
-	def __repr__(self):
-		return self.__str__()
-	
-	def __call__( self , x ):
-		return x
-	
-	def gradient( self , x ):
-		return np.ones( x.size )
-	
-	def inverse( self , x ):
-		return x
-##}}}
-
-class InverseLinkFct(LinkFct): ##{{{
-	"""
-	SDFC.tools.InverseLinkFct
-	=========================
-	
-	Inverse link function, i.e.:
-		f(x) = 1/x
-		f^{-1}(x) = 1/x
-		df(x) = - 1 / x**2
-	
-	"""
-	def __init__(self):
-		pass
-	
-	def __str__(self):
-		return "SDFC.tools.InverseLinkFct"
-	
-	def __repr__(self):
-		return self.__str__()
-	
-	def __call__( self , x ):
-		return 1. / x
-	
-	def gradient( self , x ):
-		return - 1. / x**2
-	
-	def inverse( self , x ):
-		return 1. / x
-##}}}
-
-class ExpLinkFct(LinkFct):##{{{
-	"""
-	SDFC.tools.ExpLinkFct
-	=====================
-	
-	Exponential link function, i.e.:
-		f(x) = exp(s*x) + b
-		f^{-1}(x) = log(x-b) / s
-		df(x) = s*exp(s*x)
-	This function is used to bound a variable into level b, by upper if s > 0 or lower if s < 0.
-	"""
-	def __init__( self , b = 0 , s = 1 ):
-		self.b = b
-		self.s = s
-	
-	def __str__(self):
-		return "SDFC.tools.ExpLinkFct, bounds:{}, sign:{}".format(self.b,self.s)
-	
-	def __repr__(self):
-		return self.__str__()
-	
-	def __call__( self , x ):
-		return np.exp(self.s * x) + self.b
-	
-	def gradient( self , x ):
-		return self.s * np.exp(self.s * x)
-	
-	def inverse( self , x ):
-		return np.log(x - self.b) / self.s
-##}}}
-
-class LogitLinkFct(LinkFct):##{{{
-	"""
-	SDFC.tools.LogitLinkFct
-	=======================
-	
-	Logit link function, i.e.:
-		f(x) = ( b - a ) / ( 1 + exp(-sx) ) + b
-		f^{-1}(x) = - log( (b-a) / (x-b) - 1) / s
-		df(x) = s * (b-a) * exp( -sx ) / ( 1 + exp(-sx) )**2
-	
-	This function constrain the parameters estimated between a and b, and the parameters s control the growth between a and b.
-	
-	
-	"""
-	def __init__( self , a = 0 , b = 1 , s = 1 ):
-		self.a      = a
-		self.b      = b
-		self.s      = s
-	
-	def __str__(self):
-		return "SDFC.tools.LogitLinkFct, bounds: ({},{}), speed: {}".format(self.a,self.b,self.s)
-	
-	def __repr__(self):
-		return self.__str__()
-	
-	def __call__( self , x ):
-		return (self.b - self.a) / ( 1. + np.exp( - x * self.s ) ) + self.a
-	
-	def gradient( self , x ):
-		e = np.exp( - self.s * x )
-		return self.s * (self.b - self.a) * e / ( 1 + e )**2
-	
-	def inverse( self , x ):
-		x = np.array( [x] ).ravel()
-		idx_lo = x < self.a
-		idx_up = x > self.b
-		x[idx_lo] = self.a + 1e-3
-		x[idx_up] = self.b - 1e-3
-		return - np.log( (self.b - self.a) / ( x - self.a ) - 1 ) / self.s
-##}}}
-
-class SemiBoundedLinkFct(LinkFct):##{{{
-	"""
-	SDFC.tools.SemiBoundedLinkFct
-	=============================
-	A simple semi bounded function, use it if ExpLinkFct has too many overflow (Here the gradient is not well defined at x = b, and the inverse also).
-	Values:
-		- x < b : f(x) = sx
-		- x > b : f(x) = b
-	"""
-	def __init__( self , b = 0 , s = - 1 ):
-		"""
+		SDFC.NonParametric.cov
+		======================
+		
+		Estimate covariance given a covariate (or not)
+		
 		Parameters
 		----------
-		b : float, optional
-			Bound. The default is 0.
-		s : float, optional
-			Slope. The default is -1.
+		Y0    : np.array
+			Dataset0 to fit the covariance between Y0 and Y1 
+		Y1    : np.array
+			Dataset1 to fit the covariance between Y0 and Y1 
+		c_Y   : np.array or None
+			Covariate(s)
+		m_Y0  : np.array or float or None
+			mean of Y0. If None, m_Y0 = np.mean(Y0)
+		m_Y1  : np.array or float or None
+			mean of Y1. If None, m_Y1 = np.mean(Y1)
+		link  : class based on SDFC.tools.AbstractLink
+			Link function, default is identity
+		value : bool
+			If true, return coefficients with covariates, else return covariance fitted
 		
 		Returns
 		-------
-		None.
-		"""
-		self.b = b
-		self.s = s
+		The covariance
+	"""
+	out,coef = None,None
+	if c_Y is None:
+		out  = np.cov( np.stack( (Y0.ravel(),Y1.ravel()) ) )[0,1]
+		coef = link.inverse(out)
+	else:
+		m_Y0 = np.mean( Y0 ) if m_Y0 is None else np.array( [m_Y0] ).reshape(-1,1)
+		m_Y1 = np.mean( Y1 ) if m_Y1 is None else np.array( [m_Y1] ).reshape(-1,1)
+		
+		Yres = ( Y0 - m_Y0 ) * ( Y1 - m_Y1 )
+		if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
+		design = np.hstack( ( np.ones( (Y0.size,1) ) , c_Y ) )
+		coef,_,_,_ = scl.lstsq( design , link.inverse( Yres ) )
+		out = link( design @ coef )
 	
-	def __str__(self):
-		return "SDFC.tools.SemiBoundedLinkFct, bounds : {}, slope : {}".format(self.b,self.s)
-	
-	def __repr__(self):
-		return self.__str__()
-	
-	def __call__( self , x ):
-		if np.isscalar(x):
-			return self.s * x if x < self.b else self.b
-		return np.where( x < self.b , self.s * x , self.b )
-	
-	def gradient( self , x ):
-		return np.where( x < self.b , self.s , 0. )
-	
-	def inverse( self , x ):
-		return self.__call__(x)
-##}}}
+	return out if value else coef
 
-class BoundedLinkFct(LinkFct):##{{{
-	"""
-	SDFC.tools.BoundedLinkFct
-	=========================
-	A simple bounded function, use it if LogitLinkFct has too many overflow (Here the gradient is not well defined at x = a and x = b, and the inverse also).
-	Values:
-		- x < a : f(x) = a
-		- x > b : f(x) = b
-		- a <= x <= b : f(x) = x
-	"""
-	def __init__( self , a , b ):
-		self.a = a
-		self.b = b
-	
-	def __str__(self):
-		return "SDFC.tools.BoundedLinkFct, bounds : ({},{})".format(self.a,self.b)
-	
-	def __repr__(self):
-		return self.__str__()
-	
-	def __call__( self , x ):
-		if np.isscalar(x):
-			if x < self.a:
-				return self.a
-			elif x > self.b:
-				return self.b
-			else:
-				return x
-		return np.where( x > self.a , np.where( x < self.b , x , self.b ) , self.a )
-	
-	def gradient( self , x ):
-		return np.where( (self.a < x) &  (x < self.b) , 1. , 0. )
-	
-	def inverse( self , x ):
-		return self.__call__(x)
-##}}}
 

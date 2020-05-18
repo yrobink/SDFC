@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 ##################################################################################
 ##################################################################################
@@ -81,49 +82,227 @@
 ##################################################################################
 ##################################################################################
 
+###############
+## Libraries ##
+###############
 
-#' np_mean
-#'
-#' Compute the mean with covariates and link function
-#'
-#' @param Y   [vector] Dataset to fit
-#' @param c_Y [vector or NULL] Covariate
-#' @param link  [SDFC::LinkFct] link function, default is identity
-#' @param value  [bool] if TRUE return mean, else return coefficients of the fit
-#'
-#' @return [vector] Mean or coefficients of regression
-#'
-#' @examples
-#' ## Data
-#' size = 2500
-#' t    = base::seq( 0 , 1 , length = size )
-#' X0    = t^2
-#' loc   = 1. + 2 * X0
-#' Y    = stats::rnorm( n = size , mean = loc , sd = 0.1 )
-#'
-#' m = np_mean( Y , c_Y = X0 )
-#' 
-#' @export
-np_mean = function( Y , c_Y = NULL , link = SDFC::IdLink$new() , value = TRUE )
-{
-	out  = NULL
-	coef = NULL
-	if( is.null(c_Y) )
-	{
-		out  = base::mean(Y)
-		coef = link$inverse(out)
-	}
-	else
-	{
-		YY   = link$inverse(Y)
-		coef = as.vector(stats::lm( YY ~ c_Y )$coefficients)
-		out  = link$eval( base::cbind( 1 , c_Y )  %*% coef )
-	}
+import numpy as np
+from SDFC.tools.__Link import IdLink
+
+
+###########
+## Class ##
+###########
+
+class AbstractParam:##{{{
+	def __init__( self , kind , n_samples , **kwargs ):
+		self.kind       = kind
+		self.link    = IdLink() if kwargs.get("l_" + self.kind) is None else kwargs.get("l_" + self.kind)
+		self.n_samples  = n_samples
+		self.n_features = 0
+		self.coef_      = None
+		self.fit_       = None
 	
-	if( value )
-		return(out)
-	else
-		return(coef)
-}
+	def is_fix(self):
+		pass
+	
+	@property
+	def value( self ):
+		return self.link(self.fit_)
+	
+	def gradient( self ):
+		return self.link.gradient(self.fit_)
+	
+	def set_coef( self , coef ):
+		pass
+	
+##}}}
 
+class CovariateParam(AbstractParam):##{{{
+	def __init__( self , kind , n_samples , resample , **kwargs ):
+		AbstractParam.__init__( self , kind , n_samples , **kwargs )
+		self.design_ = None
+		
+		## Build design matrix
+		X = kwargs.get( "c_" + self.kind )
+		if X.ndim == 1: X = X.reshape(-1,1)
+		self.n_features = X.shape[1] + 1
+		if resample is None:
+			self.design_ = np.hstack( ( np.ones((self.n_samples,1)) , X ) )
+		else:
+			self.design_ = np.hstack( ( np.ones((self.n_samples,1)) , X[resample,:] ) )
+		self.coef_   = np.zeros(self.n_features)
+		
+		if np.linalg.matrix_rank(self.design_) < self.n_features:
+			print( "SDFC.LawParam: singular design matrix" )
+			self.coef_   = np.zeros(1)
+			self.design_ = np.ones((self.n_samples,1))
+		
+		self.update()
+	
+	def is_fix(self):
+		return False
+	
+	def update( self ):
+		self.fit_ = (self.design_ @ self.coef_).reshape(-1,1)
+	
+	def set_intercept( self , coef ):
+		coef = np.array([coef]).squeeze()
+		self.coef_[0] = coef
+		self.update()
+	
+	def set_coef( self , coef ):
+		self.coef_ = np.array([coef]).squeeze()
+		self.update()
+	
+	def design_wo1(self):
+		return self.design_[:,1:]
+##}}}
+
+class StationaryParam(AbstractParam):##{{{
+	def __init__( self , kind , n_samples , resample , **kwargs ):
+		AbstractParam.__init__( self , kind , n_samples , **kwargs )
+		self.coef_      = np.zeros(1)
+		self.n_features = 1
+		self.fit_       = np.zeros(self.n_samples)
+		self.design_    = np.ones( (self.n_samples,1) )
+	
+	def is_fix(self):
+		return False
+	
+	def update( self ):
+		self.fit_ = np.repeat( self.coef_ , self.n_samples ).reshape(-1,1)
+	
+	def set_intercept( self , coef ):
+		self.set_coef(coef)
+	
+	def set_coef( self , coef ):
+		self.coef_ = np.array([coef]).squeeze()
+		self.update()
+	
+	def design_wo1(self):
+		return None
+##}}}
+
+class FixParam(AbstractParam):##{{{
+	def __init__( self , kind , n_samples , resample , **kwargs ):
+		AbstractParam.__init__( self , kind , n_samples , **kwargs )
+		self.fit_       = np.array( [self.link.inverse( kwargs.get( "f_" + self.kind ) )] ).reshape(-1,1)
+		if self.fit_.size == 1: self.fit_ = np.repeat( self.fit_ , self.n_samples ).reshape(-1,1)
+		if resample is not None:
+			self.fit_ = self.fit_[resample,:]
+	
+	def is_fix(self):
+		return True
+	
+##}}}
+
+class LawParams:##{{{
+	
+	def __init__( self , kinds , **kwargs ):##{{{
+		self.kinds = kinds
+		self._dparams = {}
+		self.coef_ = None
+	##}}}
+	
+	def add_params( self , n_samples , resample , **kwargs ):##{{{
+		for kind in self.kinds:
+			k_param = self.filter( kind , **kwargs )
+			config = self.infer_configuration(**k_param)
+			if self.is_covariate(config):  self._dparams[kind] = CovariateParam(  kind , n_samples , resample , **k_param )
+			if self.is_stationary(config): self._dparams[kind] = StationaryParam( kind , n_samples , resample , **k_param )
+			if self.is_fix(config):        self._dparams[kind] = FixParam(        kind , n_samples , resample , **k_param )
+	##}}}
+	
+	def merge_covariate( self ):##{{{
+		
+		l_c = [ self._dparams[k].design_wo1() for k in self._dparams if isinstance(self._dparams[k],CovariateParam) ]
+		
+		if len(l_c) == 0:
+			return None
+		
+		for i in range(len(l_c)):
+			if l_c[i].ndim == 1:
+				l_c[i] = l_c[i].reshape(-1,1)
+		
+		C = np.ones( (l_c[0].shape[0],1) )
+		
+		for c in l_c:
+			C_next = np.hstack( (C,c) )
+			if np.linalg.matrix_rank(C_next) == C_next.shape[1]:
+				C = C_next
+		
+		if C.shape[1] == 1:
+			return None
+		else:
+			return C[:,1:]
+	##}}}
+	
+	def merge_coef( self ):##{{{
+		self.coef_ = np.array([])
+		for k in self._dparams:
+			if not self._dparams[k].is_fix():
+				self.coef_ = np.hstack( (self.coef_,self._dparams[k].coef_.squeeze()) )
+	##}}}
+	
+	def split_coef( self , coef ):##{{{
+		tcoef = []
+		a,b = 0,0
+		for k in self._dparams:
+			if self._dparams[k].is_fix():
+				tcoef.append(None)
+			else:
+				b = a + self._dparams[k].n_features
+				tcoef.append( coef[a:b] )
+				a = b
+		return tcoef
+	##}}}
+	
+	def update_coef( self , coef , kind = None ):##{{{
+		if kind is None:
+			lcoef = self.split_coef(coef)
+			for c,k in zip(lcoef,self._dparams):
+				self._dparams[k].set_coef(c)
+		else:
+			self._dparams[kind].set_coef(coef)
+		self.merge_coef()
+	##}}}
+	
+	def set_intercept( self , coef , kind ):##{{{
+		self._dparams[kind].set_intercept(coef)
+		self.merge_coef()
+	##}}}
+	
+	def infer_configuration( self , **kwargs ):##{{{
+		has_c = False
+		has_s = False
+		has_f = False
+		has_l = False
+		for k in kwargs:
+			if k[:2] == "c_": has_c = True
+			if k[:2] == "f_": has_f = True
+			if k[:2] == "l_": has_l = True
+		
+		if len(kwargs) == 0 or ( len(kwargs) == 1 and has_l):
+			has_s = True
+		return has_c,has_s,has_f,has_l
+	
+	def is_covariate( self , c ):
+		return c[0] and not ( c[1] or c[2] )
+	
+	def is_stationary( self , c ):
+		return c[1] and not ( c[0] or c[2] )
+	
+	def is_fix( self , c ):
+		return c[2] and not ( c[0] or c[1] )
+	
+	def filter( self , kind , **kwargs ):
+		out = {}
+		for k in kwargs:
+			if kind in k:
+				out[k] = kwargs[k]
+		return out
+	##}}}
+
+##}}}
 

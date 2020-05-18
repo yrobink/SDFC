@@ -87,8 +87,8 @@
 #' Compute the median with covariates (in fact just call np_quantile)
 #'
 #' @param Y  [vector] Dataset to fit
-#' @param X  [vector or NULL] Covariate
-#' @param return_coef  [bool] if TRUE return coefficients of the fit, else return median
+#' @param c_Y  [vector or NULL] Covariate
+#' @param value  [bool] if TRUE return variance, else return coefficients of the fit
 #'
 #' @return [vector] Median or coefficients of regression
 #'
@@ -100,10 +100,10 @@
 #' loc   = 1. + 2 * X0
 #' Y    = stats::rnorm( n = size , mean = loc , sd = 0.1 )
 #'
-#' med = np_median( Y , X = X0 )
+#' med = np_median( Y , c_Y = X0 )
 #' 
 #' @export
-np_median = function( Y , X = NULL , return_coef = FALSE )
+np_median = function( Y , c_Y = NULL , value = TRUE )
 {
-	return( np_quantile( Y , base::c(0.5) , X , return_coef ) )
+	return( np_quantile( Y , base::c(0.5) , c_Y , value ) )
 }

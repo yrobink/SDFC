@@ -82,55 +82,79 @@
 ##################################################################################
 
 
+np_lmoments_stationary = function(Y)
+{
+	Ys = Y[order(Y)]
+	size = length(Ys)
+	lmom = numeric(4)
+	
+	## Order 2
+	C0 = base::choose( 1:size , 1 )
+	C1 = base::choose( base::seq( size - 1 , 0 , -1 ) , 1 )
+	
+	## Order 3
+	C2 = base::choose( 1:size , 2 )
+	C3 = base::choose( base::seq( size - 1 , 0 , -1 ) , 2 )
+	
+	## Order 4
+	C4 = base::choose( 1:size , 3 )
+	C5 = base::choose( base::seq( size - 1 , 0 , -1 ) , 3 )
+	
+	
+	lmom[1] = base::mean(Ys)
+	lmom[2] = base::sum( ( C0 - C1 ) * Ys ) / ( 2 * base::choose( size , 2 ) )
+	lmom[3] = base::sum( ( C2 - 2 * C0 * C1 + C3 ) * Ys ) / ( 3 * base::choose( size , 3 ) )
+	lmom[4] = base::sum( ( C4 - 3 * C2 * C1 + 3 * C0 * C3 - C5 ) * Ys ) / ( 4 * base::choose( size , 4 ) )
+	
+	return(lmom)
+}
+
+
 #' np_lmoments
 #'
 #' Compute the L-Moments
 #'
 #' @param Y  [vector] Dataset
-#'
-#' @param order [int] order of moments
+#' @param c_Y  [vector] Covariate. If NULL stationary L-moments are computed
+#' @param order [int] order of moments. a vector with elements between 1 and 4
+#' @param lq [vector] Vector of quantile used for quantile regression. Default is seq(0.05,0.95,0.01)
 #'
 #' @return [lmom] L-Moments
 #'
 #' @examples
 #' ## Data
 #' size = 2000
-#' data = Dataset0(size)
-#' lmom1 = SDFC::np_lmoments(data$Y,1)
-#' lmom2 = SDFC::np_lmoments(data$Y,2)
-#' lmom3 = SDFC::np_lmoments(data$Y,3)
+#' c_data = dataset.covariates(size)
+#' 
+#' t       = c_data$t
+#' X_loc   = c_data$X_loc
+#' X_scale = c_data$X_scale
+#' loc   = 0.5 + 2 * X_loc
+#' scale =   1 + 2 * X_scale
+#' Y = stats::rnorm( size , mean = loc , sd = scale )
+#' 
+#' c_Y = base::cbind( X_loc , X_scale )
+#' 
+#' lmom = np_lmoments( Y , c_Y = c_Y )
 #' @export
-np_lmoments = function( Y , order )
+np_lmoments = function( Y , c_Y = NULL , order = NULL , lq = base::seq( 0.05 , 0.95 , 0.01 ) )
 {
-	size = length(Y)
-	res = 0
+	if( is.null(order) )
+		order = 1:4
 	
-	X = Y[order(Y)]
-	
-	if( order == 1 )
+	if( is.null(c_Y) )
 	{
-		res = base::mean(Y)
+		lmom = SDFC:::np_lmoments_stationary(Y)
+		return(lmom[order])
 	}
 	
-	if( order == 2 )
-	{
-		for( i in 1:size )
-		{
-			res = res + ( base::choose( i - 1 , 1 ) - base::choose( size - i , 1 ) ) * X[i]
-		}
-		res = res / ( 2 * base::choose( size , 2 ) )
-	}
+	if( !is.matrix(c_Y) )
+		c_Y = matrix( c_Y , nrow = length(c_Y) , ncol = 1 )
 	
-	if( order == 3 )
-	{
-		for( i in 1:size )
-		{
-			res = res + ( base::choose( i - 1 , 2 ) - 2 * base::choose( i-1 , 1 ) * base::choose( size - i , 1 ) + base::choose( size - i , 2 ) ) * X[i]
-		}
-		res = res / ( 3 * base::choose( size , 3 ) )
-	}
+	Yq = np_quantile( Y , lq , c_Y )
+	lmom = base::t( base::apply( Yq , 1 , np_lmoments_stationary ) )
 	
-	return(res)
+	return( lmom[,order] )
 }
 
 

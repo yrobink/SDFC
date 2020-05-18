@@ -90,212 +90,185 @@ import numpy          as np
 import scipy.stats    as sc
 import scipy.linalg   as scl
 import scipy.optimize as sco
+import scipy.special  as scp
 
 from SDFC.__AbstractLaw        import AbstractLaw
-from SDFC.tools.__LawParam     import LawParam
-from SDFC.tools.__LinkFct      import IdLinkFct
 from SDFC.NonParametric.__mean import mean
-from SDFC.NonParametric.__std  import std
+from SDFC.NonParametric.__var  import var
 
 
 #############
 ## Classes ##
 #############
 
-class ExpLaw(AbstractLaw):
+class Gamma(AbstractLaw):
 	"""
-	SDFC.ExpLaw
-	===========
+	Class to fit a Gamma law with covariates, available methods are:
 	
-	Fit parameters of an Exponential law, possibly with co-variable
+	moments  : use empirical estimator of mean and standard deviation to find loc and scale, possibly with least square
+			   regression if covariates are given
+	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of n_mcmc_iteration sample draw from
+	           the posterior P(coef_ | Y)
+	mle      : Maximum likelihood estimation
 	
-	Attributes
-	----------
-	method : string
-		method used to fit
-	scale  : numpy.ndarray
-		Scale fitted
-	coef_  : numpy.ndarray
-		Coefficients fitted
-	coefs_bootstrap: numpy.ndarray
-		coef_ for each bootstrap
-	confidence interval: numpy.ndarray[ shape = (2,coef_.size) ]
-		Confidence interval, first line is the alpha/2 quantile, and second line the 1 - alpha/2 quantile
-	alpha          : float
-		Level of confidence interval
+	Parameters
+	==========
+	scale : scale parameter
+	shape : shape parameter
 	"""
+	__doc__ += AbstractLaw.__doc__
 	
-	def __init__( self , method = "MLE" , link_fct_scale = IdLinkFct() , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
+	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
 		"""
-		Initialization of ExpLaw
+		Initialization of Gamma law
 		
 		Parameters
 		----------
 		method         : string
-			Method called to fit parameters, options are "moments", "lmoments", "quantiles" and "MLE" (Maximum Likelihood estimation)
-		link_fct_scale : a class herited from SDFC.tools.LinkFct
-			Link function for scale, default is SDFC.tools.IdLinkFct(). Interesting option is SDFC.tools.ExpLinkFct().
+			Method called to fit parameters, options are "moments" and "MLE" (Maximum Likelihood estimation)
 		n_bootstrap    : integer
 			Numbers of bootstrap for confidence interval, default = 0 (no bootstrap)
 		alpha          : float
 			Level of confidence interval, default = 0.05
-		
 		"""
-		AbstractLaw.__init__( self , method , n_bootstrap , alpha )
-		
-		self.scale     = None
-		
-		self._scale = LawParam( linkFct = link_fct_scale , kind = "scale" )
-		
-		self._lparams = [self._scale]
+		AbstractLaw.__init__( self , ["scale","shape"] , method , n_bootstrap , alpha )
 	##}}}
 	
 	def __str__(self):##{{{
-		val  = "SDFC.ExpLaw\n"
-		val += "-----------\n"
-		val += "* fit_method : {}\n".format(self.method)
-		val += "* link_scale : {}\n".format(str(self._scale.linkFct))
-		val += "* coef_      : {}\n".format(self.coef_)
-		
-		return val
+		return self._to_str()
 	##}}}
 	
 	def __repr__(self):##{{{
 		return self.__str__()
 	##}}}
 	
-	def fit( self , Y , scale_cov = None ): ##{{{
-		"""
-		Fit function for ExpLaw
-		
-		Arguments
-		---------
-		
-		Y         : numpy.ndarray
-			Data to fit
-		scale_cov : None or numpy.ndarray
-			Co-variates of scale in columns.
-		"""
-		self._size = Y.size
-		
-		
-		if self.n_bootstrap > 0:
-			self.coefs_bootstrap = []
-			if scale_cov is not None and scale_cov.ndim == 1:
-				scale_cov = scale_cov.reshape( (scale_cov.size,1) )
-			
-			
-			for i in range(self.n_bootstrap):
-				idx = np.random.choice( self._size , self._size )
-				Y_bs         = Y[idx]
-				scale_cov_bs = None   if scale_cov is None else scale_cov[idx,:]
-				
-				self._fit( Y_bs , scale_cov_bs )
-				self.coefs_bootstrap.append( self.coef_ )
-			
-			self.coefs_bootstrap = np.array( self.coefs_bootstrap )
-			self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
-		
-		self._fit( Y , scale_cov )
+	@property
+	def scale(self):##{{{
+		return self.params._dparams["scale"].value
 	##}}}
 	
-	def bootstrap_law( self , i ):##{{{
-		"""
-		Return an ExpLaw with coef from bootstrap
-		
-		Arguments
-		---------
-		i : integer
-			Number of bootstrap
-		
-		Return
-		------
-		law : SDFC.ExpLaw
-			A ExpLaw, None if n_bootstrap = 0
-		"""
-		if n_bootstrap == 0:
-			return None
-		law = ExpLaw( self.method , alpha = self.alpha )
-		law._scale = self._scale.copy()
-		law._scale.set_coef( self._scale.coef_ )
-		law.coef_ = law._concat_param()
-		law._update_param( law.coef_ )
-		return law
+	@property
+	def shape(self):##{{{
+		return self.params._dparams["shape"].value
 	##}}}
 	
-	def predict_scale( self , scale_cov = None ):##{{{
+	def predict_scale( self , c_scale  = None ):##{{{
 		"""
 		Return scale parameter with a new co-variates
 		
 		Arguments
 		---------
-		scale_cov : np.array or None
+		c_scale : np.array or None
 			Covariate
 		
 		Return
 		------
 		scale : np.array
-			Location parameters
+			Scale parameters, if c_scale is None return self.scale
 		"""
-		return self._predict_param( self._scale , scale_cov )
+		return self._predict_covariate( "scale" , c_scale )
 	##}}}
 	
-	def _fit( self , Y , scale_cov = None ):##{{{
-		self._Y    = np.ravel(Y)
-		self._scale.init( X = scale_cov , fix_values = None , size = self._size )
+	def predict_shape( self , c_shape  = None ):##{{{
+		"""
+		Return scale parameter with a new co-variates
 		
-		if self.method == "moments":
-			self._fit_moments()
-		else:
-			self._fit_mle()
+		Arguments
+		---------
+		c_shape : np.array or None
+			Covariate
 		
-		self.coef_ = self._scale.coef_
-		##}}}
+		Return
+		------
+		shape : np.array
+			Shape parameters, if c_scale is None return self.shape
+		"""
+		return self._predict_covariate( "shape" , c_shape )
+	##}}}
+	
 	
 	def _fit_moments(self):##{{{
 		
-		sX = self._scale.design_wo1()
-		self._scale.set_coef( mean( self._Y , sX , return_coef = True , linkFct = self._scale.linkFct ) )
-		self._scale.update()
-		self.scale = self._scale.valueLf()
+		pscale = self.params._dparams["scale"]
+		pshape = self.params._dparams["shape"]
+		n_samples = pscale.n_samples
+		
+		if not pscale.is_fix() and not pshape.is_fix():
+			mX = np.ones( (n_samples,1) )
+			vX = np.ones( (n_samples,1) )
+			for i in range(1,pscale.n_features):
+				for j in range(pshape.n_features):
+					mX = np.hstack( (mX,np.reshape( pscale.design_[:,i]    * pshape.design_[:,j] , (n_samples,1) ) ) )
+					vX = np.hstack( (vX,np.reshape( pscale.design_[:,i]**2 * pshape.design_[:,j] , (n_samples,1) ) ) )
+			m = mean( self._Y , mX[:,1:] )
+			v = var(  self._Y , vX[:,1:] )
+			
+			idx  = np.logical_or( np.abs(m) < 1e-8 , v < 1e-8 )
+			cidx = np.logical_not(idx)
+			scale = np.zeros_like(m)
+			shape = np.zeros_like(m)
+			scale[cidx] = v[cidx] / m[cidx]
+			shape[cidx] = m[cidx]**2 / v[cidx]
+			
+			if np.any(idx):
+				scale[idx] = scale[cidx].min()
+				shape[idx] = shape[cidx].min()
+			
+			self.params.update_coef( mean( scale , pscale.design_wo1() , value = False , link = pscale.link ) , "scale" )
+			self.params.update_coef( mean( shape , pshape.design_wo1() , value = False , link = pshape.link ) , "shape" )
+		elif pscale.is_fix():
+			
+			m = mean( self._Y  , pshape.design_wo1() * self.scale )
+			v = var(  self._Y  , pshape.design_wo1() * self.scale**2 )
+			
+			shape = m**2 / v
+			self.params.update_coef( mean( shape , pshape.design_wo1() , value = False , link = pshape.link ) , "shape" )
+			
+		elif pshape.is_fix():
+			m = mean( self._Y  , pscale.design_wo1()    * self.shape )
+			v = var(  self._Y  , pscale.design_wo1()**2 * self.shape )
+			
+			scale = v / m
+			self.params.update_coef( mean( scale , pscale.design_wo1() , value = False , link = pscale.link ) , "scale" )
 	##}}}
 	
-	def _fit_mle(self):##{{{
-		
+	def _initialization_mle(self):##{{{
 		self._fit_moments()
-		
-		param_init = self._scale.coef_
-		self.optim_result = sco.minimize( self._optim_function , param_init , jac = self._gradient_optim_function , method = "BFGS" )
-		self._update_param(self.optim_result.x)
 	##}}}
 	
-	def _negloglikelihood( self ): ##{{{
-		if not np.all(self.scale > 0):
+	def _fit( self ): ##{{{
+		if self.method == "moments":
+			self._fit_moments()
+	##}}}
+	
+	@AbstractLaw._update_coef
+	def _negloglikelihood( self , coef ): ##{{{
+		if not np.all(self.scale > 0) or not np.all(self.shape > 0) or not np.all(self._Y > 0):
 			return np.Inf
 		
-		return np.sum( np.log(self.scale) - self._Y / self.scale )
+		return np.sum( self._Y / self.scale + scp.loggamma(self.shape) + self.shape * np.log(self.scale) - (self.shape-1) * np.log(self._Y) )
 	##}}}
 	
-	def _update_param( self , param ):##{{{
+	@AbstractLaw._update_coef
+	def _gradient_nlll( self , coef ): ##{{{
+		grad = np.array( [] )
 		
-		self._scale.set_coef( param )
-		self._scale.update()
+		pscale = self.params._dparams["scale"]
+		pshape = self.params._dparams["shape"]
 		
-		self.scale = self._scale.valueLf()
+		if np.all(self.scale > 0) and np.all(self.shape > 0) and np.all(self._Y > 0):
+			if not pscale.is_fix():
+				grad_scale = pscale.design_.T @ ( ( self.shape / self.scale - self._Y / self.scale**2 ) * pscale.gradient() )
+				grad = np.hstack( (grad,grad_scale.squeeze()) )
+			if not pshape.is_fix():
+				grad_shape = pshape.design_.T @ ( ( scp.digamma(self.shape) + np.log(self.scale) - np.log(self._Y) ) * pshape.gradient() )
+				grad = np.hstack( (grad,grad_shape.squeeze()) )
+		else:
+			grad = np.zeros( coef.size ) + np.nan
+		return grad
 	##}}}
-	
-	def _optim_function( self , param ):##{{{
-		self._update_param(param)
-		return self._negloglikelihood()
-	##}}}
-	
-	def _gradient_optim_function( self , param ): ##{{{
-		self._update_param(param)
-		grad_scale = np.zeros_like(param) + np.nan
-		
-		if np.all(self.scale > 0):
-			grad_scale = self._scale.design_.T @ ( ( 1. / self.scale - self._Y / self.scale**2 ) * self._scale.valueGrLf() )
-		
-		return grad_scale
-	##}}}
+
+
+
+
 

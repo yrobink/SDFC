@@ -10,9 +10,6 @@
 - Support for fit with fix parameters
 - Support for user defined custom link function
 
-## TODO
-- Add optional arguments for MLE (for initialization)
-
 ## Example
 
 ![Alt](/figures/Example_py.png)

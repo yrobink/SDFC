@@ -98,11 +98,28 @@
 namespace SDFC
 {
 
-/*
-Eigen::VectorXd rvs_uniform( size_t n , double min = 0 , double max = 1 )
+// Matrix and vector typedef
+//==========================
+
+template <class Scalar> using Matrix = Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> ;
+template <class Scalar> using Vector = Eigen::Matrix<Scalar,Eigen::Dynamic,1> ;
+
+
+// Statistical functions
+//======================
+
+template <class Scalar>
+Matrix<Scalar> rvs_uniform( size_t n , size_t ncol = 1 , Scalar min = static_cast<Scalar>(0) , Scalar max = static_cast<Scalar>(1) )
 {
+	Matrix<Scalar> rvs = Matrix<Scalar>::Random(n,ncol) ;
+	rvs.array() *= static_cast<Scalar>( (max-min) / 2 ) ;
+	rvs.array() += static_cast<Scalar>( (max+min) / 2 ) ;
+	return rvs ;
 }
-*/
+
+//Vector<Scalar> density_uniform( const Vector<Scalar>& , Scalar min = 0 , Scalar max = 1 )
+
+
 
 
 

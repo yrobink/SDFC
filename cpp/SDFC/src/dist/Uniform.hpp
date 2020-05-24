@@ -81,15 +81,111 @@
 //==============================================================================//
 //==============================================================================//
 
-#ifndef SDFC_TOOLS
-#define SDFC_TOOLS
-
-// Constants
-//==========
-
-#include "src/tools/Constants.hpp"
+#ifndef SDFC_UNIFORMLAW
+#define SDFC_UNIFORMLAW
 
 
+//===========//
+// Libraries //
+//===========//
+
+#include <iostream>
+#include <random>
+#include <Eigen/Dense>
+
+
+
+namespace SDFC
+{
+
+/*
+Eigen::VectorXd rvs_uniform( size_t n , double min = 0 , double max = 1 )
+{
+}
+*/
+
+
+
+class UniformLaw
+{
+	public:
+	
+	// Typedef
+	//--------
+	//{{{
+	typedef double          value_type ;
+	typedef unsigned int    size_type  ;
+	typedef Eigen::VectorXd Vector     ;
+	//}}}
+	
+	// Constructor / Destructor
+	//-------------------------
+	
+	UniformLaw( value_type min = 0 , value_type max = 1 )://{{{
+		m_max(max),
+		m_min(min),
+		m_gen(),
+		m_law(m_min,m_max)
+	{}
+	//}}}
+	
+	virtual ~UniformLaw() //{{{
+	{}//}}}
+	
+	// Overloading
+	//------------
+	
+	// Methods
+	//--------
+	
+	Vector rvs( size_type n = 1 ) //{{{
+	{
+		Eigen::VectorXd out(n) ;
+		for( size_type i = 0 ; i < n ; ++i )
+			out[i] = m_law(m_gen) ;
+		return out ;
+	} //}}}
+	
+	Vector density( Vector x ) //{{{
+	{
+		return x ;
+	}//}}}
+	
+	Vector cdf( Vector q )//{{{
+	{
+		Vector p(q.size()) ;
+		for( size_type s = 0 ; s < p.size() ; ++s )
+			p[s] = q[s] < m_min ? 0. : q[s] > m_max ? 1. : ( q[s] - m_min ) / ( m_max - m_min ) ;
+		return p ;
+	}//}}}
+	
+	Vector sf( Vector q )//{{{
+	{
+		return 1. - UniformLaw::cdf(q).array() ;
+	}//}}}
+	
+	Vector icdf( Vector p ) //{{{
+	{
+		return (m_max - m_min) * p.array() + m_min ;
+	}//}}}
+	
+	Vector isf( Vector p ) //{{{
+	{
+		return UniformLaw::icdf( 1. - p.array() ) ;
+	}//}}}
+	
+	
+	// Arguments
+	//----------
+	//{{{
+	value_type m_max ;
+	value_type m_min ;
+	std::default_random_engine     m_gen ;
+	std::uniform_real_distribution<double> m_law ;
+	//}}}
+} ;
+
+} // namespace SDFC
 
 #endif
 

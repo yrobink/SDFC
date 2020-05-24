@@ -81,21 +81,15 @@
 //==============================================================================//
 //==============================================================================//
 
-#ifndef SDFC_CORE
-#define SDFC_CORE
+#ifndef SDFC_TOOLS
+#define SDFC_TOOLS
 
-// Versions
-//=========
+// Constants
+//==========
 
-#define SDFC_WORLD_VERSION 0
-#define SDFC_MAJOR_VERSION 0
-#define SDFC_MINOR_VERSION 0
+#include "src/tools/Constants.hpp"
+#include "src/tools/UniformGenerator.hpp"
 
-// Laws
-//=====
-
-#include "src/laws/UniformLaw.hpp"
-#include "src/laws/NormalLaw.hpp"
 
 
 #endif

@@ -91,7 +91,8 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 
-#include "SDFC/core"
+#include "SDFC/dist.hpp"
+#include "SDFC/tools.hpp"
 
 
 //=========//
@@ -129,20 +130,24 @@ int main()
 {
 	// Version
 	//--------
-//	std::cout << "SDFC_" << SDFC_WORLD_VERSION << "." << SDFC_MAJOR_VERSION << "." << SDFC_MINOR_VERSION << std::endl ;
+	std::cout << "SDFC_" << SDFC_WORLD_VERSION << "." << SDFC_MAJOR_VERSION << "." << SDFC_MINOR_VERSION << std::endl ;
 	
 	// Parameters
 	//-----------
 	
+	Eigen::MatrixXd u = SDFC::rvs_uniform<double>(10000,2,-3,8) ;
+	
+	SDFC::eigen_to_csv( u , "test.csv" ) ;
+	
 	// Law
 	//----
 	
-	SDFC::NormalLaw law( 0. , 1 ) ;
-	Eigen::VectorXd x ;
-	x.setLinSpaced( 50 , -5 , 5 ) ;
-	Eigen::VectorXd y = law.density(x) ;
-	
-	std::cout << y << std::endl ;
+//	SDFC::NormalLaw law( 0. , 1 ) ;
+//	Eigen::VectorXd x ;
+//	x.setLinSpaced( 50 , -5 , 5 ) ;
+//	Eigen::VectorXd y = law.density(x) ;
+//	
+//	std::cout << y << std::endl ;
 	
 	// End
 	//----

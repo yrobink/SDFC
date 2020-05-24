@@ -81,17 +81,6 @@
 //==============================================================================//
 //==============================================================================//
 
-#ifndef SDFC_TOOLS
-#define SDFC_TOOLS
-
-// Constants
-//==========
-
-#include "src/tools/version.hpp"
-#include "src/tools/Constants.hpp"
-#include "src/tools/UniformGenerator.hpp"
-
-
-
-#endif
-
+#define SDFC_WORLD_VERSION 0
+#define SDFC_MAJOR_VERSION 0
+#define SDFC_MINOR_VERSION 0

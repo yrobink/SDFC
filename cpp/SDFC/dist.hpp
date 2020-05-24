@@ -81,18 +81,11 @@
 //==============================================================================//
 //==============================================================================//
 
-#ifndef SDFC_CORE
-#define SDFC_CORE
+#ifndef SDFC_DIST
+#define SDFC_DIST
 
-// Versions
-//=========
-
-#define SDFC_WORLD_VERSION 0
-#define SDFC_MAJOR_VERSION 0
-#define SDFC_MINOR_VERSION 0
-
-// Laws
-//=====
+// Distributions
+//==============
 
 #include "src/dist/Uniform.hpp"
 #include "src/dist/Normal.hpp"

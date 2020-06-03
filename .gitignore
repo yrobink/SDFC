@@ -6,7 +6,6 @@ a.out
 notebook/.ipynb_checkpoints
 *.swp
 RcppExports.cpp
-NAMESPACE
 *.Rd
 *.egg-info
 build

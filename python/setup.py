@@ -243,7 +243,7 @@ list_packages = [
 setup(
 	name = "SDFC" ,
 	description = "Statistical Distribution Fit with Covariates" ,
-	version = "0.5.0" ,
+	version = "0.6.0a0" ,
 	author = "Yoann Robin" ,
 	author_email = "yoann.robin.k@gmail.com" ,
 	license = "CeCILL-C" ,

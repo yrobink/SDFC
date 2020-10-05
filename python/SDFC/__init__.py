@@ -86,7 +86,7 @@
 ## Libraries ##
 ###############
 
-__version__ = "0.5.0"
+__version__ = "0.6.0a0"
 
 from SDFC.__Normal      import Normal
 from SDFC.__Exponential import Exponential

@@ -116,14 +116,32 @@ class TensorLink(GlobalLink):
 
 class AbstractLaw:##{{{
 	
-	def __init__( self , method ): ##{{{
-		self._method   = method
-		self._c_global = None
-		self._l_global = None
+	def __init__( self , method : str , name_params : list ): ##{{{
+		self._method      = method.lower()
+		self._name_params = name_params
+		self._c_global    = None
+		self._l_global    = None
+	##}}}
+	
+	def _fit_MLE(self): ##{{{
+		
+		self._init_MLE()
+		
+	##}}}
+	
+	def _fit_Bayesian(self):##{{{
+		pass
 	##}}}
 	
 	def fit( self , Y , **kwargs ): ##{{{
-		pass
+		
+		if self._method not in ["mle","bayesian"]:
+			self._special_fit()
+		elif self._method == "mle" :
+			self._fit_MLE()
+		else:
+			self._fit_Bayesian()
+		
 	##}}}
 	
 ##}}}
@@ -137,11 +155,11 @@ class Normal(AbstractLaw):##{{{
 	## Fit methods
 	##============
 	
-	def _special_fit( self , Y , **kwargs ):##{{{
+	def _special_fit( self ):##{{{
 		pass
 	##}}}
 	
-	def _init_MLE( self , Y , **kwargs ): ##{{{
+	def _init_MLE( self ): ##{{{
 		pass
 	##}}}
 	
@@ -266,18 +284,19 @@ if __name__ == "__main__":
 	## Fit
 	##====
 	norm = Normal()
-	
+	norm.fit( Y )
 	
 	## And plot it
 	##============
 	nrow,ncol = 1,1
-	fig = plt.figure()
+	fig = plt.figure( figsize = cplt.figsize(nrow,ncol) )
 	
 	ax = fig.add_subplot( nrow , ncol , 1 )
 	ax.plot( t , Y )
 	ax.plot( t , X_loc )
 	ax.plot( t , np.exp(-X_scale) )
 	
+	fig.set_tight_layout(True)
 	plt.show()
 	
 	print("Done")

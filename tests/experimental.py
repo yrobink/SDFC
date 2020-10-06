@@ -46,6 +46,44 @@ import CTP.plot as cplt
 ## Classes ##
 #############
 
+## Univ link function
+##===================
+
+class UnivariateLink:##{{{
+	def __init__(self): pass
+##}}}
+
+class Identity(UnivariateLink): ##{{{
+	
+	def __init__( self ):
+		UnivariateLink.__init__(self)
+	
+	def transform( self , x ):
+		return x
+	
+	def pseudo_inverse( self , x ):
+		return x
+	
+	def jacobian( self , x ):
+		return np.ones_like(x)
+##}}}
+
+class Exponential(UnivariateLink): ##{{{
+	
+	def __init__( self ):
+		UnivariateLink.__init__(self)
+	
+	def transform( self , x ):
+		return np.exp(x)
+	
+	def pseudo_inverse( self , x ):
+		return np.log(x)
+	
+	def jacobian( self , x ):
+		return np.exp(x)
+##}}}
+
+
 ## Global link function
 ##=====================
 
@@ -62,6 +100,228 @@ class GlobalLink:##{{{
 	def pseudo_inverse( self , params , lin_coef , X ):
 		pass
 ##}}}
+
+class TransformLinear(GlobalLink): ##{{{
+	
+	def __init__( self , *args , **kwargs ):##{{{
+		GlobalLink.__init__( self , *args , **kwargs )
+		self._link     = kwargs.get("link")
+		if self._link is None:
+			self._link = Identity()
+	##}}}
+	
+	def _linear_transform( self , coef , X ): ##{{{
+		return coef[0] + X @ coef[1:]
+	##}}}
+	
+	def transform( self , coef , X ):##{{{
+		out = self._link.transform( self._linear_transform(coef,X) )
+		return out
+	##}}}
+	
+	def jacobian( self , coef , X ): ##{{{
+		jac = np.zeros( (coef.size,X.shape[0]) )
+		jac[0,:] = 1
+		jac[1:,:] = X.T
+		return self._link.jacobian( self._linear_transform( coef , X ) ) * jac
+	##}}}
+	
+##}}}
+
+class TensorLink(GlobalLink):##{{{
+	
+	def __init__( self , l_p , s_p , *args , **kwargs ):##{{{
+		GlobalLink.__init__( self , *args , **kwargs )
+		self._l_p = [ l if l is not None else TransformLinear() for l in l_p ]
+		self._s_p = s_p
+	##}}}
+	
+	def transform( self , coef , X ): ##{{{
+		list_p = []
+		ib,ie = 0,0
+		for s,l,x in zip(self._s_p,self._l_p,X):
+			ie += s
+			list_p.append( l.transform( coef[ib:ie] , x ) )
+			ib += s
+		return list_p
+	##}}}
+	
+	def jacobian( self , coef , X ): ##{{{
+		list_jac = []
+		ib,ie = 0,0
+		jac = np.zeros( (len(self._s_p),coef.size,X[0].shape[0]) )
+		for i,(s,l,x) in enumerate(zip(self._s_p,self._l_p,X)):
+			ie += s
+			jac[i,ib:ie,:] = l.jacobian( coef[ib:ie] , x )
+			ib += s
+		return jac
+	##}}}
+	
+	def pseudo_inverse( self , params , lin_coef , X ):##{{{
+		pass
+	##}}}
+	
+##}}}
+
+
+
+## Statistical distribution classes
+##=================================
+
+class AbstractLaw:##{{{
+	
+	## Init functions
+	##===============
+	
+	def __init__( self , name_params : list , method : str ): ##{{{
+		self._method      = method.lower()
+		self._name_params = name_params
+		self._c_global    = None
+		self._l_global    = None
+		self.coef_        = None
+	##}}}
+	
+	def _init_link( self , **kwargs ): ##{{{
+		if kwargs.get("l_global") is not None:
+			self._l_global = kwargs.get("l_global")
+			self._c_global = kwargs.get("c_global")
+		else:
+			l_p = []
+			c_p = []
+			s_p = [] ## size
+			for p in self._name_params:
+				if kwargs.get("l_{}".format(p)) is not None:
+					l_p.append(kwargs.get("l_{}".format(p)))
+				elif kwargs.get("f_{}".format(p)) is not None:
+					l_p.append(kwargs.get("f_{}".format(p)))
+				else:
+					l_p.append(None)
+				if kwargs.get("c_{}".format(p)) is not None:
+					c = kwargs.get("c_{}".format(p)).squeeze()
+					if c.ndim == 1: c = c.reshape(-1,1)
+					c_p.append(c)
+					s_p.append( 1 + c.shape[1] )
+				else:
+					c_p.append(None)
+			self._l_global = TensorLink( l_p , s_p )
+			self._c_global = c_p
+	##}}}
+	
+	def _update_coef(func):##{{{
+		def wrapper(*args):
+			self  = args[0]
+			coef_ = args[1]
+			self.coef_ = coef_
+			self._set_params( *self._l_global.transform( coef_ , self._c_global ) )
+			return func(*args)
+		return wrapper
+	##}}}
+	
+	
+	## Fit functions
+	##==============
+	
+	def _fit_MLE(self): ##{{{
+		
+		self._init_MLE()
+		
+		optim = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
+		self.coef_ = optim.x
+		print(optim)
+		
+	##}}}
+	
+	def _fit_Bayesian(self):##{{{
+		pass
+	##}}}
+	
+	def fit( self , Y , **kwargs ): ##{{{
+		
+		## Add Y
+		self._Y = Y.reshape(-1,1)
+		
+		## Init link functions
+		self._init_link(**kwargs)
+		
+		## Now fit
+		if self._method not in ["mle","bayesian"]:
+			self._special_fit()
+		elif self._method == "mle" :
+			self._fit_MLE()
+		else:
+			self._fit_Bayesian()
+		
+	##}}}
+	
+##}}}
+
+class Normal(AbstractLaw):##{{{
+	
+	def __init__( self , method = "MLE" ):##{{{
+		AbstractLaw.__init__( self , ["loc","scale"] , method )
+		self._loc   = None
+		self._scale = None
+	##}}}
+	
+	## Properties
+	##===========
+	
+	@property
+	def loc(self):##{{{
+		return self._loc
+	##}}}
+	
+	@property
+	def scale(self):##{{{
+		return self._scale
+	##}}}
+	
+	def _set_params( self , loc , scale ):##{{{
+		self._loc,self._scale = loc,scale
+	##}}}
+	
+	
+	## Fit methods
+	##============
+	
+	def _special_fit( self ):##{{{
+		pass
+	##}}}
+	
+	def _init_MLE( self ): ##{{{
+		self.coef_ = np.array([0.8,2.5,0.1,0.7])
+	##}}}
+	
+	@AbstractLaw._update_coef
+	def _negloglikelihood( self , coef ): ##{{{
+		scale2 = np.power( self.scale , 2 )
+		shape = self._Y.shape
+		return np.Inf if not np.all( self.scale > 0 ) else np.sum( np.log( scale2 ) ) / 2. + np.sum( np.power( self._Y - self.loc.reshape(shape) , 2 ) / scale2.reshape(shape) ) / 2.
+	##}}}
+	
+	@AbstractLaw._update_coef
+	def _gradient_nlll( self , coef ): ##{{{
+		## Parameters
+		shape = self._Y.shape
+		loc   = self.loc.reshape(shape)
+		scale = self.scale.reshape(shape)
+		Z     = ( self._Y - loc ) / scale
+		
+		## Compute gradient
+		T0 = - Z / scale
+		T1 = - Y * Z / scale**2 + loc * Z / scale**2 + 1 / scale
+		jac = self._l_global.jacobian( coef , self._c_global )
+		jac[0,:,:] *= T0.T
+		jac[1,:,:] *= T1.T
+		
+		return jac.sum( axis = (0,2) )
+	##}}}
+	
+##}}}
+
+
+## GEV part
+##=========
 
 class GEVPrLink(GlobalLink):##{{{
 	def __init__( self , *args , **kwargs ):
@@ -106,66 +366,6 @@ class GEVPrLink(GlobalLink):##{{{
 		return coef
 ##}}}
 
-class TensorLink(GlobalLink):
-	def __init__( self , l_link , *args , **kwargs ):
-		GlobalLink.__init__( self , *args , **kwargs )
-
-
-## Statistical distribution classes
-##=================================
-
-class AbstractLaw:##{{{
-	
-	def __init__( self , method : str , name_params : list ): ##{{{
-		self._method      = method.lower()
-		self._name_params = name_params
-		self._c_global    = None
-		self._l_global    = None
-	##}}}
-	
-	def _fit_MLE(self): ##{{{
-		
-		self._init_MLE()
-		
-	##}}}
-	
-	def _fit_Bayesian(self):##{{{
-		pass
-	##}}}
-	
-	def fit( self , Y , **kwargs ): ##{{{
-		
-		if self._method not in ["mle","bayesian"]:
-			self._special_fit()
-		elif self._method == "mle" :
-			self._fit_MLE()
-		else:
-			self._fit_Bayesian()
-		
-	##}}}
-	
-##}}}
-
-class Normal(AbstractLaw):##{{{
-	
-	def __init__( self , method = "MLE" ):##{{{
-		AbstractLaw.__init__( self , method )
-	##}}}
-	
-	## Fit methods
-	##============
-	
-	def _special_fit( self ):##{{{
-		pass
-	##}}}
-	
-	def _init_MLE( self ): ##{{{
-		pass
-	##}}}
-	
-##}}}
-
-
 class GEV:##{{{
 	
 	def __init__( self , link , restart_fit = 0 ):##{{{
@@ -196,9 +396,6 @@ class GEV:##{{{
 		T0 = - shape * kappa / scale
 		T1 = 1 / scale - shape * Z / scale * kappa
 		T2 = np.log(ZZ) * ( ZZi - 1 ) / shape**2 + Z * kappa
-		
-		
-		
 		
 		jac[0,:] *= T0
 		jac[1,:] *= T1
@@ -241,7 +438,6 @@ class GEV:##{{{
 	##}}}
 ##}}}
 
-
 def test_GEV(): ##{{{
 	n_samples = 2000
 	t,X,_,_ = sd.tools.Dataset.covariates( n_samples )
@@ -277,26 +473,27 @@ if __name__ == "__main__":
 	X_scale = X_scale.reshape(-1,1)
 	
 	loc   = 1. + 3 * X_loc
-	scale = np.exp( - 0.5 * X_scale )
+	scale = np.exp( 0.2 + 0.5 * X_scale )
 	
 	Y = np.random.normal( loc = loc , scale = scale )
 	
 	## Fit
 	##====
 	norm = Normal()
-	norm.fit( Y )
+	norm.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = TransformLinear( link = Exponential() ) )
 	
 	## And plot it
 	##============
-	nrow,ncol = 1,1
-	fig = plt.figure( figsize = cplt.figsize(nrow,ncol) )
-	
-	ax = fig.add_subplot( nrow , ncol , 1 )
-	ax.plot( t , Y )
-	ax.plot( t , X_loc )
-	ax.plot( t , np.exp(-X_scale) )
-	
-	fig.set_tight_layout(True)
-	plt.show()
+#	if True:
+#		nrow,ncol = 1,1
+#		fig = plt.figure( figsize = cplt.figsize(nrow,ncol) )
+#		
+#		ax = fig.add_subplot( nrow , ncol , 1 )
+#		ax.plot( t , Y )
+#		ax.plot( t , X_loc )
+#		ax.plot( t , np.exp(-X_scale) )
+#		
+#		fig.set_tight_layout(True)
+#		plt.show()
 	
 	print("Done")

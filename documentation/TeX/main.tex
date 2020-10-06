@@ -1,0 +1,252 @@
+\documentclass[12pt,a4paper]{article}
+
+%% Packages {{{
+
+\usepackage[utf8]{inputenc}
+\usepackage{babel}
+\usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+\usepackage[natbib=true,
+            doi=false,
+            isbn=false,
+            url=false,
+            doi=false,
+            eprint=false,
+            style=authoryear,
+            maxnames=2,
+            firstinits=true,
+            backend=bibtex]{biblatex}
+\usepackage{setspace}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{longtable}
+\usepackage{rotating}
+\usepackage[]{algorithm2e}
+\usepackage{listings}
+
+%%}}}
+
+%% Source code macros %% {{{
+
+% Default fixed font does not support bold face
+\DeclareFixedFont{\ttb}{T1}{pcr}{bx}{n}{12} % for bold
+\DeclareFixedFont{\ttm}{T1}{pcr}{m}{n}{12}  % for normal
+
+% Custom colors
+\definecolor{deepblue}{rgb}{0,0,0.5}
+\definecolor{deepred}{rgb}{0.6,0,0}
+\definecolor{deepgreen}{rgb}{0,0.5,0}
+
+\newcommand\pythonstyle{\lstset{
+language=Python,
+basicstyle=\ttm,
+otherkeywords={self},             % Add keywords here
+keywordstyle=\ttb\color{deepblue},
+emph={MyClass,__init__},          % Custom highlighting
+emphstyle=\ttb\color{deepred},    % Custom highlighting style
+stringstyle=\color{deepgreen},
+frame=tb,                         % Any extra options here
+showstringspaces=false            % 
+}}
+
+
+% Python environment
+\lstnewenvironment{python}[1][]
+{
+\pythonstyle
+\lstset{#1}
+}
+{}
+
+% Python for external files
+\newcommand\pythonexternal[2][]{{
+\pythonstyle
+\lstinputlisting[#1]{#2}} }
+
+% Python for inline
+\newcommand\pythoninline[1]{{\pythonstyle\lstinline!#1!}}
+
+
+%%}}}
+
+%% Theorem macros %% {{{
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem*{corollary}{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{conjecture}{Conjecture}[section]
+\newtheorem{example}{Example}[section]
+
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+\newtheorem*{note}{Note}
+
+%%}}}
+
+%% Preamble {{{
+
+\renewcommand{\arraystretch}{1.2}
+
+\bibliography{bibliography}
+\onehalfspacing
+
+\title{Description of the methods used in the SDFC package}
+\author{Robin Y.}
+\date{\today}
+
+%%}}}
+
+%% Macros %% {{{
+
+\SetKw{KwFrom}{from}
+\SetKw{KwInit}{Initialization:}
+\SetKw{KwStep}{Step:}
+
+\newcommand\TODO[1]{\textcolor{red}{TODO #1}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\RR}{\mathbb{R}}
+
+%% }}}
+
+\begin{document}
+
+%% Title %% {{{
+
+\maketitle
+
+%%}}}
+
+%% Abstract %% {{{
+
+\begin{abstract}
+\end{abstract}
+
+%% }}}
+
+%% TODO % {{{
+
+
+%%}}}
+
+%% Table of contents %% {{{
+
+\tableofcontents
+
+%%}}}
+
+\section*{Introduction} %%{{{
+\addcontentsline{toc}{section}{Introduction}
+
+%%}}}
+
+\section{Normal distribution} %%{{{
+
+\subsection{Definition} %%{{{
+
+\begin{definition}[Normal distribution] A random variable $Y$ follows
+the \emph{Normal distribution}, noted $Y\sim\mathcal{N}(\mu,\sigma)$,
+$\mu\in\RR$, $\sigma>0$ if
+
+\[
+\begin{aligned}
+\PP(Y\leq y) &:= \int_{-\infty}^y f(\tilde{y}).\mathrm{d}\tilde{y}\\
+f(y) &:= \frac{1}{\sigma\sqrt{2\pi}} \exp\left[-\frac{1}{2}\left(\frac{y-\mu}{\sigma}\right)^2 \right]
+\end{aligned}
+\]
+
+\noindent The function $f$ is the density of the Normal distribution, $\mu$ is
+called the \emph{location} parameter, and $\sigma$ is called the \emph{scale}
+parameter.
+
+\end{definition}
+
+%%}}}
+
+\subsection{Likelihood function} %%{{{
+
+\noindent For a time series of observations $Y_i$, the negative log-likelihood
+function is given by:
+
+\[\mathbf{NL}(Y_i):=\sum_{i=1}^N
+\frac{1}{2}\left(\frac{Y_i-\mu_i}{\sigma_i}\right)^2 + \log(\sigma_i)\]
+
+\noindent And its gradient is given by:
+
+\[
+\partial_{\theta_j}\mathbf{NL}(Y_i)=\sum_{i=1}^N
+\partial_{\theta_j}\mu\left[-\frac{Z_i}{\sigma_i}\right] +
+\partial_{\theta_j}\sigma\left[-\frac{Y_iZ_i}{\sigma_i^2}+\frac{\mu_iZ_i}{\sigma_i^2}+\frac{1}{\sigma_i^2}\right]
+\]
+
+%%}}}
+
+%%}}}
+
+\section{GEV distribution} %% {{{
+
+\noindent See~\citet{Hosking1985}.
+
+%%}}}
+
+\section*{Summary} %% {{{
+\addcontentsline{toc}{section}{Summary}
+
+%%}}}
+
+%% Appendix %% {{{
+
+\clearpage
+\newpage
+\pagebreak[4]
+
+\appendix
+
+%%}}}
+
+%% Bibliography %% {{{
+\clearpage
+\newpage
+\pagebreak[4]
+\printbibliography
+
+%%}}}
+
+%% Break {{{
+
+\clearpage
+\newpage
+\pagebreak[4]
+
+%% }}}
+
+\section*{Tabulars} %%{{{
+
+\clearpage
+\newpage
+\pagebreak[4]
+%%}}}
+
+\section*{Figures} %%{{{
+
+
+%\begin{figure}[!h]
+%\centering
+%\includegraphics[width=0.8\linewidth]{figures/fig01}
+%\caption{
+%}
+%\label{fig::fig01}
+%\end{figure}
+
+%%}}}
+
+
+
+\end{document}

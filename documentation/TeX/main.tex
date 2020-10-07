@@ -114,6 +114,14 @@ showstringspaces=false            %
 \newcommand{\PP}{\mathbb{P}}
 \newcommand{\RR}{\mathbb{R}}
 
+\newcommand{\lL}{\mathcal{L}}
+\newcommand{\nN}{\mathcal{N}}
+\newcommand{\zZ}{\mathcal{Z}}
+
+\newcommand{\NL}{\mathbf{NL}}
+\newcommand{\GEV}{\mathrm{GEV}}
+
+
 %% }}}
 
 \begin{document}
@@ -145,20 +153,57 @@ showstringspaces=false            %
 \section*{Introduction} %%{{{
 \addcontentsline{toc}{section}{Introduction}
 
+\noindent Our goal is to find the parameters of a probability distribution, e.g.
+for a Normal distribution $\nN(\mu,\sigma)$ to find $\mu$ and $\sigma$ (see.
+Sec.~\ref{sec::normal} for the definition). We place ourselves in a very general
+context: we assumes that $\mu$ and $\sigma$ can vary with time $t$, and depend
+of ``true'' parameters $\theta$. Mathematically, we write:
+
+\[
+\begin{pmatrix} \mu_t \\ \sigma_t \end{pmatrix}
+= \lL(\theta,X_t)
+= \begin{pmatrix} \lL_\mu(\theta,X_t) \\ \lL_\sigma(\theta,X_t)\end{pmatrix}
+\]
+
+\noindent The variable $\theta\in\RR^p$ is the parameter that we want to infer,
+$X_t$ is called a \emph{co-variable}, which describes the time dependance. The
+function $\lL$ is called the \emph{link function}.
+
+
 %%}}}
 
-\section{Normal distribution} %%{{{
+\section*{Notations} %%{{{
+\addcontentsline{toc}{section}{Notations}
+
+\[Z = \frac{Y-\mu}{\sigma}\]
+\[\zZ = 1+\xi Z\]
+
+%%}}}
+
+\section{Generic estimation} %%{{{
+
+\subsection{Maximum likelihood estimation} %%{{{
+
+%%}}}
+
+\subsection{Bayesian estimation} %%{{{
+
+%%}}}
+
+%%}}}
+
+\section{Normal distribution}\label{sec::normal} %%{{{
 
 \subsection{Definition} %%{{{
 
 \begin{definition}[Normal distribution] A random variable $Y$ follows
-the \emph{Normal distribution}, noted $Y\sim\mathcal{N}(\mu,\sigma)$,
+the \emph{Normal distribution}, noted $Y\sim\nN(\mu,\sigma)$,
 $\mu\in\RR$, $\sigma>0$ if
 
 \[
 \begin{aligned}
 \PP(Y\leq y) &:= \int_{-\infty}^y f(\tilde{y}).\mathrm{d}\tilde{y}\\
-f(y) &:= \frac{1}{\sigma\sqrt{2\pi}} \exp\left[-\frac{1}{2}\left(\frac{y-\mu}{\sigma}\right)^2 \right]
+f(y) &:= \frac{1}{\sigma\sqrt{2\pi}} \exp\left[-\frac{1}{2}Z^2 \right]
 \end{aligned}
 \]
 
@@ -172,19 +217,50 @@ parameter.
 
 \subsection{Likelihood function} %%{{{
 
-\noindent For a time series of observations $Y_i$, the negative log-likelihood
-function is given by:
+\noindent For a time series of observations $(Y_k)_{k=1\dots K}$, the negative
+log-likelihood function is given by:
 
-\[\mathbf{NL}(Y_i):=\sum_{i=1}^N
-\frac{1}{2}\left(\frac{Y_i-\mu_i}{\sigma_i}\right)^2 + \log(\sigma_i)\]
+\[\NL(Y_k):=\sum_{k=1}^K
+\frac{1}{2}Z_k^2 + \log(\sigma_k)\]
 
-\noindent And its gradient is given by:
+\begin{proposition} The gradient of the negative log-likelihood of the Normal
+distribution is given by
 
 \[
-\partial_{\theta_j}\mathbf{NL}(Y_i)=\sum_{i=1}^N
-\partial_{\theta_j}\mu\left[-\frac{Z_i}{\sigma_i}\right] +
-\partial_{\theta_j}\sigma\left[-\frac{Y_iZ_i}{\sigma_i^2}+\frac{\mu_iZ_i}{\sigma_i^2}+\frac{1}{\sigma_i^2}\right]
+\partial_{\theta_j}\NL(Y_k)=\sum_{k=1}^K
+\partial_{\theta_j}\mu\left[-\frac{Z_k}{\sigma_k}\right] +
+\partial_{\theta_j}\sigma\left[-\frac{Y_kZ_k}{\sigma_k^2}+\frac{\mu_kZ_k}{\sigma_k^2}+\frac{1}{\sigma_k}\right]
 \]
+
+\end{proposition}
+
+\begin{proof} Start with the gradient in the direction $\theta_j$
+
+\[
+\partial_{\theta_j}\NL(Y_k)=\sum_{k=1}^K \partial_{\theta_j}\left[ Z_k\right] Z_k +
+\frac{\partial_{\theta_j}\sigma_k}{\sigma_k}
+\]
+
+\noindent We have
+
+\[
+\partial_{\theta_j}Z_k = - \frac{Y_k}{\sigma_k^2}\partial_{\theta_j}\sigma_k -
+\frac{\sigma_k\partial_{\theta_j}\mu_k-\mu_k\partial_{\theta_j}\sigma_k}{\sigma_k^2}
+\]
+
+\noindent Consequently
+
+\[
+\begin{aligned}
+\partial_{\theta_j}\NL(Y_k) &= \sum_{k=1}^K
+\left[ - \frac{Y_k}{\sigma_k^2}\partial_{\theta_j}\sigma_k - \frac{\partial_{\theta_j}\mu_k}{\sigma_k} + \frac{\mu_k}{\sigma_k^2}\partial_{\theta_j}\sigma_k\right] Z_k +
+\frac{\partial_{\theta_j}\sigma_k}{\sigma_k}\\
+&= \partial_{\theta_j}\mu\left[-\frac{Z_k}{\sigma_k}\right] +
+\partial_{\theta_j}\sigma\left[-\frac{Y_kZ_k}{\sigma_k^2}+\frac{\mu_kZ_k}{\sigma_k^2}+\frac{1}{\sigma_k}\right]
+\end{aligned}
+\]
+
+\end{proof}
 
 %%}}}
 
@@ -192,7 +268,131 @@ function is given by:
 
 \section{GEV distribution} %% {{{
 
+
+\subsection{Definition} %%{{{
+
+\begin{definition}[Normal distribution] A random variable $Y$ follows the
+\emph{Generalized Extreme Value} distribution (GEV), noted
+$Y\sim\GEV(\mu,\sigma,\xi)$, $\mu,\xi\in\RR$, $\sigma>0$ if
+
+\[
+\begin{aligned}
+\PP(Y\leq y) &:= \exp\left[-\zZ^{-1/\xi}\right] =\int_{-\infty}^y f(\tilde{y}).\mathrm{d}\tilde{y}\\
+f(y) &:= \frac{1}{\sigma}\zZ^{-1-1/\xi}\exp\left[\zZ^{-1/\xi}\right]
+\end{aligned}
+\]
+
+\noindent The function $f$ is the density of the GEV distribution, $\mu$ is
+called the \emph{location} parameter, $\sigma$ is called the \emph{scale}
+parameter and $\xi$ is called the \emph{shape} parameter.
+
+\end{definition}
+
+%%}}}
+
+\subsection{Likelihood function} %%{{{
+
+\noindent For a time series of observations $(Y_k)_{k=1\dots K}$, the negative
+log-likelihood function is given by:
+
+\[\mathbf{NL}(Y_k):=\sum_{k=1}^K
+\left(1+\frac{1}{\xi_k}\right)\log(\zZ_k) + 
+\zZ_k^{-1/\xi_k} +
+\log(\sigma_k)
+\]
+
+\begin{proposition} The gradient of the negative log-likelihood of the GEV
+distribution is given by
+
+\[
+\begin{aligned}
+\partial_{\theta_j}\mathbf{NL}(Y_k) &= \sum_{k=1}^K
+\partial_{\theta_j}\mu
+\left[-\frac{\xi_k}{\sigma_k}\kappa_k\right] +
+\partial_{\theta_j}\sigma
+\left[\frac{1}{\sigma_k}-\xi_k\frac{Z_k}{\sigma_k}\kappa_k\right] +
+\partial_{\theta_j}\xi
+\left[\log(\zZ_k)\frac{\zZ_k^{-1/\xi_k}-1}{\xi_k^2}+Z_k\kappa_k\right]\\
+\kappa_k &=
+\frac{1}{\zZ_k}\left(1+\frac{1}{\xi_k}\right)-\frac{\zZ_k^{-1/\xi_k-1}}{\xi_k}
+\end{aligned}
+\]
+\end{proposition}
+
+\begin{proof} Start with the gradient in the direction $\theta_j$ %%{{{
+
+\[
+\begin{aligned}
+\partial_{\theta_j}\NL(Y_k) & =\sum_{k=1}^K
+\partial_{\theta_j}\left[\left(1+\frac{1}{\xi_k}\right)\log(\zZ_k)\right] + 
+\partial_{\theta_j}\left[\zZ_k^{-1/\xi_k}\right] +
+\partial_{\theta_j}\log(\sigma_k)\\
+& =\sum_{k=1}^K
+\left[-\frac{\partial_{\theta_j}\xi_k}{\xi_k^2}\log(\zZ_k) + 
+\left(1+\frac{1}{\xi_k}\right)\frac{\partial_{\theta_j}\zZ_k}{\zZ_k}\right] +
+\partial_{\theta_j}\left[\zZ_k^{-1/\xi_k}\right] + 
+\frac{\partial_{\theta_j}\sigma_k}{\sigma_k}
+\end{aligned}
+\]
+
+\noindent The term $\partial_{\theta_k}\zZ_k$ is given by
+
+\[
+\begin{aligned}
+\partial_{\theta_j}\zZ_k & =\partial_{\theta_j}\left[1+\xi_k\frac{Y_k-\mu_k}{\sigma_k}\right]\\
+ & =Z_k\partial_{\theta_j}\xi_k+\xi_k\partial_{\theta_j}\frac{Y_k-\mu_k}{\sigma_k}\\
+ &
+ =Z_k\partial_{\theta_j}\xi_k+\xi_k\left[-Y_k\frac{\partial_{\theta_j}\sigma_k}{\sigma_k^2}-\frac{\sigma_k\partial_{\theta_j}\mu_k-\mu_k\partial_{\theta_j}\sigma_k}{\sigma_k^2}\right]\\
+ &
+ =\partial_{\theta_j}\mu_k\left[-\frac{\xi_k}{\sigma_k}\right]+\partial_{\theta_j}\sigma_k\left[\xi_k\frac{\mu_k-Y_k}{\sigma_k^2}\right]+\partial_{\theta_j}\xi_k\left[Z_k\right]
+\end{aligned}
+\]
+
+\noindent And the term $\partial_{\theta_k}\zZ_k^{-1/\xi_k}$ is given by
+
+\[
+\begin{aligned}
+\partial_{\theta_j}\left[\zZ_k^{-1/\xi_k}\right]
+&= \partial_{\theta_j}\exp\left[-\frac{1}{\xi_k}\log\left[\zZ_k\right]\right]\\
+&= \partial_{\theta_j}\left[-\frac{1}{\xi_k}\log\left[\zZ_k\right]\right]\zZ_k^{-1/\xi_k}\\
+&= \left[\frac{\partial_{\theta_j}\xi_k}{\xi_k^2}\log\left[\zZ_k\right] -
+\frac{1}{\xi_k}\frac{\partial_{\theta_j}\zZ_k}{\zZ_k}\right]\zZ_k^{-1/\xi_k}\\
+&=
+\partial_{\theta_j}\xi_k\left[\log\left[\zZ_k\right]\frac{\zZ_{k}^{-1/\xi_k}}{\xi_k^2}\right] -
+\frac{\zZ_k^{-1/\xi_k-1}}{\xi_k}\partial_{\theta_j}\zZ_k
+\end{aligned}
+\]
+
+\noindent Thus, we find
+
+\[
+\begin{aligned}
+\partial_{\theta_j}\NL(Y_k) & =\sum_{k=1}^K -
+\frac{\partial_{\theta_j}\xi_k}{\xi_k^2}\log(\zZ_k) +
+\left(1+\frac{1}{\xi_k}\right)\frac{\partial_{\theta_j}\zZ_k}{\zZ_k} + 
+\partial_{\theta_j}\left[\zZ_k^{-1/\xi_k}\right] +
+\frac{\partial_{\theta_j}\sigma_k}{\sigma_k} \\
+&= \sum_{k=1}^K
+\partial_{\theta_j}\xi_k\left[\log\left[\zZ_k\right]\frac{\zZ_{k}^{-1/\xi_k}-1}{\xi_k^2}\right] + 
+\underbrace{\left[\frac{1}{\zZ_k}\left(1+\frac{1}{\xi_k}\right)-\frac{\zZ_k^{-1/\xi_k-1}}{\xi_k}\right]}_{=\kappa_k}
+\partial_{\theta_j}\zZ_k+\frac{\partial_{\theta_j}\sigma_k}{\sigma_k}\\
+&= \sum_{k=1}^K
+\partial_{\theta_j}\mu_k\left[-\frac{\xi_k}{\sigma_k}\kappa_k\right] +
+\partial_{\theta_j}\sigma_k\left[\frac{1}{\sigma_k}-{\xi_k}\frac{Z_k}{\sigma_k}\kappa_k\right] +
+\partial_{\theta_j}\xi_k\left[\log\left[\zZ_k\right]\frac{\zZ_k^{-1/\xi_k}-1}{\xi_k^2}+Z_k\kappa_k\right]
+\end{aligned}
+\]
+
+\end{proof}
+%%}}}
+
+%%}}}
+
+\subsection{$L$-moments estimator} %%{{{
+
 \noindent See~\citet{Hosking1985}.
+
+%%}}}
 
 %%}}}
 

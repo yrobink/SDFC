@@ -46,6 +46,7 @@ $(TARGET): $(SRC) $(SRCBIB) $(FIGPNG)
 	@$(BIB) $(SRCAUX)
 	@$(TEX) $(SRC)
 	@$(TEX) $(SRC)
+	@cp $(TARGET) ../doc.pdf
 	@mv $(SRCLOG) logs 2> /dev/null | true
 	@mv $(SRCAUX) logs 2> /dev/null | true
 	@mv $(SRCIDX) logs 2> /dev/null | true

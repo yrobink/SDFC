@@ -218,6 +218,14 @@ class AbstractLaw:##{{{
 	##}}}
 	
 	
+	## Properties
+	##===========
+	
+	@property
+	def method(self):##{{{
+		return self._method
+	##}}}
+	
 	## Fit functions
 	##==============
 	
@@ -284,12 +292,17 @@ class Normal(AbstractLaw):##{{{
 	## Fit methods
 	##============
 	
+	def _fit_moments( self ): ##{{{
+		self.coef_ = np.array([0.8,2.5,0.1,0.7])
+	##}}}
+	
 	def _special_fit( self ):##{{{
-		pass
+		if self.method == "moments":
+			self._fit_moments()
 	##}}}
 	
 	def _init_MLE( self ): ##{{{
-		self.coef_ = np.array([0.8,2.5,0.1,0.7])
+		self._fit_moments()
 	##}}}
 	
 	@AbstractLaw._update_coef
@@ -474,13 +487,15 @@ if __name__ == "__main__":
 	
 	loc   = 1. + 3 * X_loc
 	scale = np.exp( 0.2 + 0.5 * X_scale )
+#	scale = np.zeros(n_samples) + 0.5
 	
 	Y = np.random.normal( loc = loc , scale = scale )
 	
 	## Fit
 	##====
-	norm = Normal()
+	norm = Normal( method = "moments" )
 	norm.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = TransformLinear( link = Exponential() ) )
+	print(norm.coef_)
 	
 	## And plot it
 	##============

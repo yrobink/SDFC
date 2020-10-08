@@ -24,6 +24,7 @@ import scipy.linalg as scl
 import pandas as pd
 import xarray as xr
 import SDFC as sd
+import SDFC.NonParametric as sdnp
 
 ## Plot libraries ##
 ##==================
@@ -293,6 +294,15 @@ class Normal(AbstractLaw):##{{{
 	##============
 	
 	def _fit_moments( self ): ##{{{
+		
+		## Find loc
+		##=========
+		X_loc = self._c_global[0]
+		
+		## Find scale
+		##===========
+		X_scale = self._c_global[1]
+		
 		self.coef_ = np.array([0.8,2.5,0.1,0.7])
 	##}}}
 	

@@ -52,6 +52,9 @@ import CTP.plot as cplt
 
 class UnivariateLink:##{{{
 	def __init__(self): pass
+
+	def __call__( self , x ):
+		return self.transform(x)
 ##}}}
 
 class Identity(UnivariateLink): ##{{{
@@ -62,7 +65,7 @@ class Identity(UnivariateLink): ##{{{
 	def transform( self , x ):
 		return x
 	
-	def pseudo_inverse( self , x ):
+	def inverse( self , x ):
 		return x
 	
 	def jacobian( self , x ):
@@ -77,7 +80,7 @@ class Exponential(UnivariateLink): ##{{{
 	def transform( self , x ):
 		return np.exp(x)
 	
-	def pseudo_inverse( self , x ):
+	def inverse( self , x ):
 		return np.log(x)
 	
 	def jacobian( self , x ):
@@ -90,7 +93,8 @@ class Exponential(UnivariateLink): ##{{{
 
 class GlobalLink:##{{{
 	def __init__( self , *args , **kwargs ):
-		pass
+		self._special_fit_allowed = False
+		self._n_features = 0
 	
 	def transform( self , coef , X ):
 		pass
@@ -100,6 +104,11 @@ class GlobalLink:##{{{
 	
 	def pseudo_inverse( self , params , lin_coef , X ):
 		pass
+	
+	@property
+	def n_features(self):
+		return self._n_features
+	
 ##}}}
 
 class TransformLinear(GlobalLink): ##{{{
@@ -135,6 +144,8 @@ class TensorLink(GlobalLink):##{{{
 		GlobalLink.__init__( self , *args , **kwargs )
 		self._l_p = [ l if l is not None else TransformLinear() for l in l_p ]
 		self._s_p = s_p
+		self._n_features = np.sum(self._s_p)
+		self._special_fit_allowed = np.all( [isinstance(l,TransformLinear) for l in self._l_p] )
 	##}}}
 	
 	def transform( self , coef , X ): ##{{{
@@ -164,6 +175,54 @@ class TensorLink(GlobalLink):##{{{
 	
 ##}}}
 
+## Non parametric functions
+##=========================
+
+def mean( Y , c_Y = None , link = Identity() , value = True ): ##{{{
+	out,coef = None,None
+	if c_Y is None:
+		out = np.mean(Y)
+		coef = link.inverse(out)
+	else:
+		size = c_Y.shape[0]
+		if c_Y.ndim == 1:
+			c_Y = c_Y.reshape(-1,1)
+		design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
+		coef,_,_,_ = scl.lstsq( design , link.inverse(Y) )
+		out = link( design @ coef )
+	return out if value else coef
+##}}}
+
+def var( Y , c_Y = None , m_Y = None , link = Identity() , value = True ): ##{{{
+	out,coef = None,None
+	if c_Y is None:
+		out  = np.var(Y)
+		coef = link.inverse(out)
+	else:
+		m_Y = np.mean( Y , axis = 0 ) if m_Y is None else np.array( [m_Y] ).reshape(-1,1)
+		Yres = ( Y - m_Y )**2
+		if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
+		design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
+		coef,_,_,_ = scl.lstsq( design , link.inverse( Yres ) )
+		out = np.abs( link( design @ coef ) )
+	
+	return out if value else coef
+##}}}
+
+def std( Y , c_Y = None , m_Y = None , link = Identity() , value = True ):##{{{
+	out = np.sqrt( var( Y , c_Y , m_Y , link ) )
+	if not value:
+		if c_Y is None:
+			coef = link.inverse(out)
+		else:
+			if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
+			design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
+			coef,_,_,_ = scl.lstsq( design , link.inverse( out ) )
+			out = link( design @ coef )
+		return coef
+	
+	return out
+##}}}
 
 
 ## Statistical distribution classes
@@ -179,7 +238,7 @@ class AbstractLaw:##{{{
 		self._name_params = name_params
 		self._c_global    = None
 		self._l_global    = None
-		self.coef_        = None
+		self._coef        = None
 	##}}}
 	
 	def _init_link( self , **kwargs ): ##{{{
@@ -227,12 +286,24 @@ class AbstractLaw:##{{{
 		return self._method
 	##}}}
 	
+	@property
+	def coef_(self):
+		return self._coef
+	
+	@coef_.setter
+	def coef_( self , coef_ ):
+		self._coef = coef_
+		self._set_params( *self._l_global.transform( coef_ , self._c_global ) )
+	
 	## Fit functions
 	##==============
 	
 	def _fit_MLE(self): ##{{{
 		
 		self._init_MLE()
+		
+		##TODO Here a while loop to check if points is really good
+		
 		
 		optim = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
 		self.coef_ = optim.x
@@ -253,7 +324,7 @@ class AbstractLaw:##{{{
 		self._init_link(**kwargs)
 		
 		## Now fit
-		if self._method not in ["mle","bayesian"]:
+		if self._method not in ["mle","bayesian"] and self._l_global._special_fit_allowed:
 			self._special_fit()
 		elif self._method == "mle" :
 			self._fit_MLE()
@@ -263,6 +334,8 @@ class AbstractLaw:##{{{
 	##}}}
 	
 ##}}}
+
+##===================================
 
 class Normal(AbstractLaw):##{{{
 	
@@ -295,15 +368,19 @@ class Normal(AbstractLaw):##{{{
 	
 	def _fit_moments( self ): ##{{{
 		
+		coefs = np.zeros(self._l_global.n_features)
+		
 		## Find loc
 		##=========
 		X_loc = self._c_global[0]
+		coefs[:self._l_global._s_p[0]] = mean( self._Y , X_loc , self._l_global._l_p[0]._link , False ).squeeze()
+		self.coef_ = coefs
 		
 		## Find scale
 		##===========
 		X_scale = self._c_global[1]
-		
-		self.coef_ = np.array([0.8,2.5,0.1,0.7])
+		coefs[self._l_global._s_p[0]:] = std( self._Y , X_scale , self.loc , self._l_global._l_p[1]._link , False ).squeeze()
+		self.coef_ = coefs
 	##}}}
 	
 	def _special_fit( self ):##{{{
@@ -312,18 +389,21 @@ class Normal(AbstractLaw):##{{{
 	##}}}
 	
 	def _init_MLE( self ): ##{{{
-		self._fit_moments()
+		if self._l_global._special_fit_allowed:
+			self._fit_moments()
+		else:
+			pass
 	##}}}
 	
-	@AbstractLaw._update_coef
 	def _negloglikelihood( self , coef ): ##{{{
+		self.coef_ = coef
 		scale2 = np.power( self.scale , 2 )
 		shape = self._Y.shape
 		return np.Inf if not np.all( self.scale > 0 ) else np.sum( np.log( scale2 ) ) / 2. + np.sum( np.power( self._Y - self.loc.reshape(shape) , 2 ) / scale2.reshape(shape) ) / 2.
 	##}}}
 	
-	@AbstractLaw._update_coef
 	def _gradient_nlll( self , coef ): ##{{{
+		self.coef_ = coef
 		## Parameters
 		shape = self._Y.shape
 		loc   = self.loc.reshape(shape)
@@ -496,7 +576,7 @@ if __name__ == "__main__":
 	X_scale = X_scale.reshape(-1,1)
 	
 	loc   = 1. + 3 * X_loc
-	scale = np.exp( 0.2 + 0.5 * X_scale )
+	scale = np.exp( 2 * X_scale )
 #	scale = np.zeros(n_samples) + 0.5
 	
 	Y = np.random.normal( loc = loc , scale = scale )

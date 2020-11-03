@@ -129,6 +129,7 @@ class TransformLinear(GlobalLink): ##{{{
 	##}}}
 	
 	def _linear_transform( self , coef , X ): ##{{{
+		if X is None: return coef[0]
 		return coef[0] + X @ coef[1:]
 	##}}}
 	
@@ -156,7 +157,7 @@ class TensorLink(GlobalLink):##{{{
 				self._l_p[i] = TransformLinear( link = self._l_p[i] )
 		self._s_p = s_p
 		self._n_features = np.sum(self._s_p)
-		self._special_fit_allowed = np.all( [isinstance(l,TransformLinear) for l in self._l_p] )
+		self._special_fit_allowed = np.all( [isinstance(l,(TransformLinear,FixedParams)) for l in self._l_p] )
 	##}}}
 	
 	def transform( self , coef , X ): ##{{{
@@ -172,11 +173,18 @@ class TensorLink(GlobalLink):##{{{
 	def jacobian( self , coef , X ): ##{{{
 		list_jac = []
 		ib,ie = 0,0
-		jac = np.zeros( (len(self._s_p),coef.size,X[0].shape[0]) )
-		for i,(s,l,x) in enumerate(zip(self._s_p,self._l_p,X)):
-			ie += s
-			jac[i,ib:ie,:] = l.jacobian( coef[ib:ie] , x )
-			ib += s
+		c_size = 1
+		for x in X:
+			if x is not None:
+				c_size = x.shape[0]
+		jac = np.zeros( (np.nonzero(self._s_p)[0].size,coef.size,c_size) )
+		i = 0
+		for s,l,x in zip(self._s_p,self._l_p,X):
+			if s > 0:
+				ie += s
+				jac[i,ib:ie,:] = l.jacobian( coef[ib:ie] , x )
+				ib += s
+				i += 1
 		return jac
 	##}}}
 	
@@ -241,6 +249,10 @@ class AbstractLaw:##{{{
 					s_p.append( 1 + c.shape[1] )
 				else:
 					c_p.append(None)
+					if kwargs.get("f_{}".format(p)) is not None:
+						s_p.append(0)
+					else:
+						s_p.append(1)
 			self._l_global = TensorLink( l_p , s_p )
 			self._c_global = c_p
 	##}}}
@@ -358,7 +370,7 @@ class Normal(AbstractLaw):##{{{
 	##}}}
 	
 	def _set_params( self , loc , scale ):##{{{
-		self._loc,self._scale = loc,scale
+		self._loc,self._scale = loc.squeeze(),scale.squeeze()
 	##}}}
 	
 	
@@ -371,15 +383,19 @@ class Normal(AbstractLaw):##{{{
 		
 		## Find loc
 		##=========
-		X_loc = self._c_global[0]
-		coefs[:self._l_global._s_p[0]] = sdnp.mean( self._Y , X_loc , self._l_global._l_p[0]._link , False ).squeeze()
-		self.coef_ = coefs
+		if not isinstance(self._l_global._l_p[0],FixedParams):
+			X_loc = self._c_global[0]
+			design = np.hstack( ( np.ones((self._Y.size,1)) , X_loc ) )
+			a = sdnp.mean( self._Y , X_loc , self._l_global._l_p[0]._link , False ).squeeze()
+			coefs[:self._l_global._s_p[0]] = a
+			self.coef_ = coefs
 		
 		## Find scale
 		##===========
-		X_scale = self._c_global[1]
-		coefs[self._l_global._s_p[0]:] = sdnp.std( self._Y , X_scale , self.loc , self._l_global._l_p[1]._link , False ).squeeze()
-		self.coef_ = coefs
+		if not isinstance(self._l_global._l_p[1],FixedParams):
+			X_scale = self._c_global[1]
+			coefs[self._l_global._s_p[0]:] = sdnp.std( self._Y , X_scale , self.loc , self._l_global._l_p[1]._link , False ).squeeze()
+			self.coef_ = coefs
 	##}}}
 	
 	def _special_fit( self ):##{{{
@@ -413,8 +429,13 @@ class Normal(AbstractLaw):##{{{
 		T0 = - Z / scale
 		T1 = - Y * Z / scale**2 + loc * Z / scale**2 + 1 / scale
 		jac = self._l_global.jacobian( coef , self._c_global )
-		jac[0,:,:] *= T0.T
-		jac[1,:,:] *= T1.T
+		
+		p = 0
+		if not isinstance(self._l_global._l_p[0],FixedParams):
+			jac[p,:,:] *= T0.T
+			p += 1
+		if not isinstance(self._l_global._l_p[1],FixedParams):
+			jac[p,:,:] *= T1.T
 		
 		return jac.sum( axis = (0,2) )
 	##}}}
@@ -566,6 +587,7 @@ def test_GEV(): ##{{{
 
 if __name__ == "__main__":
 	np.seterr( all = "ignore" )
+	np.random.seed(42)
 	
 	## Build data
 	##===========
@@ -576,7 +598,7 @@ if __name__ == "__main__":
 	
 	loc   = 1. + 3 * X_loc
 	scale = np.exp( 2 * X_scale )
-#	scale = np.zeros(n_samples) + 0.5
+	scale = ( np.zeros(n_samples) + 0.5 ).reshape(-1,1)
 	
 	Y = np.random.normal( loc = loc , scale = scale )
 	
@@ -587,7 +609,9 @@ if __name__ == "__main__":
 	norm = Normal( method = "mle" )
 #	norm.fit( Y , c_global = c_global , l_global = l_global )
 #	norm.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = Exponential() )
-	norm.fit( Y , f_loc = loc , c_scale = X_scale , l_scale = Exponential() )
+#	norm.fit( Y , f_loc = loc , c_scale = X_scale , l_scale = Exponential() )
+#	norm.fit( Y , c_loc = X_loc , f_scale = scale )
+	norm.fit( Y , c_loc = X_loc )
 	print(norm.info_.mle_optim_result)
 	
 	## And plot it

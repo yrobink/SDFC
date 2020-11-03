@@ -111,6 +111,14 @@ class GlobalLink:##{{{
 	
 ##}}}
 
+class FixedParams(GlobalLink):##{{{
+	def __init__( self , value ):
+		self.value_ = value
+	
+	def transform( self , *args , **kwargs ):
+		return self.value_
+##}}}
+
 class TransformLinear(GlobalLink): ##{{{
 	
 	def __init__( self , *args , **kwargs ):##{{{
@@ -143,6 +151,9 @@ class TensorLink(GlobalLink):##{{{
 	def __init__( self , l_p , s_p , *args , **kwargs ):##{{{
 		GlobalLink.__init__( self , *args , **kwargs )
 		self._l_p = [ l if l is not None else TransformLinear() for l in l_p ]
+		for i in range(len(self._l_p)):
+			if isinstance(self._l_p[i],UnivariateLink):
+				self._l_p[i] = TransformLinear( link = self._l_p[i] )
 		self._s_p = s_p
 		self._n_features = np.sum(self._s_p)
 		self._special_fit_allowed = np.all( [isinstance(l,TransformLinear) for l in self._l_p] )
@@ -178,57 +189,23 @@ class TensorLink(GlobalLink):##{{{
 ## Non parametric functions
 ##=========================
 
-def mean( Y , c_Y = None , link = Identity() , value = True ): ##{{{
-	out,coef = None,None
-	if c_Y is None:
-		out = np.mean(Y)
-		coef = link.inverse(out)
-	else:
-		size = c_Y.shape[0]
-		if c_Y.ndim == 1:
-			c_Y = c_Y.reshape(-1,1)
-		design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
-		coef,_,_,_ = scl.lstsq( design , link.inverse(Y) )
-		out = link( design @ coef )
-	return out if value else coef
-##}}}
-
-def var( Y , c_Y = None , m_Y = None , link = Identity() , value = True ): ##{{{
-	out,coef = None,None
-	if c_Y is None:
-		out  = np.var(Y)
-		coef = link.inverse(out)
-	else:
-		m_Y = np.mean( Y , axis = 0 ) if m_Y is None else np.array( [m_Y] ).reshape(-1,1)
-		Yres = ( Y - m_Y )**2
-		if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
-		design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
-		coef,_,_,_ = scl.lstsq( design , link.inverse( Yres ) )
-		out = np.abs( link( design @ coef ) )
-	
-	return out if value else coef
-##}}}
-
-def std( Y , c_Y = None , m_Y = None , link = Identity() , value = True ):##{{{
-	out = np.sqrt( var( Y , c_Y , m_Y , link ) )
-	if not value:
-		if c_Y is None:
-			coef = link.inverse(out)
-		else:
-			if c_Y.ndim == 1: c_Y = c_Y.reshape(-1,1)
-			design = np.hstack( ( np.ones((Y.size,1)) , c_Y ) )
-			coef,_,_,_ = scl.lstsq( design , link.inverse( out ) )
-			out = link( design @ coef )
-		return coef
-	
-	return out
-##}}}
-
-
 ## Statistical distribution classes
 ##=================================
 
 class AbstractLaw:##{{{
+	
+	class _Info(object):##{{{
+		def __init__(self):
+			self.mle_optim_result   = None
+			self.cov_from_optim_mle = False
+		
+		@property
+		def cov_(self):
+			if self.cov_from_optim_mle:
+				return self.mle_optim_result.hess_inv
+			
+			return None
+	##}}}
 	
 	## Init functions
 	##===============
@@ -239,6 +216,7 @@ class AbstractLaw:##{{{
 		self._c_global    = None
 		self._l_global    = None
 		self._coef        = None
+		self.info_        = AbstractLaw._Info()
 	##}}}
 	
 	def _init_link( self , **kwargs ): ##{{{
@@ -253,7 +231,7 @@ class AbstractLaw:##{{{
 				if kwargs.get("l_{}".format(p)) is not None:
 					l_p.append(kwargs.get("l_{}".format(p)))
 				elif kwargs.get("f_{}".format(p)) is not None:
-					l_p.append(kwargs.get("f_{}".format(p)))
+					l_p.append( FixedParams( kwargs.get("f_{}".format(p)) ) )
 				else:
 					l_p.append(None)
 				if kwargs.get("c_{}".format(p)) is not None:
@@ -287,27 +265,48 @@ class AbstractLaw:##{{{
 	##}}}
 	
 	@property
-	def coef_(self):
+	def coef_(self):##{{{
 		return self._coef
+	##}}}
 	
 	@coef_.setter
-	def coef_( self , coef_ ):
+	def coef_( self , coef_ ): ##{{{
 		self._coef = coef_
 		self._set_params( *self._l_global.transform( coef_ , self._c_global ) )
+	##}}}
+	
+	@property
+	def cov_(self):##{{{
+		return self.info_.cov_
+	##}}}
 	
 	## Fit functions
 	##==============
 	
+	def _random_valid_point(self):##{{{
+		"""
+		Try to find a valid point in the neighborhood of self.coef_
+		"""
+		coef_ = self.coef_.copy()
+		cov_  = 0.1 * np.identity(coef_.size)
+		
+		p_coef = coef_.copy()
+		n_it   = 1
+		while not np.isfinite(self._negloglikelihood(p_coef)) or not np.all(np.isfinite(self._gradient_nlll(p_coef))):
+			if n_it % 100 == 0: cov_ *= 2
+			p_coef = np.random.multivariate_normal( coef_ , cov_ )
+			n_it += 1
+		self.coef_ = p_coef
+	##}}}
+	
 	def _fit_MLE(self): ##{{{
 		
 		self._init_MLE()
+		self._random_valid_point()
 		
-		##TODO Here a while loop to check if points is really good
-		
-		
-		optim = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
-		self.coef_ = optim.x
-		print(optim)
+		self.info_.mle_optim_result = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
+		self.info_.cov_from_optim_mle = True
+		self.coef_ = self.info_.mle_optim_result.x
 		
 	##}}}
 	
@@ -373,13 +372,13 @@ class Normal(AbstractLaw):##{{{
 		## Find loc
 		##=========
 		X_loc = self._c_global[0]
-		coefs[:self._l_global._s_p[0]] = mean( self._Y , X_loc , self._l_global._l_p[0]._link , False ).squeeze()
+		coefs[:self._l_global._s_p[0]] = sdnp.mean( self._Y , X_loc , self._l_global._l_p[0]._link , False ).squeeze()
 		self.coef_ = coefs
 		
 		## Find scale
 		##===========
 		X_scale = self._c_global[1]
-		coefs[self._l_global._s_p[0]:] = std( self._Y , X_scale , self.loc , self._l_global._l_p[1]._link , False ).squeeze()
+		coefs[self._l_global._s_p[0]:] = sdnp.std( self._Y , X_scale , self.loc , self._l_global._l_p[1]._link , False ).squeeze()
 		self.coef_ = coefs
 	##}}}
 	
@@ -583,22 +582,29 @@ if __name__ == "__main__":
 	
 	## Fit
 	##====
-	norm = Normal( method = "moments" )
-	norm.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = TransformLinear( link = Exponential() ) )
-	print(norm.coef_)
+	l_global = TensorLink( [Identity() , Exponential()] , [2,2] )
+	c_global = [X_loc,X_scale]
+	norm = Normal( method = "mle" )
+#	norm.fit( Y , c_global = c_global , l_global = l_global )
+#	norm.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = Exponential() )
+	norm.fit( Y , f_loc = loc , c_scale = X_scale , l_scale = Exponential() )
+	print(norm.info_.mle_optim_result)
 	
 	## And plot it
 	##============
-#	if True:
-#		nrow,ncol = 1,1
-#		fig = plt.figure( figsize = cplt.figsize(nrow,ncol) )
-#		
-#		ax = fig.add_subplot( nrow , ncol , 1 )
-#		ax.plot( t , Y )
+	if True:
+		nrow,ncol = 1,1
+		fig = plt.figure( figsize = cplt.figsize(nrow,ncol) )
+		
+		ax = fig.add_subplot( nrow , ncol , 1 )
+		ax.plot( t , Y , color = "blue" , linestyle = "" , marker = "." )
+		ax.plot( t , norm.loc , color = "red" )
+		ax.plot( t , norm.loc + norm.scale , color = "red" , linestyle = "--" )
+		ax.plot( t , norm.loc - norm.scale , color = "red" , linestyle = "--" )
 #		ax.plot( t , X_loc )
 #		ax.plot( t , np.exp(-X_scale) )
-#		
-#		fig.set_tight_layout(True)
-#		plt.show()
+		
+		fig.set_tight_layout(True)
+		plt.show()
 	
 	print("Done")

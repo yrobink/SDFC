@@ -94,7 +94,8 @@ class Exponential(UnivariateLink): ##{{{
 class GlobalLink:##{{{
 	def __init__( self , *args , **kwargs ):
 		self._special_fit_allowed = False
-		self._n_features = 0
+		self._n_features = kwargs.get("n_features")
+		self._n_samples  = kwargs.get("n_samples")
 	
 	def transform( self , coef , X ):
 		pass
@@ -109,11 +110,18 @@ class GlobalLink:##{{{
 	def n_features(self):
 		return self._n_features
 	
+	@property
+	def n_samples(self):
+		return self._n_samples
+	
 ##}}}
 
 class FixedParams(GlobalLink):##{{{
-	def __init__( self , value ):
-		self.value_ = value
+	def __init__( self , value , *args , **kwargs ):
+		GlobalLink.__init__( self , *args , **kwargs )
+		self.value_ = np.array([value])
+		if self.value_.size == 1:
+			self.value_ = np.repeat( value , self.n_samples )
 	
 	def transform( self , *args , **kwargs ):
 		return self.value_
@@ -124,13 +132,12 @@ class TransformLinear(GlobalLink): ##{{{
 	def __init__( self , *args , **kwargs ):##{{{
 		GlobalLink.__init__( self , *args , **kwargs )
 		self._link     = kwargs.get("link")
-		if self._link is None:
-			self._link = Identity()
+		if self._link is None: self._link = Identity()
 	##}}}
 	
 	def _linear_transform( self , coef , X ): ##{{{
-		if X is None: return coef[0]
-		return coef[0] + X @ coef[1:]
+		if X is None: return np.repeat( coef[0] , self.n_samples ).reshape(self.n_samples,1)
+		return (coef[0] + X @ coef[1:]).reshape(self.n_samples,1)
 	##}}}
 	
 	def transform( self , coef , X ):##{{{
@@ -139,9 +146,9 @@ class TransformLinear(GlobalLink): ##{{{
 	##}}}
 	
 	def jacobian( self , coef , X ): ##{{{
-		jac = np.zeros( (coef.size,X.shape[0]) )
-		jac[0,:] = 1
-		jac[1:,:] = X.T
+		jac = np.zeros( (self.n_samples,self.n_features) )
+		jac[:,0]  = 1
+		jac[:,1:] = X
 		return self._link.jacobian( self._linear_transform( coef , X ) ) * jac
 	##}}}
 	
@@ -151,12 +158,11 @@ class TensorLink(GlobalLink):##{{{
 	
 	def __init__( self , l_p , s_p , *args , **kwargs ):##{{{
 		GlobalLink.__init__( self , *args , **kwargs )
-		self._l_p = [ l if l is not None else TransformLinear() for l in l_p ]
+		self._l_p = [ l if l is not None else TransformLinear(n_features=s,n_samples=self.n_samples) for s,l in zip(s_p,l_p) ]
 		for i in range(len(self._l_p)):
 			if isinstance(self._l_p[i],UnivariateLink):
-				self._l_p[i] = TransformLinear( link = self._l_p[i] )
+				self._l_p[i] = TransformLinear( *args , link = self._l_p[i] , n_features = s_p[i] , n_samples = self.n_samples )
 		self._s_p = s_p
-		self._n_features = np.sum(self._s_p)
 		self._special_fit_allowed = np.all( [isinstance(l,(TransformLinear,FixedParams)) for l in self._l_p] )
 	##}}}
 	
@@ -177,12 +183,12 @@ class TensorLink(GlobalLink):##{{{
 		for x in X:
 			if x is not None:
 				c_size = x.shape[0]
-		jac = np.zeros( (np.nonzero(self._s_p)[0].size,coef.size,c_size) )
+		jac = np.zeros( (np.nonzero(self._s_p)[0].size,self.n_samples,self.n_features) )
 		i = 0
 		for s,l,x in zip(self._s_p,self._l_p,X):
 			if s > 0:
 				ie += s
-				jac[i,ib:ie,:] = l.jacobian( coef[ib:ie] , x )
+				jac[i,:,ib:ie] = l.jacobian( coef[ib:ie] , x )
 				ib += s
 				i += 1
 		return jac
@@ -194,8 +200,6 @@ class TensorLink(GlobalLink):##{{{
 	
 ##}}}
 
-## Non parametric functions
-##=========================
 
 ## Statistical distribution classes
 ##=================================
@@ -234,14 +238,9 @@ class AbstractLaw:##{{{
 		else:
 			l_p = []
 			c_p = []
-			s_p = [] ## size
+			s_p = []
+			n_samples = self._Y.size
 			for p in self._name_params:
-				if kwargs.get("l_{}".format(p)) is not None:
-					l_p.append(kwargs.get("l_{}".format(p)))
-				elif kwargs.get("f_{}".format(p)) is not None:
-					l_p.append( FixedParams( kwargs.get("f_{}".format(p)) ) )
-				else:
-					l_p.append(None)
 				if kwargs.get("c_{}".format(p)) is not None:
 					c = kwargs.get("c_{}".format(p)).squeeze()
 					if c.ndim == 1: c = c.reshape(-1,1)
@@ -253,7 +252,15 @@ class AbstractLaw:##{{{
 						s_p.append(0)
 					else:
 						s_p.append(1)
-			self._l_global = TensorLink( l_p , s_p )
+				
+				if kwargs.get("l_{}".format(p)) is not None:
+					l_p.append(kwargs.get("l_{}".format(p)))
+				elif kwargs.get("f_{}".format(p)) is not None:
+					l_p.append( FixedParams( kwargs.get("f_{}".format(p)) , n_samples = n_samples , n_features = 0 ) )
+				else:
+					l_p.append(None)
+				
+			self._l_global = TensorLink( l_p , s_p , n_features = np.sum(s_p) , n_samples = n_samples )
 			self._c_global = c_p
 	##}}}
 	
@@ -346,6 +353,7 @@ class AbstractLaw:##{{{
 	
 ##}}}
 
+
 ##===================================
 
 class Normal(AbstractLaw):##{{{
@@ -385,7 +393,6 @@ class Normal(AbstractLaw):##{{{
 		##=========
 		if not isinstance(self._l_global._l_p[0],FixedParams):
 			X_loc = self._c_global[0]
-			design = np.hstack( ( np.ones((self._Y.size,1)) , X_loc ) )
 			a = sdnp.mean( self._Y , X_loc , self._l_global._l_p[0]._link , False ).squeeze()
 			coefs[:self._l_global._s_p[0]] = a
 			self.coef_ = coefs
@@ -412,9 +419,10 @@ class Normal(AbstractLaw):##{{{
 	
 	def _negloglikelihood( self , coef ): ##{{{
 		self.coef_ = coef
-		scale2 = np.power( self.scale , 2 )
 		shape = self._Y.shape
-		return np.Inf if not np.all( self.scale > 0 ) else np.sum( np.log( scale2 ) ) / 2. + np.sum( np.power( self._Y - self.loc.reshape(shape) , 2 ) / scale2.reshape(shape) ) / 2.
+		scale2 = np.power( self.scale , 2 )
+		if not np.isscalar(scale2): scale2 = scale2.reshape(shape)
+		return np.Inf if not np.all( self.scale > 0 ) else np.sum( np.log( scale2 ) ) / 2. + np.sum( np.power( self._Y - self.loc.reshape(shape) , 2 ) / scale2 ) / 2.
 	##}}}
 	
 	def _gradient_nlll( self , coef ): ##{{{
@@ -429,18 +437,20 @@ class Normal(AbstractLaw):##{{{
 		T0 = - Z / scale
 		T1 = - Y * Z / scale**2 + loc * Z / scale**2 + 1 / scale
 		jac = self._l_global.jacobian( coef , self._c_global )
-		
 		p = 0
 		if not isinstance(self._l_global._l_p[0],FixedParams):
-			jac[p,:,:] *= T0.T
+			jac[p,:,:] *= T0
 			p += 1
 		if not isinstance(self._l_global._l_p[1],FixedParams):
-			jac[p,:,:] *= T1.T
+			jac[p,:,:] *= T1
 		
-		return jac.sum( axis = (0,2) )
+		return jac.sum( axis = (0,1) )
 	##}}}
 	
 ##}}}
+
+##===================================
+
 
 
 ## GEV part
@@ -581,6 +591,104 @@ def test_GEV(): ##{{{
 ##}}}
 
 
+## Normal tests
+##=============
+
+class RatioLocScaleConstant(GlobalLink):##{{{
+	def __init__( self , n_samples ):
+		GlobalLink.__init__( self , n_features = 3 , n_samples = n_samples )
+	
+	def transform( self , coef , X ):
+		E = np.exp( coef[3] / coef[0] * X[:,0] )
+		loc   = coef[0] * E
+		scale = coef[1] * E
+		shape = coef[2] + np.zeros_like(X[:,0])
+		return loc,scale,shape
+	
+	def jacobian( self , coef , X ):
+		E = np.exp( coef[3] / coef[0] * X[:,0] )
+		jac = np.zeros( (3 , 4 , X[:,0].size) )
+		jac[0,0,:] = E - coef[3] * X[:,0] / coef[0] * E
+		jac[1,0,:] = - coef[1] * coef[3] * X[:,0] / coef[0]**2 * E
+		jac[1,1,:] = E
+		jac[2,2,:] = 1
+		jac[0,3,:] = X[:,0] * E
+		jac[1,3,:] = coef[1] * X[:,0] * E / coef[0]
+		
+		return jac
+	
+	def valid_point( self , params , lin_coef , X ):
+		
+		coef = np.zeros(4)
+		design = np.stack( (np.ones_like(X),X) , -1 ).squeeze()
+		
+		idxloc   = np.isfinite(np.log(params[:,0]))
+		idxscale = np.isfinite(np.log(params[:,1]))
+		resloc   = scl.lstsq( design[idxloc,:]   , np.log(params[idxloc,0]) )
+		resscale = scl.lstsq( design[idxscale,:] , np.log(params[idxscale,1]) )
+		coef[0] = np.exp(resloc[0][0])
+		coef[1] = np.exp(resscale[0][0])
+		coef[2] = params[:,2].mean()
+		
+		alphaloc   = resloc[0][1] * coef[0]
+		alphascale = resscale[0][1] * coef[0]
+		coef[3]    = ( alphaloc + alphascale ) / 2
+		
+		return coef
+##}}}
+
+def normal_tests(show = True): ##{{{
+	n_samples = 2000
+	t,X_loc,X_scale,_ = sd.tools.Dataset.covariates( n_samples )
+	X_loc   = X_loc.reshape(-1,1)
+	X_scale = X_scale.reshape(-1,1)
+	
+	loc   = 1. + 3 * X_loc
+	scale = np.exp( 2 * X_scale )
+	Y = np.random.normal( loc = loc , scale = scale )
+	
+	## Fit
+	##====
+	l_global = TensorLink( [Identity() , Exponential()] , [2,2] , n_samples = Y.size , n_features = 4 )
+	c_global = [X_loc,X_scale]
+	norm = Normal( method = "mle" )
+	norm.fit( Y , c_global = c_global , l_global = l_global )
+	print( norm.coef_ - np.array([1,3,0.,2]) )
+	
+	norm = Normal( method = "mle" )
+	norm.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = Exponential() )
+	print( norm.coef_ - np.array([1,3,0.,2]) )
+	
+	norm = Normal( method = "mle" )
+	norm.fit( Y , f_loc = loc , c_scale = X_scale , l_scale = Exponential() )
+	print( norm.coef_ - np.array([0.,2]) )
+	
+	norm = Normal( method = "mle" )
+	norm.fit( Y , c_loc = X_loc , f_scale = scale )
+	print( norm.coef_ - np.array([1,3]) )
+	
+	scale = ( np.zeros(n_samples) + 0.5 ).reshape(-1,1)
+	Y = np.random.normal( loc = loc , scale = scale )
+	norm = Normal( method = "mle" )
+	norm.fit( Y , c_loc = X_loc )
+	print( norm.coef_ - np.array([1,3,0.5]) )
+	
+	## And plot it
+	##============
+	if show:
+		nrow,ncol = 1,1
+		fig = plt.figure( figsize = cplt.figsize(nrow,ncol) )
+		
+		ax = fig.add_subplot( nrow , ncol , 1 )
+		ax.plot( t , Y , color = "blue" , linestyle = "" , marker = "." )
+		ax.plot( t , norm.loc , color = "red" )
+		ax.plot( t , norm.loc + norm.scale , color = "red" , linestyle = "--" )
+		ax.plot( t , norm.loc - norm.scale , color = "red" , linestyle = "--" )
+		
+		fig.set_tight_layout(True)
+		plt.show()
+##}}}
+
 ##########
 ## main ##
 ##########
@@ -596,27 +704,10 @@ if __name__ == "__main__":
 	X_loc   = X_loc.reshape(-1,1)
 	X_scale = X_scale.reshape(-1,1)
 	
-	loc   = 1. + 3 * X_loc
-	scale = np.exp( 2 * X_scale )
-	scale = ( np.zeros(n_samples) + 0.5 ).reshape(-1,1)
-	
-	Y = np.random.normal( loc = loc , scale = scale )
-	
-	## Fit
-	##====
-	l_global = TensorLink( [Identity() , Exponential()] , [2,2] )
-	c_global = [X_loc,X_scale]
-	norm = Normal( method = "mle" )
-#	norm.fit( Y , c_global = c_global , l_global = l_global )
-#	norm.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = Exponential() )
-#	norm.fit( Y , f_loc = loc , c_scale = X_scale , l_scale = Exponential() )
-#	norm.fit( Y , c_loc = X_loc , f_scale = scale )
-	norm.fit( Y , c_loc = X_loc )
-	print(norm.info_.mle_optim_result)
 	
 	## And plot it
 	##============
-	if True:
+	if False:
 		nrow,ncol = 1,1
 		fig = plt.figure( figsize = cplt.figsize(nrow,ncol) )
 		
@@ -625,8 +716,6 @@ if __name__ == "__main__":
 		ax.plot( t , norm.loc , color = "red" )
 		ax.plot( t , norm.loc + norm.scale , color = "red" , linestyle = "--" )
 		ax.plot( t , norm.loc - norm.scale , color = "red" , linestyle = "--" )
-#		ax.plot( t , X_loc )
-#		ax.plot( t , np.exp(-X_scale) )
 		
 		fig.set_tight_layout(True)
 		plt.show()

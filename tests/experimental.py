@@ -414,7 +414,7 @@ class Normal(AbstractLaw):##{{{
 		if self._l_global._special_fit_allowed:
 			self._fit_moments()
 		else:
-			pass
+			self.coef_ = self._l_global.valid_point( self )
 	##}}}
 	
 	def _negloglikelihood( self , coef ): ##{{{
@@ -435,7 +435,7 @@ class Normal(AbstractLaw):##{{{
 		
 		## Compute gradient
 		T0 = - Z / scale
-		T1 = - Y * Z / scale**2 + loc * Z / scale**2 + 1 / scale
+		T1 = - self._Y * Z / scale**2 + loc * Z / scale**2 + 1 / scale
 		jac = self._l_global.jacobian( coef , self._c_global )
 		p = 0
 		if not isinstance(self._l_global._l_p[0],FixedParams):
@@ -595,46 +595,60 @@ def test_GEV(): ##{{{
 ##=============
 
 class RatioLocScaleConstant(GlobalLink):##{{{
-	def __init__( self , n_samples ):
-		GlobalLink.__init__( self , n_features = 3 , n_samples = n_samples )
 	
-	def transform( self , coef , X ):
-		E = np.exp( coef[3] / coef[0] * X[:,0] )
+	def __init__( self , n_samples ):##{{{
+		GlobalLink.__init__( self , n_features = 3 , n_samples = n_samples )
+		self._l_p = [None,None]
+	##}}}
+	
+	def transform( self , coef , X ):##{{{
+		XX = X[0] if type(X) == list else X
+		E = np.exp( coef[2] / coef[0] * XX[:,0] )
 		loc   = coef[0] * E
 		scale = coef[1] * E
-		shape = coef[2] + np.zeros_like(X[:,0])
-		return loc,scale,shape
+		return loc,scale
+	##}}}
 	
-	def jacobian( self , coef , X ):
-		E = np.exp( coef[3] / coef[0] * X[:,0] )
-		jac = np.zeros( (3 , 4 , X[:,0].size) )
-		jac[0,0,:] = E - coef[3] * X[:,0] / coef[0] * E
-		jac[1,0,:] = - coef[1] * coef[3] * X[:,0] / coef[0]**2 * E
-		jac[1,1,:] = E
-		jac[2,2,:] = 1
-		jac[0,3,:] = X[:,0] * E
-		jac[1,3,:] = coef[1] * X[:,0] * E / coef[0]
+	def jacobian( self , coef , X ):##{{{
+		XX = X[0] if type(X) == list else X
+		E = np.exp( coef[2] / coef[0] * XX[:,0] )
+		jac = np.zeros( (2 ,  self.n_samples , self.n_features ) )
+		jac[0,:,0] = E - coef[2] * XX[:,0] / coef[0] * E
+		jac[1,:,0] = - coef[1] * coef[2] * XX[:,0] / coef[0]**2 * E
+		jac[1,:,1] = E
+		jac[0,:,2] = XX[:,0] * E
+		jac[1,:,2] = coef[1] * XX[:,0] * E / coef[0]
 		
 		return jac
+	##}}}
 	
-	def valid_point( self , params , lin_coef , X ):
+	def valid_point( self , law ):##{{{
 		
-		coef = np.zeros(4)
+		## Fit by assuming linear case without link functions
+		linear_law = type(law)()
+		l_c = [ c for c in law._c_global if c is not None ]
+		l_c = np.hstack(l_c)
+		linear_law.fit( law._Y , c_loc = l_c , c_scale = l_c )
+		linear_loc   = linear_law.loc
+		linear_scale = linear_law.scale
+		
+		coef = np.zeros(self.n_features)
 		design = np.stack( (np.ones_like(X),X) , -1 ).squeeze()
 		
-		idxloc   = np.isfinite(np.log(params[:,0]))
-		idxscale = np.isfinite(np.log(params[:,1]))
-		resloc   = scl.lstsq( design[idxloc,:]   , np.log(params[idxloc,0]) )
-		resscale = scl.lstsq( design[idxscale,:] , np.log(params[idxscale,1]) )
-		coef[0] = np.exp(resloc[0][0])
-		coef[1] = np.exp(resscale[0][0])
-		coef[2] = params[:,2].mean()
+		idxloc   = np.isfinite(np.log(linear_loc))
+		idxscale = np.isfinite(np.log(linear_scale))
+		resloc,_,_,_   = scl.lstsq( design[idxloc,:]   , np.log(linear_loc[idxloc]) )
+		resscale,_,_,_ = scl.lstsq( design[idxscale,:] , np.log(linear_scale[idxscale]) )
+		coef[0] = np.exp(resloc[0])
+		coef[1] = np.exp(resscale[0])
 		
-		alphaloc   = resloc[0][1] * coef[0]
-		alphascale = resscale[0][1] * coef[0]
-		coef[3]    = ( alphaloc + alphascale ) / 2
+		alphaloc   = resloc[1]   * coef[0]
+		alphascale = resscale[1] * coef[0]
+		coef[2]    = ( alphaloc + alphascale ) / 2
 		
 		return coef
+	##}}}
+
 ##}}}
 
 def normal_tests(show = True): ##{{{
@@ -704,6 +718,14 @@ if __name__ == "__main__":
 	X_loc   = X_loc.reshape(-1,1)
 	X_scale = X_scale.reshape(-1,1)
 	
+	X = X_loc
+	coef_     = np.array([0.8,1.5,2])
+	l_global  = RatioLocScaleConstant( n_samples )
+	loc,scale = l_global.transform( coef_ , X )
+	Y         = np.random.normal( loc = loc , scale = scale )
+	
+	norm = Normal()
+	norm.fit( Y , l_global = l_global , c_global = [X] )
 	
 	## And plot it
 	##============

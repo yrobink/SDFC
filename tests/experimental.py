@@ -92,39 +92,45 @@ class Exponential(UnivariateLink): ##{{{
 ##=====================
 
 class GlobalLink:##{{{
-	def __init__( self , *args , **kwargs ):
+	
+	def __init__( self , *args , **kwargs ):##{{{
 		self._special_fit_allowed = False
 		self._n_features = kwargs.get("n_features")
 		self._n_samples  = kwargs.get("n_samples")
+	##}}}
 	
-	def transform( self , coef , X ):
+	def transform( self , coef , X ):##{{{
 		pass
+	##}}}
 	
-	def jacobian( self , coef , X ):
+	def jacobian( self , coef , X ):##{{{
 		pass
-	
-	def pseudo_inverse( self , params , lin_coef , X ):
-		pass
+	##}}}
 	
 	@property
-	def n_features(self):
+	def n_features(self):##{{{
 		return self._n_features
+	##}}}
 	
-	@property
+	@property##{{{
 	def n_samples(self):
 		return self._n_samples
+	##}}}
 	
 ##}}}
 
 class FixedParams(GlobalLink):##{{{
-	def __init__( self , value , *args , **kwargs ):
+	
+	def __init__( self , value , *args , **kwargs ):##{{{
 		GlobalLink.__init__( self , *args , **kwargs )
 		self.value_ = np.array([value])
 		if self.value_.size == 1:
 			self.value_ = np.repeat( value , self.n_samples )
+	##}}}
 	
-	def transform( self , *args , **kwargs ):
+	def transform( self , *args , **kwargs ):##{{{
 		return self.value_
+	##}}}
 ##}}}
 
 class TransformLinear(GlobalLink): ##{{{
@@ -192,10 +198,6 @@ class TensorLink(GlobalLink):##{{{
 				ib += s
 				i += 1
 		return jac
-	##}}}
-	
-	def pseudo_inverse( self , params , lin_coef , X ):##{{{
-		pass
 	##}}}
 	
 ##}}}
@@ -726,6 +728,8 @@ if __name__ == "__main__":
 	
 	norm = Normal()
 	norm.fit( Y , l_global = l_global , c_global = [X] )
+	print(norm.coef_)
+	
 	
 	## And plot it
 	##============
@@ -743,3 +747,6 @@ if __name__ == "__main__":
 		plt.show()
 	
 	print("Done")
+
+
+

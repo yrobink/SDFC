@@ -12,3 +12,4 @@ build
 dist
 R/*.tar.gz
 documentation/TeX/logs/*
+*__pycache__*

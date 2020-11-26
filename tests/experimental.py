@@ -266,16 +266,6 @@ class AbstractLaw:##{{{
 			self._c_global = c_p
 	##}}}
 	
-	def _update_coef(func):##{{{
-		def wrapper(*args):
-			self  = args[0]
-			coef_ = args[1]
-			self.coef_ = coef_
-			self._set_params( *self._l_global.transform( coef_ , self._c_global ) )
-			return func(*args)
-		return wrapper
-	##}}}
-	
 	
 	## Properties
 	##===========
@@ -635,7 +625,7 @@ class RatioLocScaleConstant(GlobalLink):##{{{
 		linear_scale = linear_law.scale
 		
 		coef = np.zeros(self.n_features)
-		design = np.stack( (np.ones_like(X),X) , -1 ).squeeze()
+		design = np.stack( (np.ones_like(l_c),l_c) , -1 ).squeeze()
 		
 		idxloc   = np.isfinite(np.log(linear_loc))
 		idxscale = np.isfinite(np.log(linear_scale))
@@ -653,56 +643,78 @@ class RatioLocScaleConstant(GlobalLink):##{{{
 
 ##}}}
 
-def normal_tests(show = True): ##{{{
-	n_samples = 2000
-	t,X_loc,X_scale,_ = sd.tools.Dataset.covariates( n_samples )
-	X_loc   = X_loc.reshape(-1,1)
-	X_scale = X_scale.reshape(-1,1)
+class NormalTest: ##{{{
 	
-	loc   = 1. + 3 * X_loc
-	scale = np.exp( 2 * X_scale )
-	Y = np.random.normal( loc = loc , scale = scale )
+	def __init__( self , n_sample = 2000 ): ##{{{
+		self.n_sample     = n_sample
+		t,X_loc,X_scale,_ = sd.tools.Dataset.covariates(self.n_sample)
+		self.t       = t
+		self.X_loc   = X_loc.reshape(-1,1)
+		self.X_scale = X_scale.reshape(-1,1)
+	##}}}
 	
-	## Fit
-	##====
-	l_global = TensorLink( [Identity() , Exponential()] , [2,2] , n_samples = Y.size , n_features = 4 )
-	c_global = [X_loc,X_scale]
-	norm = Normal( method = "mle" )
-	norm.fit( Y , c_global = c_global , l_global = l_global )
-	print( norm.coef_ - np.array([1,3,0.,2]) )
-	
-	norm = Normal( method = "mle" )
-	norm.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = Exponential() )
-	print( norm.coef_ - np.array([1,3,0.,2]) )
-	
-	norm = Normal( method = "mle" )
-	norm.fit( Y , f_loc = loc , c_scale = X_scale , l_scale = Exponential() )
-	print( norm.coef_ - np.array([0.,2]) )
-	
-	norm = Normal( method = "mle" )
-	norm.fit( Y , c_loc = X_loc , f_scale = scale )
-	print( norm.coef_ - np.array([1,3]) )
-	
-	scale = ( np.zeros(n_samples) + 0.5 ).reshape(-1,1)
-	Y = np.random.normal( loc = loc , scale = scale )
-	norm = Normal( method = "mle" )
-	norm.fit( Y , c_loc = X_loc )
-	print( norm.coef_ - np.array([1,3,0.5]) )
-	
-	## And plot it
-	##============
-	if show:
-		nrow,ncol = 1,1
-		fig = plt.figure( figsize = cplt.figsize(nrow,ncol) )
+	def test0(self):##{{{
+		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
+		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
+		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
+		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
-		ax = fig.add_subplot( nrow , ncol , 1 )
-		ax.plot( t , Y , color = "blue" , linestyle = "" , marker = "." )
-		ax.plot( t , norm.loc , color = "red" )
-		ax.plot( t , norm.loc + norm.scale , color = "red" , linestyle = "--" )
-		ax.plot( t , norm.loc - norm.scale , color = "red" , linestyle = "--" )
+		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : Exponential() }
+		self.norm = Normal()
+		self.norm.fit( self.Y , **kwargs )
+	##}}}
+	
+	def test1(self):##{{{
+		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
+		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
+		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
+		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
-		fig.set_tight_layout(True)
-		plt.show()
+		l_global = TensorLink( [Identity() , Exponential()] , [2,2] , n_samples = self.n_sample , n_features = 4 )
+		kwargs = { "c_global" : [self.X_loc,self.X_scale] , "l_global" : l_global }
+		self.norm = Normal()
+		self.norm.fit( self.Y , **kwargs )
+	##}}}
+	
+	def test2(self):##{{{
+		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
+		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
+		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
+		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
+		self.coef_ = self.coef_[:2]
+		
+		kwargs = { "c_loc" : self.X_loc , "f_scale" : self.scale }
+		self.norm = Normal()
+		self.norm.fit( self.Y , **kwargs )
+	##}}}
+	
+	def test3(self):##{{{
+		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
+		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
+		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
+		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
+		self.coef_ = self.coef_[2:]
+		
+		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : Exponential() }
+		self.norm = Normal()
+		self.norm.fit( self.Y , **kwargs )
+	##}}}
+	
+	def test4(self):##{{{
+		self.coef_  = np.array([0.8,1.5,2])
+		l_global    = RatioLocScaleConstant( self.n_sample )
+		self.loc,self.scale = l_global.transform( self.coef_ , self.X_loc )
+		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
+		
+		kwargs = { "c_global" : [self.X_loc] , "l_global" : l_global }
+		self.norm = Normal()
+		self.norm.fit( self.Y , **kwargs )
+	##}}}
+	
+	def summary( self , show = False ): ##{{{
+		print( "{} / {} / {}".format( np.max(np.abs(self.coef_ - self.norm.coef_)) , self.coef_ , self.norm.coef_ ) )
+	##}}}
+
 ##}}}
 
 ##########
@@ -713,38 +725,9 @@ if __name__ == "__main__":
 	np.seterr( all = "ignore" )
 	np.random.seed(42)
 	
-	## Build data
-	##===========
-	n_samples = 2000
-	t,X_loc,X_scale,_ = sd.tools.Dataset.covariates( n_samples )
-	X_loc   = X_loc.reshape(-1,1)
-	X_scale = X_scale.reshape(-1,1)
-	
-	X = X_loc
-	coef_     = np.array([0.8,1.5,2])
-	l_global  = RatioLocScaleConstant( n_samples )
-	loc,scale = l_global.transform( coef_ , X )
-	Y         = np.random.normal( loc = loc , scale = scale )
-	
-	norm = Normal()
-	norm.fit( Y , l_global = l_global , c_global = [X] )
-	print(norm.coef_)
-	
-	
-	## And plot it
-	##============
-	if False:
-		nrow,ncol = 1,1
-		fig = plt.figure( figsize = cplt.figsize(nrow,ncol) )
-		
-		ax = fig.add_subplot( nrow , ncol , 1 )
-		ax.plot( t , Y , color = "blue" , linestyle = "" , marker = "." )
-		ax.plot( t , norm.loc , color = "red" )
-		ax.plot( t , norm.loc + norm.scale , color = "red" , linestyle = "--" )
-		ax.plot( t , norm.loc - norm.scale , color = "red" , linestyle = "--" )
-		
-		fig.set_tight_layout(True)
-		plt.show()
+	nt = NormalTest()
+	nt.test4()
+	nt.summary()
 	
 	print("Done")
 

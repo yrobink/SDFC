@@ -19,3 +19,7 @@
 from .__AbstractLaw import AbstractLaw
 from .__Normal      import Normal
 from .__Link        import GlobalLink
+from .__Link        import TensorLink
+from .__Link        import FixedParams
+from .__Link        import Identity
+from .__Link        import Exponential

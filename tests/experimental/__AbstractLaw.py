@@ -19,6 +19,8 @@
 import numpy as np
 import scipy.optimize as sco
 from .__Link        import TensorLink
+from .__Link        import FixedParams
+
 
 class AbstractLaw:##{{{
 	

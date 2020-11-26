@@ -22,7 +22,15 @@ from .__Link        import TensorLink
 from .__Link        import FixedParams
 
 
-class AbstractLaw:##{{{
+class RHS:
+	"""
+	RightHandSide
+	"""
+	def __init__( self , n_lhs ):
+		self.n_lhs = n_lhs
+
+
+class AbstractLaw:
 	
 	class _Info(object):##{{{
 		def __init__(self):
@@ -36,6 +44,7 @@ class AbstractLaw:##{{{
 			
 			return None
 	##}}}
+	
 	
 	## Init functions
 	##===============
@@ -107,6 +116,7 @@ class AbstractLaw:##{{{
 		return self.info_.cov_
 	##}}}
 	
+	
 	## Fit functions
 	##==============
 	
@@ -159,5 +169,4 @@ class AbstractLaw:##{{{
 		
 	##}}}
 	
-##}}}
 

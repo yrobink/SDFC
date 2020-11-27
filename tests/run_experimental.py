@@ -320,12 +320,34 @@ class NormalTest: ##{{{
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
+	def test5(self):##{{{
+		self.coef_ = np.array( [0.5,0.3,-0.9] )
+		self.loc   = np.repeat( self.coef_[0] , self.n_sample ).reshape(-1,1)
+		self.scale = np.exp(self.coef_[1] + self.coef_[2] * self.X_scale)
+		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
+		
+		kwargs = { "c_scale" : self.X_scale , "l_scale" : Exponential() }
+		self.norm = Normal()
+		self.norm.fit( self.Y , **kwargs )
+	##}}}
+	
+	def test6(self):##{{{
+		self.coef_ = np.array( [0.5,1.3,-0.9] )
+		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
+		self.scale = np.repeat( np.exp(self.coef_[2]) , self.n_sample ).reshape(-1,1)
+		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
+		
+		kwargs = { "c_loc" : self.X_loc , "l_scale" : Exponential() }
+		self.norm = Normal()
+		self.norm.fit( self.Y , **kwargs )
+	##}}}
+	
 	def summary( self , show = False ): ##{{{
 		print( "{} / {} / {}".format( np.max(np.abs(self.coef_ - self.norm.coef_)) , self.coef_ , self.norm.coef_ ) )
 	##}}}
 	
 	def run_all(self):##{{{
-		for f in [self.test0,self.test1,self.test2,self.test3,self.test4]:
+		for f in [self.test0,self.test1,self.test2,self.test3,self.test4,self.test5,self.test6]:
 			f()
 			self.summary()
 	##}}}
@@ -339,11 +361,10 @@ class NormalTest: ##{{{
 
 if __name__ == "__main__":
 	np.seterr( all = "ignore" )
-	np.random.seed(42)
+#	np.random.seed(42)
 	
 	nt = NormalTest()
 	nt.run_all()
-	
 	
 	print("Done")
 

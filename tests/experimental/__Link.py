@@ -102,6 +102,7 @@ class FixedParams(GlobalLink):##{{{
 	def transform( self , *args , **kwargs ):##{{{
 		return self.value_
 	##}}}
+	
 ##}}}
 
 class TransformLinear(GlobalLink): ##{{{
@@ -156,10 +157,6 @@ class TensorLink(GlobalLink):##{{{
 	def jacobian( self , coef , X ): ##{{{
 		list_jac = []
 		ib,ie = 0,0
-		c_size = 1
-		for x in X:
-			if x is not None:
-				c_size = x.shape[0]
 		jac = np.zeros( (np.nonzero(self._s_p)[0].size,self.n_samples,self.n_features) )
 		i = 0
 		for s,l,x in zip(self._s_p,self._l_p,X):

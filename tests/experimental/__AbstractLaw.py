@@ -21,15 +21,6 @@ import scipy.optimize as sco
 from .__Link        import TensorLink
 from .__Link        import FixedParams
 
-
-class RHS:
-	"""
-	RightHandSide
-	"""
-	def __init__( self , n_lhs ):
-		self.n_lhs = n_lhs
-
-
 class AbstractLaw:
 	
 	class _Info(object):##{{{
@@ -168,5 +159,5 @@ class AbstractLaw:
 			self._fit_Bayesian()
 		
 	##}}}
-	
+
 

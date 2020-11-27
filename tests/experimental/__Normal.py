@@ -23,7 +23,7 @@ from .__Link        import FixedParams
 
 import SDFC.NonParametric as sdnp
 
-class Normal(AbstractLaw):##{{{
+class Normal(AbstractLaw):
 	
 	def __init__( self , method = "MLE" ):##{{{
 		AbstractLaw.__init__( self , ["loc","scale"] , method )
@@ -114,5 +114,4 @@ class Normal(AbstractLaw):##{{{
 		return jac.sum( axis = (0,1) )
 	##}}}
 	
-##}}}
 

@@ -46,6 +46,7 @@ from experimental import TensorLink
 
 from experimental.core.__RHS import LHS
 from experimental.core.__RHS import RHS
+from experimental.link.__Univariate import ULExponential
 
 ###############
 ## Fonctions ##
@@ -370,13 +371,15 @@ if __name__ == "__main__":
 	
 	
 	nt.test0()
-	kwargs = { "c_loc" : nt.X_loc , "c_scale" : nt.X_scale , "l_scale" : Exponential() }
+	kwargs = { "f_loc" : nt.loc , "c_scale" : nt.X_scale , "l_scale" : ULExponential() }
 	
 	lhs = LHS( ["loc","scale"] , 2000 )
 	rhs = RHS( lhs )
 	rhs.build(**kwargs)
 	
-	rhs.coef_ = [1.,2.,-1.,0.5]
+	rhs.coef_ = [-1.,0.5]
+	
+	print(rhs.lhs_.is_fixed("loc"))
 	
 	print("Done")
 

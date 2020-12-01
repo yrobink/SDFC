@@ -15,3 +15,19 @@
 ## 
 ## You should have received a copy of the GNU General Public License
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
+
+
+#############
+## Imports ##
+#############
+
+from .__Multivariate import MultivariateLink
+from .__Multivariate import MLConstant
+from .__Multivariate import MLLinear
+from .__Multivariate import MLTensor
+
+from .__Univariate import UnivariateLink
+from .__Univariate import ULIdentity
+from .__Univariate import ULExponential
+
+

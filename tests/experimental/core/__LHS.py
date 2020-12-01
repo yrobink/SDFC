@@ -15,3 +15,32 @@
 ## 
 ## You should have received a copy of the GNU General Public License
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
+
+##############
+## Packages ##
+##############
+
+###############
+## Class(es) ##
+###############
+
+class LHS:
+	def __init__( self , names : list , n_samples : int ):
+		self.names     = names
+		self.n_lhs     = len(self.names)
+		self.n_samples = n_samples
+		self._values   = { n : None for n in self.names }
+		self.jacobian_ = None
+		self._fixed    = { n : False for n in self.names }
+	
+	def is_fixed( self , name ):
+		return self._fixed.get(name)
+	
+	@property
+	def values_( self ):
+		return self._values
+	
+	@values_.setter
+	def values_( self , values ):
+		for n,v in zip(self.names,values):
+			self._values[n] = v

@@ -17,11 +17,19 @@
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
 
+##############
+## Packages ##
+##############
+
 import numpy as np
 from .__AbstractLaw import AbstractLaw
-from .__Link        import FixedParams
 
 import SDFC.NonParametric as sdnp
+
+
+###############
+## Class(es) ##
+###############
 
 class Normal(AbstractLaw):
 	
@@ -36,16 +44,12 @@ class Normal(AbstractLaw):
 	
 	@property
 	def loc(self):##{{{
-		return self._loc
+		return self._lhs.values_["loc"]
 	##}}}
 	
 	@property
 	def scale(self):##{{{
-		return self._scale
-	##}}}
-	
-	def _set_params( self , loc , scale ):##{{{
-		self._loc,self._scale = loc.squeeze(),scale.squeeze()
+		return self._lhs.values_["scale"]
 	##}}}
 	
 	
@@ -54,21 +58,20 @@ class Normal(AbstractLaw):
 	
 	def _fit_moments( self ): ##{{{
 		
-		coefs = np.zeros(self._l_global.n_features)
+		coefs = np.zeros(np.sum(self._rhs.l_global._s_p))
 		
 		## Find loc
 		##=========
-		if not isinstance(self._l_global._l_p[0],FixedParams):
-			X_loc = self._c_global[0]
-			a = sdnp.mean( self._Y , X_loc , self._l_global._l_p[0]._link , False ).squeeze()
-			coefs[:self._l_global._s_p[0]] = a
+		if not self._lhs.is_fixed("loc"):
+			X_loc = self._rhs.c_global[0]
+			coefs[:self._rhs.l_global._s_p[0]] = sdnp.mean( self._Y , X_loc , self._rhs.l_global._l_p[0]._l , False ).squeeze()
 			self.coef_ = coefs
 		
 		## Find scale
 		##===========
-		if not isinstance(self._l_global._l_p[1],FixedParams):
-			X_scale = self._c_global[1]
-			coefs[self._l_global._s_p[0]:] = sdnp.std( self._Y , X_scale , self.loc , self._l_global._l_p[1]._link , False ).squeeze()
+		if not self._lhs.is_fixed("scale"):
+			X_scale = self._rhs.c_global[1]
+			coefs[self._rhs.l_global._s_p[0]:] = sdnp.std( self._Y , X_scale , self.loc , self._rhs.l_global._l_p[1]._l , False ).squeeze()
 			self.coef_ = coefs
 	##}}}
 	
@@ -78,10 +81,10 @@ class Normal(AbstractLaw):
 	##}}}
 	
 	def _init_MLE( self ): ##{{{
-		if self._l_global._special_fit_allowed:
+		if self._rhs.l_global._special_fit_allowed:
 			self._fit_moments()
 		else:
-			self.coef_ = self._l_global.valid_point( self )
+			self.coef_ = self._rhs.l_global.valid_point( self )
 	##}}}
 	
 	def _negloglikelihood( self , coef ): ##{{{
@@ -103,12 +106,12 @@ class Normal(AbstractLaw):
 		## Compute gradient
 		T0 = - Z / scale
 		T1 = - self._Y * Z / scale**2 + loc * Z / scale**2 + 1 / scale
-		jac = self._l_global.jacobian( coef , self._c_global )
+		jac = self._lhs.jacobian_
 		p = 0
-		if not isinstance(self._l_global._l_p[0],FixedParams):
+		if not self._lhs.is_fixed("loc"):
 			jac[p,:,:] *= T0
 			p += 1
-		if not isinstance(self._l_global._l_p[1],FixedParams):
+		if not self._lhs.is_fixed("scale"):
 			jac[p,:,:] *= T1
 		
 		return jac.sum( axis = (0,1) )

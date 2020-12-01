@@ -22,8 +22,9 @@
 
 import numpy as np
 import scipy.optimize as sco
-from .__Link        import TensorLink
-from .__Link        import FixedParams
+
+from .core.__LHS import LHS
+from .core.__RHS import RHS
 
 
 ###############
@@ -49,46 +50,11 @@ class AbstractLaw:
 	## Init functions
 	##===============
 	
-	def __init__( self , name_params : list , method : str ): ##{{{
-		self._method      = method.lower()
-		self._name_params = name_params
-		self._c_global    = None
-		self._l_global    = None
-		self._coef        = None
-		self.info_        = AbstractLaw._Info()
-	##}}}
-	
-	def _init_link( self , **kwargs ): ##{{{
-		if kwargs.get("l_global") is not None:
-			self._l_global = kwargs.get("l_global")
-			self._c_global = kwargs.get("c_global")
-		else:
-			l_p = []
-			c_p = []
-			s_p = []
-			n_samples = self._Y.size
-			for p in self._name_params:
-				if kwargs.get("c_{}".format(p)) is not None:
-					c = kwargs.get("c_{}".format(p)).squeeze()
-					if c.ndim == 1: c = c.reshape(-1,1)
-					c_p.append(c)
-					s_p.append( 1 + c.shape[1] )
-				else:
-					c_p.append(None)
-					if kwargs.get("f_{}".format(p)) is not None:
-						s_p.append(0)
-					else:
-						s_p.append(1)
-				
-				if kwargs.get("l_{}".format(p)) is not None:
-					l_p.append(kwargs.get("l_{}".format(p)))
-				elif kwargs.get("f_{}".format(p)) is not None:
-					l_p.append( FixedParams( kwargs.get("f_{}".format(p)) , n_samples = n_samples , n_features = 0 ) )
-				else:
-					l_p.append(None)
-				
-			self._l_global = TensorLink( l_p , s_p , n_features = np.sum(s_p) , n_samples = n_samples )
-			self._c_global = c_p
+	def __init__( self , names : list , method : str ): ##{{{
+		self._method = method.lower()
+		self._lhs    = LHS(names,0)
+		self._rhs    = RHS(self._lhs)
+		self.info_   = AbstractLaw._Info()
 	##}}}
 	
 	
@@ -102,13 +68,12 @@ class AbstractLaw:
 	
 	@property
 	def coef_(self):##{{{
-		return self._coef
+		return self._rhs.coef_
 	##}}}
 	
 	@coef_.setter
 	def coef_( self , coef_ ): ##{{{
-		self._coef = coef_
-		self._set_params( *self._l_global.transform( coef_ , self._c_global ) )
+		self._rhs.coef_ = coef_
 	##}}}
 	
 	@property
@@ -156,11 +121,12 @@ class AbstractLaw:
 		## Add Y
 		self._Y = Y.reshape(-1,1)
 		
-		## Init link functions
-		self._init_link(**kwargs)
+		## Init LHS/RHS
+		self._lhs.n_samples = Y.size
+		self._rhs.build(**kwargs)
 		
 		## Now fit
-		if self._method not in ["mle","bayesian"] and self._l_global._special_fit_allowed:
+		if self._method not in ["mle","bayesian"] and self._rhs.l_global._special_fit_allowed:
 			self._special_fit()
 		elif self._method == "mle" :
 			self._fit_MLE()

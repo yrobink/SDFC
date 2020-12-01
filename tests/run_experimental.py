@@ -45,6 +45,9 @@ from experimental import Exponential
 from experimental import Identity
 from experimental import TensorLink
 
+from experimental.core.__RHS import LHS
+from experimental.core.__RHS import RHS
+
 ###############
 ## Fonctions ##
 ###############
@@ -364,7 +367,17 @@ if __name__ == "__main__":
 #	np.random.seed(42)
 	
 	nt = NormalTest()
-	nt.run_all()
+#	nt.run_all()
+	
+	
+	nt.test0()
+	kwargs = { "c_loc" : nt.X_loc , "c_scale" : nt.X_scale , "l_scale" : Exponential() }
+	
+	lhs = LHS( ["loc","scale"] , 2000 )
+	rhs = RHS( lhs )
+	rhs.build(**kwargs)
+	
+	rhs.coef_ = [1.,2.,-1.,0.5]
 	
 	print("Done")
 

@@ -16,10 +16,19 @@
 ## You should have received a copy of the GNU General Public License
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
+##############
+## Packages ##
+##############
+
 import numpy as np
 import scipy.optimize as sco
 from .__Link        import TensorLink
 from .__Link        import FixedParams
+
+
+###############
+## Class(es) ##
+###############
 
 class AbstractLaw:
 	

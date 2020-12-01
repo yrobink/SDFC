@@ -31,7 +31,6 @@ import SDFC.NonParametric as sdnp
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import CTP.plot as cplt
 
 #mpl.rcParams['font.size'] = 30
 

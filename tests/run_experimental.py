@@ -1,18 +1,29 @@
 # -*- coding: utf-8 -*-
 
-#############################
-## Yoann Robin             ##
-## yoann.robin.k@gmail.com ##
-#############################
+## Copyright(c) 2020 Yoann Robin
+## 
+## This file is part of SDFC.
+## 
+## SDFC is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+## 
+## SDFC is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+## 
+## You should have received a copy of the GNU General Public License
+## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
+
 
 ###############
 ## Libraries ##
 ##{{{
 
 import sys,os
-import pickle as pk
-import multiprocessing as mp
-
+import texttable as tt
 
 ## Scientific libraries
 ##=====================
@@ -37,16 +48,16 @@ import matplotlib.pyplot as plt
 ##}}}
 ###############
 
-from experimental import Normal
-from experimental import GlobalLink
-from experimental import FixedParams
-from experimental import Exponential
-from experimental import Identity
-from experimental import TensorLink
-
 from experimental.core.__RHS import LHS
 from experimental.core.__RHS import RHS
+from experimental.link.__Univariate import ULIdentity
 from experimental.link.__Univariate import ULExponential
+from experimental.link.__Multivariate import MultivariateLink
+from experimental.link.__Multivariate import MLTensor
+
+
+from experimental import Normal
+
 
 ###############
 ## Fonctions ##
@@ -57,10 +68,10 @@ from experimental.link.__Univariate import ULExponential
 ## Classes ##
 #############
 
-class RatioLocScaleConstant(GlobalLink):##{{{
+class RatioLocScaleConstant(MultivariateLink):##{{{
 	
 	def __init__( self , n_samples ):##{{{
-		GlobalLink.__init__( self , n_features = 3 , n_samples = n_samples )
+		MultivariateLink.__init__( self , n_features = 3 , n_samples = n_samples )
 		self._l_p = [None,None]
 	##}}}
 	
@@ -117,9 +128,9 @@ class RatioLocScaleConstant(GlobalLink):##{{{
 ## GEV part
 ##=========
 
-class GEVPrLink(GlobalLink):##{{{
+class GEVPrLink(MultivariateLink):##{{{
 	def __init__( self , *args , **kwargs ):
-		GlobalLink.__init__( self , *args , **kwargs )
+		MultivariateLink.__init__( self , *args , **kwargs )
 	
 	def transform( self , coef , X ):
 		E = np.exp( coef[3] / coef[0] * X[:,0] )
@@ -271,7 +282,7 @@ class NormalTest: ##{{{
 		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
-		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : Exponential() }
+		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : ULExponential() }
 		self.norm = Normal()
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
@@ -282,7 +293,7 @@ class NormalTest: ##{{{
 		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
-		l_global = TensorLink( [Identity() , Exponential()] , [2,2] , n_samples = self.n_sample , n_features = 4 )
+		l_global = MLTensor( [ULIdentity() , ULExponential()] , [2,2] , n_samples = self.n_sample , n_features = 4 )
 		kwargs = { "c_global" : [self.X_loc,self.X_scale] , "l_global" : l_global }
 		self.norm = Normal()
 		self.norm.fit( self.Y , **kwargs )
@@ -307,7 +318,7 @@ class NormalTest: ##{{{
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		self.coef_ = self.coef_[2:]
 		
-		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : Exponential() }
+		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : ULExponential() }
 		self.norm = Normal()
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
@@ -329,7 +340,7 @@ class NormalTest: ##{{{
 		self.scale = np.exp(self.coef_[1] + self.coef_[2] * self.X_scale)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
-		kwargs = { "c_scale" : self.X_scale , "l_scale" : Exponential() }
+		kwargs = { "c_scale" : self.X_scale , "l_scale" : ULExponential() }
 		self.norm = Normal()
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
@@ -340,19 +351,25 @@ class NormalTest: ##{{{
 		self.scale = np.repeat( np.exp(self.coef_[2]) , self.n_sample ).reshape(-1,1)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
-		kwargs = { "c_loc" : self.X_loc , "l_scale" : Exponential() }
+		kwargs = { "c_loc" : self.X_loc , "l_scale" : ULExponential() }
 		self.norm = Normal()
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
 	def summary( self , show = False ): ##{{{
-		print( "{} / {} / {}".format( np.max(np.abs(self.coef_ - self.norm.coef_)) , self.coef_ , self.norm.coef_ ) )
+		print( "## => {} / {} / {}".format( np.max(np.abs(self.coef_ - self.norm.coef_)) , self.coef_ , self.norm.coef_ ) )
 	##}}}
 	
 	def run_all(self):##{{{
-		for f in [self.test0,self.test1,self.test2,self.test3,self.test4,self.test5,self.test6]:
-			f()
-			self.summary()
+		tab = tt.Texttable( max_width = 0 )
+		tab.header( ["Normal law test","Status","Max diff","True value","Estimated value"] )
+		for i,f in enumerate([self.test0,self.test1,self.test2,self.test3,self.test4,self.test5,self.test6]):
+			try:
+				f()
+				tab.add_row( ["Test {}".format(i),"Pass",np.max(np.abs(self.coef_ - self.norm.coef_)) , self.coef_ , np.round(self.norm.coef_,2)] )
+			except:
+				tab.add_row( ["Test {}".format(i),"Fail","/","/","/"] )
+		print(tab.draw())
 	##}}}
 	
 ##}}}
@@ -367,19 +384,17 @@ if __name__ == "__main__":
 #	np.random.seed(42)
 	
 	nt = NormalTest()
-#	nt.run_all()
+	nt.run_all()
 	
 	
-	nt.test0()
-	kwargs = { "f_loc" : nt.loc , "c_scale" : nt.X_scale , "l_scale" : ULExponential() }
+#	nt.test0()
+#	nt.summary()
+#	kwargs = { "f_loc" : nt.loc , "c_scale" : nt.X_scale , "l_scale" : ULExponential() }
+#	lhs = LHS( ["loc","scale"] , 2000 )
+#	rhs = RHS( lhs )
+#	rhs.build(**kwargs)
+#	rhs.coef_ = [-1.,0.5]
 	
-	lhs = LHS( ["loc","scale"] , 2000 )
-	rhs = RHS( lhs )
-	rhs.build(**kwargs)
-	
-	rhs.coef_ = [-1.,0.5]
-	
-	print(rhs.lhs_.is_fixed("loc"))
 	
 	print("Done")
 

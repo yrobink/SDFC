@@ -277,18 +277,19 @@ class NormalTest: ##{{{
 		self.X_scale = X_scale.reshape(-1,1)
 	##}}}
 	
-	def test0(self):##{{{
+	def test0( self , method = "MLE" ):##{{{
 		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
 		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
 		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
 		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : ULExponential() }
-		self.norm = Normal()
+		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
+		self.norm = Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
-	def test1(self):##{{{
+	def test1( self , method = "MLE" ):##{{{
 		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
 		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
 		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
@@ -296,11 +297,12 @@ class NormalTest: ##{{{
 		
 		l_global = MLTensor( [MLLinear( c = self.X_loc , l = ULIdentity() ) , MLLinear( c = self.X_scale , l = ULExponential() ) ] , [2,2] , n_samples = self.n_samples , n_features = 4 )
 		kwargs = { "c_global" : [self.X_loc,self.X_scale] , "l_global" : l_global }
-		self.norm = Normal()
+		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
+		self.norm = Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
-	def test2(self):##{{{
+	def test2( self , method = "MLE" ):##{{{
 		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
 		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
 		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
@@ -308,11 +310,12 @@ class NormalTest: ##{{{
 		self.coef_ = self.coef_[:2]
 		
 		kwargs = { "c_loc" : self.X_loc , "f_scale" : self.scale }
-		self.norm = Normal()
+		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
+		self.norm = Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
-	def test3(self):##{{{
+	def test3( self , method = "MLE" ):##{{{
 		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
 		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
 		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
@@ -320,40 +323,44 @@ class NormalTest: ##{{{
 		self.coef_ = self.coef_[2:]
 		
 		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : ULExponential() }
-		self.norm = Normal()
+		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
+		self.norm = Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
-	def test4(self):##{{{
+	def test4( self , method = "MLE" ):##{{{
 		self.coef_  = np.array([0.8,1.5,2])
 		l_global    = RatioLocScaleConstant( self.n_samples )
 		self.loc,self.scale = l_global.transform( self.coef_ , self.X_loc )
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
 		kwargs = { "c_global" : [self.X_loc] , "l_global" : l_global }
-		self.norm = Normal()
+		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
+		self.norm = Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
-	def test5(self):##{{{
+	def test5( self , method = "MLE" ):##{{{
 		self.coef_ = np.array( [0.5,0.3,-0.9] )
 		self.loc   = np.repeat( self.coef_[0] , self.n_samples ).reshape(-1,1)
 		self.scale = np.exp(self.coef_[1] + self.coef_[2] * self.X_scale)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
 		kwargs = { "c_scale" : self.X_scale , "l_scale" : ULExponential() }
-		self.norm = Normal()
+		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
+		self.norm = Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
-	def test6(self):##{{{
+	def test6( self , method = "MLE" ):##{{{
 		self.coef_ = np.array( [0.5,1.3,-0.9] )
 		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
 		self.scale = np.repeat( np.exp(self.coef_[2]) , self.n_samples ).reshape(-1,1)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
 		kwargs = { "c_loc" : self.X_loc , "l_scale" : ULExponential() }
-		self.norm = Normal()
+		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
+		self.norm = Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
@@ -361,12 +368,12 @@ class NormalTest: ##{{{
 		print( "## => {} / {} / {}".format( np.max(np.abs(self.coef_ - self.norm.coef_)) , self.coef_ , self.norm.coef_ ) )
 	##}}}
 	
-	def run_all(self):##{{{
+	def run_all( self , method = "MLE" ):##{{{
 		tab = tt.Texttable( max_width = 0 )
-		tab.header( ["Normal law test","Status","Max diff","True value","Estimated value"] )
+		tab.header( ["Normal law test ({})".format(method),"Status","Max diff","True value","Estimated value"] )
 		for i in range(7):
 			try:
-				eval( "self.test{}()".format(i) )
+				eval( "self.test{}( method = \"{}\" )".format(i,method) )
 				tab.add_row( ["Test {}".format(i),"OK",np.max(np.abs(self.coef_ - self.norm.coef_)) , self.coef_ , np.round(self.norm.coef_,2)] )
 			except:
 				tab.add_row( ["Test {}".format(i),"Fail","/","/","/"] )
@@ -385,10 +392,10 @@ if __name__ == "__main__":
 #	np.random.seed(42)
 	
 	nt = NormalTest()
-	result = nt.run_all()
+	result = nt.run_all("MLE")
 	print(result)
-	
-	
+	result = nt.run_all("bayesian")
+	print(result)
 	
 	print("Done")
 

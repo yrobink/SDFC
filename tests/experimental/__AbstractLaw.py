@@ -22,6 +22,7 @@
 
 import numpy as np
 import scipy.optimize as sco
+import scipy.stats as sc
 
 from .core.__LHS import LHS
 from .core.__RHS import RHS
@@ -35,20 +36,16 @@ class AbstractLaw:
 	
 	class _Info(object):##{{{
 		def __init__(self):
-			self.mle_optim_result   = None
-			self.cov_from_optim_mle = False
+			self._cov = None
 		
 		@property
 		def cov_(self):
-			if self.cov_from_optim_mle:
-				return self.mle_optim_result.hess_inv
-			
-			return None
+			return self._cov
 	##}}}
 	
 	
-	## Init functions
-	##===============
+	## Init function
+	##==============
 	
 	def __init__( self , names : list , method : str ): ##{{{
 		self._method = method.lower()
@@ -107,13 +104,77 @@ class AbstractLaw:
 		self._random_valid_point()
 		
 		self.info_.mle_optim_result = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
-		self.info_.cov_from_optim_mle = True
+		self.info_._cov = self.info_.mle_optim_result.hess_inv
 		self.coef_ = self.info_.mle_optim_result.x
 		
 	##}}}
 	
-	def _fit_Bayesian(self):##{{{
-		pass
+	def _fit_Bayesian( self , **kwargs ):##{{{
+		## Find numbers of features
+		##=========================
+		n_features = self._rhs.n_features
+		
+		## Define prior
+		##=============
+		prior = kwargs.get("prior")
+		if prior is None:
+			prior = sc.multivariate_normal( mean = np.zeros(n_features) , cov = 10 * np.identity(n_features) )
+		
+		## Define transition
+		##==================
+		transition = kwargs.get("transition")
+		if transition is None:
+			transition = lambda x : x + np.random.normal( size = n_features , scale = 0.1 )
+		
+		## Define numbers of iterations of MCMC algorithm
+		##===============================================
+		n_mcmc_drawn = kwargs.get("n_mcmc_drawn")
+		if n_mcmc_drawn is None:
+			n_mcmc_drawn = 10000
+		
+		## MCMC algorithm
+		##===============
+		draw   = np.zeros( (n_mcmc_drawn,n_features) )
+		accept = np.zeros( n_mcmc_drawn , dtype = np.bool )
+		
+		## Init values
+		##============
+		init = kwargs.get("mcmc_init")
+		if init is None:
+			init = prior.rvs()
+		
+		draw[0,:]     = init
+		lll_current   = -self._negloglikelihood(draw[0,:])
+		prior_current = prior.logpdf(draw[0,:]).sum()
+		p_current     = prior_current + lll_current
+		
+		for i in range(1,n_mcmc_drawn):
+			draw[i,:] = transition(draw[i-1,:])
+			
+			## Likelihood and probability of new points
+			lll_next   = - self._negloglikelihood(draw[i,:])
+			prior_next = prior.logpdf(draw[i,:]).sum()
+			p_next     = prior_next + lll_next
+			
+			## Accept or not ?
+			p_accept = np.exp( p_next - p_current )
+			if np.random.uniform() < p_accept:
+				lll_current   = lll_next
+				prior_current = prior_next
+				p_current     = p_next
+				accept[i] = True
+			else:
+				draw[i,:] = draw[i-1,:]
+				accept[i] = False
+		
+		self.coef_ = np.mean( draw[int(n_mcmc_drawn/2):,:] , axis = 0 )
+		
+		## Update information
+		self.info_.draw         = draw
+		self.info_.accept       = accept
+		self.info_.n_mcmc_drawn = n_mcmc_drawn
+		self.info_.rate_accept  = np.sum(accept) / n_mcmc_drawn
+		self.info_._cov         = np.cov(draw.T)
 	##}}}
 	
 	def fit( self , Y , **kwargs ): ##{{{
@@ -131,7 +192,7 @@ class AbstractLaw:
 		elif self._method == "mle" :
 			self._fit_MLE()
 		else:
-			self._fit_Bayesian()
+			self._fit_Bayesian(**kwargs)
 		
 	##}}}
 

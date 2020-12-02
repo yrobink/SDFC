@@ -73,8 +73,6 @@ class RHS:
 		if kwargs.get("c_global") is not None:
 			self.c_global = kwargs["c_global"]
 			self.l_global = kwargs.get("l_global")
-			if self.l_global is None:
-				self.l_global = Id
 			return
 		
 		## Else loop on lhs to find global parameters
@@ -112,6 +110,10 @@ class RHS:
 	
 	## Properties
 	## {{{
+	
+	@property
+	def n_features(self):
+		return self.l_global.n_features
 	
 	@property
 	def coef_(self):

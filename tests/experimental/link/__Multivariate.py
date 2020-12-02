@@ -109,6 +109,7 @@ class MLLinear(MultivariateLink): ##{{{
 class MLTensor(MultivariateLink):##{{{
 	
 	def __init__( self , l_p , s_p , *args , **kwargs ):##{{{
+		kwargs["n_features"] = np.sum(s_p)
 		MultivariateLink.__init__( self , *args , **kwargs )
 		self._l_p = l_p
 		self._s_p = s_p

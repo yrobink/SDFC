@@ -144,3 +144,39 @@ class ULLogit(UnivariateLink):##{{{
 		return self.s * (self.b - self.a) * e / ( 1 + e )**2
 ##}}}
 
+class ULCustom(UnivariateLink): ##{{{
+	"""
+	SDFC.link.ULCustom
+	==================
+	
+	Class to define a custom link function for users.
+	
+	Three functions must be given:
+	- tranform : the function to apply the link function
+	- inverse  : the inverse of the transform
+	- jacobian : the derivative of the transform
+	
+	Example
+	-------
+	
+	>>> ## The exponential link function is equivalent to:
+	>>> custom = SDFC.link.ULCustom( np.exp , np.log , np.exp )
+	
+	"""
+	
+	def __init__( self , transform , inverse , jacobian ):
+		UnivariateLink.__init__(self)
+		self._transform = transform
+		self._inverse   = inverse
+		self._jacobian  = jacobian
+	
+	def transform( self , x ):
+		return self._transform(x)
+	
+	def inverse( self , x ):
+		return self._inverse(x)
+	
+	def jacobian( self , x ):
+		return self._jacobian(x)
+##}}}
+

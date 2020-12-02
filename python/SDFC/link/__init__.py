@@ -35,5 +35,6 @@ from .__Univariate import ULIdentity
 from .__Univariate import ULExponential
 from .__Univariate import ULInverse
 from .__Univariate import ULLogit
+from .__Univariate import ULCustom
 
 

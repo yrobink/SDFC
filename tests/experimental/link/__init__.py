@@ -26,6 +26,8 @@ from .__Multivariate import MLConstant
 from .__Multivariate import MLLinear
 from .__Multivariate import MLTensor
 
+from .__Normal import NormalRatioLocScaleConstant
+
 from .__Univariate import UnivariateLink
 from .__Univariate import ULIdentity
 from .__Univariate import ULExponential

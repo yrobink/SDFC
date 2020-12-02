@@ -55,6 +55,7 @@ from experimental.link.__Univariate import ULExponential
 from experimental.link.__Multivariate import MultivariateLink
 from experimental.link.__Multivariate import MLLinear
 from experimental.link.__Multivariate import MLTensor
+from experimental.link.__Normal import NormalRatioLocScaleConstant
 
 
 from experimental import Normal
@@ -69,62 +70,6 @@ from experimental import Normal
 ## Classes ##
 #############
 
-class RatioLocScaleConstant(MultivariateLink):##{{{
-	
-	def __init__( self , n_samples ):##{{{
-		MultivariateLink.__init__( self , n_features = 3 , n_samples = n_samples )
-		self._l_p = [None,None]
-	##}}}
-	
-	def transform( self , coef , X ):##{{{
-		XX = X[0] if type(X) == list else X
-		E = np.exp( coef[2] / coef[0] * XX[:,0] )
-		loc   = coef[0] * E
-		scale = coef[1] * E
-		return loc,scale
-	##}}}
-	
-	def jacobian( self , coef , X ):##{{{
-		XX = X[0] if type(X) == list else X
-		E = np.exp( coef[2] / coef[0] * XX[:,0] )
-		jac = np.zeros( (2 ,  self.n_samples , self.n_features ) )
-		jac[0,:,0] = E - coef[2] * XX[:,0] / coef[0] * E
-		jac[1,:,0] = - coef[1] * coef[2] * XX[:,0] / coef[0]**2 * E
-		jac[1,:,1] = E
-		jac[0,:,2] = XX[:,0] * E
-		jac[1,:,2] = coef[1] * XX[:,0] * E / coef[0]
-		
-		return jac
-	##}}}
-	
-	def valid_point( self , law ):##{{{
-		
-		## Fit by assuming linear case without link functions
-		linear_law = type(law)()
-		l_c = [ c for c in law._rhs.c_global if c is not None ]
-		l_c = np.hstack(l_c)
-		linear_law.fit( law._Y , c_loc = l_c , c_scale = l_c )
-		linear_loc   = linear_law.loc
-		linear_scale = linear_law.scale
-		
-		coef = np.zeros(self.n_features)
-		design = np.stack( (np.ones_like(l_c),l_c) , -1 ).squeeze()
-		
-		idxloc   = np.isfinite(np.log(linear_loc))
-		idxscale = np.isfinite(np.log(linear_scale))
-		resloc,_,_,_   = scl.lstsq( design[idxloc,:]   , np.log(linear_loc[idxloc]) )
-		resscale,_,_,_ = scl.lstsq( design[idxscale,:] , np.log(linear_scale[idxscale]) )
-		coef[0] = np.exp(resloc[0])
-		coef[1] = np.exp(resscale[0])
-		
-		alphaloc   = resloc[1]   * coef[0]
-		alphascale = resscale[1] * coef[0]
-		coef[2]    = ( alphaloc + alphascale ) / 2
-		
-		return coef
-	##}}}
-
-##}}}
 
 ## GEV part
 ##=========
@@ -330,7 +275,7 @@ class NormalTest: ##{{{
 	
 	def test4( self , method = "MLE" ):##{{{
 		self.coef_  = np.array([0.8,1.5,2])
-		l_global    = RatioLocScaleConstant( self.n_samples )
+		l_global    = NormalRatioLocScaleConstant( self.n_samples )
 		self.loc,self.scale = l_global.transform( self.coef_ , self.X_loc )
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
@@ -368,7 +313,7 @@ class NormalTest: ##{{{
 		print( "## => {} / {} / {}".format( np.max(np.abs(self.coef_ - self.norm.coef_)) , self.coef_ , self.norm.coef_ ) )
 	##}}}
 	
-	def run_all( self , method = "MLE" ):##{{{
+	def run_all( self , method = "MLE" , show = True ):##{{{
 		tab = tt.Texttable( max_width = 0 )
 		tab.header( ["Normal law test ({})".format(method),"Status","Max diff","True value","Estimated value"] )
 		for i in range(7):
@@ -377,7 +322,9 @@ class NormalTest: ##{{{
 				tab.add_row( ["Test {}".format(i),"OK",np.max(np.abs(self.coef_ - self.norm.coef_)) , self.coef_ , np.round(self.norm.coef_,2)] )
 			except:
 				tab.add_row( ["Test {}".format(i),"Fail","/","/","/"] )
-		return tab.draw()
+		
+		if show: print(tab.draw())
+		return tab
 	##}}}
 	
 ##}}}
@@ -392,10 +339,9 @@ if __name__ == "__main__":
 #	np.random.seed(42)
 	
 	nt = NormalTest()
-	result = nt.run_all("MLE")
-	print(result)
-	result = nt.run_all("bayesian")
-	print(result)
+	nt.run_all("MLE")
+	nt.run_all("bayesian")
+	
 	
 	print("Done")
 

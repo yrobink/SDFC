@@ -9,7 +9,7 @@ rm -rf python/var
 
 
 ## Delete R temporary files
-rm -f R/SDFC/NAMESPACE
+#rm -f R/SDFC/NAMESPACE
 rm -f R/SDFC/man/*.Rd
 rm -f R/*.tar.gz
 rm -f R/SDFC/src/RcppExports.cpp

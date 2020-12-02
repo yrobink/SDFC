@@ -304,13 +304,13 @@ if __name__ == "__main__":
 	np.seterr( all = "ignore" )
 #	np.random.seed(42)
 	
-#	nt = NormalTest()
-#	nt.run_all("MLE")
+	nt = NormalTest()
+	nt.run_all("MLE")
 #	nt.run_all("bayesian")
 	
 	gt = GEVTest()
 	gt.run_all("MLE")
-	gt.run_all("bayesian")
+#	gt.run_all("bayesian")
 	
 	
 	print("Done")

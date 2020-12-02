@@ -24,7 +24,8 @@
 import numpy as np
 from .__AbstractLaw import AbstractLaw
 
-import SDFC.NonParametric as sdnp
+from SDFC.NonParametric import mean
+from SDFC.NonParametric import std
 
 
 ###############
@@ -90,14 +91,14 @@ class Normal(AbstractLaw):
 		##=========
 		if not self._lhs.is_fixed("loc"):
 			X_loc = self._rhs.c_global[0]
-			coefs[:self._rhs.l_global._s_p[0]] = sdnp.mean( self._Y , X_loc , self._rhs.l_global._l_p[0]._l , False ).squeeze()
+			coefs[:self._rhs.l_global._s_p[0]] = mean( self._Y , X_loc , self._rhs.l_global._l_p[0]._l , False ).squeeze()
 			self.coef_ = coefs
 		
 		## Find scale
 		##===========
 		if not self._lhs.is_fixed("scale"):
 			X_scale = self._rhs.c_global[1]
-			coefs[self._rhs.l_global._s_p[0]:] = sdnp.std( self._Y , X_scale , self.loc , self._rhs.l_global._l_p[1]._l , False ).squeeze()
+			coefs[self._rhs.l_global._s_p[0]:] = std( self._Y , X_scale , self.loc , self._rhs.l_global._l_p[1]._l , False ).squeeze()
 			self.coef_ = coefs
 	##}}}
 	

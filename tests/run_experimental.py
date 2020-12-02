@@ -53,6 +53,7 @@ from experimental.core.__RHS import RHS
 from experimental.link.__Univariate import ULIdentity
 from experimental.link.__Univariate import ULExponential
 from experimental.link.__Multivariate import MultivariateLink
+from experimental.link.__Multivariate import MLLinear
 from experimental.link.__Multivariate import MLTensor
 
 
@@ -100,7 +101,7 @@ class RatioLocScaleConstant(MultivariateLink):##{{{
 		
 		## Fit by assuming linear case without link functions
 		linear_law = type(law)()
-		l_c = [ c for c in law._c_global if c is not None ]
+		l_c = [ c for c in law._rhs.c_global if c is not None ]
 		l_c = np.hstack(l_c)
 		linear_law.fit( law._Y , c_loc = l_c , c_scale = l_c )
 		linear_loc   = linear_law.loc
@@ -269,8 +270,8 @@ def test_GEV(): ##{{{
 class NormalTest: ##{{{
 	
 	def __init__( self , n_sample = 2000 ): ##{{{
-		self.n_sample     = n_sample
-		t,X_loc,X_scale,_ = sd.tools.Dataset.covariates(self.n_sample)
+		self.n_samples     = n_sample
+		t,X_loc,X_scale,_ = sd.tools.Dataset.covariates(self.n_samples)
 		self.t       = t
 		self.X_loc   = X_loc.reshape(-1,1)
 		self.X_scale = X_scale.reshape(-1,1)
@@ -293,7 +294,7 @@ class NormalTest: ##{{{
 		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
-		l_global = MLTensor( [ULIdentity() , ULExponential()] , [2,2] , n_samples = self.n_sample , n_features = 4 )
+		l_global = MLTensor( [MLLinear( c = self.X_loc , l = ULIdentity() ) , MLLinear( c = self.X_scale , l = ULExponential() ) ] , [2,2] , n_samples = self.n_samples , n_features = 4 )
 		kwargs = { "c_global" : [self.X_loc,self.X_scale] , "l_global" : l_global }
 		self.norm = Normal()
 		self.norm.fit( self.Y , **kwargs )
@@ -325,7 +326,7 @@ class NormalTest: ##{{{
 	
 	def test4(self):##{{{
 		self.coef_  = np.array([0.8,1.5,2])
-		l_global    = RatioLocScaleConstant( self.n_sample )
+		l_global    = RatioLocScaleConstant( self.n_samples )
 		self.loc,self.scale = l_global.transform( self.coef_ , self.X_loc )
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
@@ -336,7 +337,7 @@ class NormalTest: ##{{{
 	
 	def test5(self):##{{{
 		self.coef_ = np.array( [0.5,0.3,-0.9] )
-		self.loc   = np.repeat( self.coef_[0] , self.n_sample ).reshape(-1,1)
+		self.loc   = np.repeat( self.coef_[0] , self.n_samples ).reshape(-1,1)
 		self.scale = np.exp(self.coef_[1] + self.coef_[2] * self.X_scale)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
@@ -348,7 +349,7 @@ class NormalTest: ##{{{
 	def test6(self):##{{{
 		self.coef_ = np.array( [0.5,1.3,-0.9] )
 		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.repeat( np.exp(self.coef_[2]) , self.n_sample ).reshape(-1,1)
+		self.scale = np.repeat( np.exp(self.coef_[2]) , self.n_samples ).reshape(-1,1)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
 		kwargs = { "c_loc" : self.X_loc , "l_scale" : ULExponential() }
@@ -363,13 +364,13 @@ class NormalTest: ##{{{
 	def run_all(self):##{{{
 		tab = tt.Texttable( max_width = 0 )
 		tab.header( ["Normal law test","Status","Max diff","True value","Estimated value"] )
-		for i,f in enumerate([self.test0,self.test1,self.test2,self.test3,self.test4,self.test5,self.test6]):
+		for i in range(7):
 			try:
-				f()
-				tab.add_row( ["Test {}".format(i),"Pass",np.max(np.abs(self.coef_ - self.norm.coef_)) , self.coef_ , np.round(self.norm.coef_,2)] )
+				eval( "self.test{}()".format(i) )
+				tab.add_row( ["Test {}".format(i),"OK",np.max(np.abs(self.coef_ - self.norm.coef_)) , self.coef_ , np.round(self.norm.coef_,2)] )
 			except:
 				tab.add_row( ["Test {}".format(i),"Fail","/","/","/"] )
-		print(tab.draw())
+		return tab.draw()
 	##}}}
 	
 ##}}}
@@ -384,16 +385,9 @@ if __name__ == "__main__":
 #	np.random.seed(42)
 	
 	nt = NormalTest()
-	nt.run_all()
+	result = nt.run_all()
+	print(result)
 	
-	
-#	nt.test0()
-#	nt.summary()
-#	kwargs = { "f_loc" : nt.loc , "c_scale" : nt.X_scale , "l_scale" : ULExponential() }
-#	lhs = LHS( ["loc","scale"] , 2000 )
-#	rhs = RHS( lhs )
-#	rhs.build(**kwargs)
-#	rhs.coef_ = [-1.,0.5]
 	
 	
 	print("Done")

@@ -76,10 +76,12 @@ class MLConstant(MultivariateLink):##{{{
 class MLLinear(MultivariateLink): ##{{{
 	
 	def __init__( self , *args , **kwargs ):##{{{
-		MultivariateLink.__init__( self , *args , **kwargs )
 		self._l     = kwargs.get("l")
 		self._c     = kwargs.get("c")
 		if self._l is None: self._l = ULIdentity()
+		if self._c is not None: kwargs["n_samples"] = self._c.shape[0]
+		MultivariateLink.__init__( self , *args , **kwargs )
+		
 		self.design_ = np.ones( (self.n_samples,1) )
 		if self._c is not None:
 			self.design_ = np.hstack( (self.design_,self._c) )

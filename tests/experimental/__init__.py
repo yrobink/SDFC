@@ -18,5 +18,6 @@
 
 from .__AbstractLaw import AbstractLaw
 from .__Normal      import Normal
+from .__GEV         import GEV
 
 

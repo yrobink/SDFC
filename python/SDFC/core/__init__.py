@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 ## Copyright(c) 2020 Yoann Robin
 ## 
@@ -16,18 +15,3 @@
 ## 
 ## You should have received a copy of the GNU General Public License
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
-
-
-#############
-## Imports ##
-#############
-
-from .__mean               import mean
-from .__median             import median
-from .__std                import std
-from .__cov                import cov
-from .__quantile           import quantile
-from .__lmoments           import lmoments
-from .__lmoments           import lmoments_matrix
-from .__NonParametric_cpp  import QuantileRegression
-

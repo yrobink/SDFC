@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 ## Copyright(c) 2020 Yoann Robin
 ## 
@@ -22,12 +21,16 @@
 ## Imports ##
 #############
 
-from .__mean               import mean
-from .__median             import median
-from .__std                import std
-from .__cov                import cov
-from .__quantile           import quantile
-from .__lmoments           import lmoments
-from .__lmoments           import lmoments_matrix
-from .__NonParametric_cpp  import QuantileRegression
+from .__Multivariate import MultivariateLink
+from .__Multivariate import MLConstant
+from .__Multivariate import MLLinear
+from .__Multivariate import MLTensor
+
+from .__Normal import NormalRatioLocScaleConstant
+from .__GEV    import    GEVRatioLocScaleConstant
+
+from .__Univariate import UnivariateLink
+from .__Univariate import ULIdentity
+from .__Univariate import ULExponential
+
 

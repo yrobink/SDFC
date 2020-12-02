@@ -1,101 +1,38 @@
 # -*- coding: utf-8 -*-
 
-##################################################################################
-##################################################################################
-##                                                                              ##
-## Copyright Yoann Robin, 2019                                                  ##
-##                                                                              ##
-## yoann.robin.k@gmail.com                                                      ##
-##                                                                              ##
-## This software is a computer program that is part of the SDFC (Statistical    ##
-## Distribution Fit with Covariates) library. This library makes it possible    ##
-## to regress the parameters of some statistical law with co-variates.          ##
-##                                                                              ##
-## This software is governed by the CeCILL-C license under French law and       ##
-## abiding by the rules of distribution of free software.  You can  use,        ##
-## modify and/ or redistribute the software under the terms of the CeCILL-C     ##
-## license as circulated by CEA, CNRS and INRIA at the following URL            ##
-## "http://www.cecill.info".                                                    ##
-##                                                                              ##
-## As a counterpart to the access to the source code and  rights to copy,       ##
-## modify and redistribute granted by the license, users are provided only      ##
-## with a limited warranty  and the software's author,  the holder of the       ##
-## economic rights,  and the successive licensors  have only  limited           ##
-## liability.                                                                   ##
-##                                                                              ##
-## In this respect, the user's attention is drawn to the risks associated       ##
-## with loading,  using,  modifying and/or developing or reproducing the        ##
-## software by the user in light of its specific status of free software,       ##
-## that may mean  that it is complicated to manipulate,  and  that  also        ##
-## therefore means  that it is reserved for developers  and  experienced        ##
-## professionals having in-depth computer knowledge. Users are therefore        ##
-## encouraged to load and test the software's suitability as regards their      ##
-## requirements in conditions enabling the security of their systems and/or     ##
-## data to be ensured and,  more generally, to use and operate it in the        ##
-## same conditions as regards security.                                         ##
-##                                                                              ##
-## The fact that you are presently reading this means that you have had         ##
-## knowledge of the CeCILL-C license and that you accept its terms.             ##
-##                                                                              ##
-##################################################################################
-##################################################################################
+## Copyright(c) 2020 Yoann Robin
+## 
+## This file is part of SDFC.
+## 
+## SDFC is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+## 
+## SDFC is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+## 
+## You should have received a copy of the GNU General Public License
+## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
-##################################################################################
-##################################################################################
-##                                                                              ##
-## Copyright Yoann Robin, 2019                                                  ##
-##                                                                              ##
-## yoann.robin.k@gmail.com                                                      ##
-##                                                                              ##
-## Ce logiciel est un programme informatique faisant partie de la librairie     ##
-## SDFC (Statistical Distribution Fit with Covariates). Cette librairie         ##
-## permet de calculer de regresser les parametres de lois statistiques selon    ##
-## plusieurs co-variables                                                       ##
-##                                                                              ##
-## Ce logiciel est régi par la licence CeCILL-C soumise au droit français et    ##
-## respectant les principes de diffusion des logiciels libres. Vous pouvez      ##
-## utiliser, modifier et/ou redistribuer ce programme sous les conditions       ##
-## de la licence CeCILL-C telle que diffusée par le CEA, le CNRS et l'INRIA     ##
-## sur le site "http://www.cecill.info".                                        ##
-##                                                                              ##
-## En contrepartie de l'accessibilité au code source et des droits de copie,    ##
-## de modification et de redistribution accordés par cette licence, il n'est    ##
-## offert aux utilisateurs qu'une garantie limitée.  Pour les mêmes raisons,    ##
-## seule une responsabilité restreinte pèse sur l'auteur du programme, le       ##
-## titulaire des droits patrimoniaux et les concédants successifs.              ##
-##                                                                              ##
-## A cet égard  l'attention de l'utilisateur est attirée sur les risques        ##
-## associés au chargement,  à l'utilisation,  à la modification et/ou au        ##
-## développement et à la reproduction du logiciel par l'utilisateur étant       ##
-## donné sa spécificité de logiciel libre, qui peut le rendre complexe à        ##
-## manipuler et qui le réserve donc à des développeurs et des professionnels    ##
-## avertis possédant  des  connaissances  informatiques approfondies.  Les      ##
-## utilisateurs sont donc invités à charger  et  tester  l'adéquation  du       ##
-## logiciel à leurs besoins dans des conditions permettant d'assurer la         ##
-## sécurité de leurs systèmes et ou de leurs données et, plus généralement,     ##
-## à l'utiliser et l'exploiter dans les mêmes conditions de sécurité.           ##
-##                                                                              ##
-## Le fait que vous puissiez accéder à cet en-tête signifie que vous avez       ##
-## pris connaissance de la licence CeCILL-C, et que vous en avez accepté les    ##
-## termes.                                                                      ##
-##                                                                              ##
-##################################################################################
-##################################################################################
 
-###############
-## Libraries ##
-###############
+##############
+## Packages ##
+##############
 
-import numpy          as np
-import scipy.stats    as sc
+import numpy as np
 import scipy.optimize as sco
-import texttable      as tt
-from SDFC.tools.__LawParams import LawParams
+import scipy.stats as sc
+
+from .core.__LHS import LHS
+from .core.__RHS import RHS
 
 
-###########
-## Class ##
-###########
+###############
+## Class(es) ##
+###############
 
 class AbstractLaw:
 	##{{{
@@ -109,18 +46,14 @@ class AbstractLaw:
 		method used to fit
 	coef_  : numpy.ndarray
 		Coefficients fitted
-	coefs_bootstrap: numpy.ndarray
-		coef_ for each bootstrap
-	confidence interval: numpy.ndarray[ shape = (2,coef_.size) ]
-		Confidence interval, first line is the alpha/2 quantile, and second line the 1 - alpha/2 quantile
-	alpha          : float
-		Level of confidence interval
-	
+	info_  : AbstractLaw.Info
+		Class containing info of the fit
 	
 	Fit method
 	==========
 	
-	The method <law>.fit is generic, and takes arguments of the form <type for param>_<name of param>, see below.
+	The method <law>.fit is generic, and takes arguments of the form
+	<type for param>_<name of param>, see below.
 	In case of Bayesian fit, some others optional parameters are available.
 	
 	Arguments
@@ -133,6 +66,10 @@ class AbstractLaw:
 		Fix value of a param
 	l_<param> : SDFC.tools.LinkFct (optional)
 		Link function of a param
+	c_global  : list
+		List of covariates, sorted by parameters. *_<param> are ignored if set
+	l_global  : Inherit of SDFC.link.MultivariateLink
+		Global link function. *_<param> are ignored if set
 	
 	Optional arguments for MLE fit
 	------------------------------
@@ -140,13 +77,15 @@ class AbstractLaw:
 	Optional arguments for Bayesian fit
 	-----------------------------------
 	prior : None or law or prior
-		Prior for Bayesian fit, if None a Multivariate Normal law assuming independence between parameters is used,
-		if you set it, this must be a class which implement the method logpdf(coef), returning the log of probability
-		density function
+		Prior for Bayesian fit, if None a Multivariate Normal law assuming
+		independence between parameters is used, if you set it, this must be a
+		class which implement the method logpdf(coef), returning the log of
+		probability density function
 	mcmc_init: None or vector of initial parameters
 		Starting point of the MCMC algorithm. If None, prior.rvs() is called.
 	transition: None or function
-		Transition function for MCMC algorithm, if None is given a normal law N(0,0.1) is used.
+		Transition function for MCMC algorithm, if None is given a normal law
+		N(0,0.1) is used.
 	n_mcmc_drawn : None or integer
 		Number of drawn for MCMC algorithm, if None, the value 10000 is used.
 	
@@ -180,217 +119,96 @@ class AbstractLaw:
 	##}}}
 	#####################################################################
 	
-	class _Bootstrap:##{{{
-		def __init__( self , n_bootstrap , alpha ):##{{{
-			self.n_bootstrap         = n_bootstrap
-			self.coefs_bootstrap     = None
-			self.confidence_interval = None
-			self.alpha               = alpha
-		##}}}
+	class _Info(object):##{{{
+		def __init__(self):
+			self._cov = None
 		
-		def _bootstrap_method(func):##{{{
-			def wrapper(*args,**kwargs):
-				self,Y = args
-				if self.n_bootstrap > 0:
-					self.coefs_bootstrap = []
-					for _ in range(self.n_bootstrap):
-						idx = np.random.choice( Y.size , Y.size , replace = True )
-						self.params = LawParams( kinds = self.kinds_params )
-						self.params.add_params( n_samples = Y.size , resample = idx , **kwargs )
-						self._Y = Y.reshape(-1,1)[idx,:]
-						if self.method not in [ "mle" , "bayesian" ]:
-							self._fit()
-						elif self.method == "bayesian":
-							self._fit_bayesian()
-						else:
-							self._fit_mle()
-						self.coefs_bootstrap.append( self.coef_ )
-					self.coefs_bootstrap = np.array( self.coefs_bootstrap )
-					self.confidence_interval = np.quantile( self.coefs_bootstrap , [ self.alpha / 2. , 1 - self.alpha / 2.] , axis = 0 )
-				return func(*args,**kwargs)
-			return wrapper
-		##}}}
-	##}}}
-	
-	@property
-	def n_bootstrap(self):##{{{
-		return self._bootstrap.n_bootstrap
-	##}}}
-	
-	@n_bootstrap.setter
-	def n_bootstrap( self , n_bootsrap ):##{{{
-		self._bootstrap.n_bootstrap = n_bootstrap
-	##}}}
-	
-	@property
-	def coefs_bootstrap(self):##{{{
-		return self._bootstrap.coefs_bootstrap
-	##}}}
-	
-	@coefs_bootstrap.setter
-	def coefs_bootstrap( self , coefs_bootstrap ):##{{{
-		self._bootstrap.coefs_bootstrap = coefs_bootstrap
-	##}}}
-	
-	@property
-	def confidence_interval(self):##{{{
-		return self._bootstrap.confidence_interval
-	##}}}
-	
-	@confidence_interval.setter
-	def confidence_interval( self , confidence_interval ):##{{{
-		self._bootstrap.confidence_interval = confidence_interval
-	##}}}
-	
-	@property
-	def alpha(self):##{{{
-		return self._bootstrap.alpha
-	##}}}
-	
-	@alpha.setter
-	def alpha( self , alpha ):##{{{
-		self._bootstrap.alpha = alpha
+		@property
+		def cov_(self):
+			return self._cov
 	##}}}
 	
 	
-	#####################################################################
+	## Init function
+	##==============
 	
-	class _Info:##{{{
-		def __init__( self ):
-			self.cov = None
-	##}}}
-	
-	@property
-	def cov(self):##{{{
-		return self._info.cov
-	##}}}
-	
-	@property
-	def info(self):##{{{
-		return self._info
-	##}}}
-	
-	#####################################################################
-	
-	def __init__( self , kinds_params , method , n_bootstrap , alpha ):##{{{
+	def __init__( self , names : list , method : str ): ##{{{
 		"""
 		Initialization of AbstractLaw
 		
 		Parameters
 		----------
-		method         : string
+		names  : list
+			List of names of the law, e.g. ["loc","scale"] for Normal law.
+		method : string
 			Method called to fit parameters
-		n_bootstrap    : integer
-			Numbers of bootstrap for confidence interval, default = 0 (no bootstrap)
-		alpha          : float
-			Level of confidence interval, default = 0.05
-		
 		
 		"""
-		self.method    = method.lower()
-		self.params    = {}
-		self._kinds_params = kinds_params
-		
-		self._bootstrap = AbstractLaw._Bootstrap( n_bootstrap , alpha )
-		self._info      = AbstractLaw._Info()
-		
+		self._method = method.lower()
+		self._lhs    = LHS(names,0)
+		self._rhs    = RHS(self._lhs)
+		self.info_   = AbstractLaw._Info()
 	##}}}
 	
-	def __str__(self):##{{{
-		val  = "SDFC.AbstractLaw\n"
-		val += "----------------\n"
-		val += "Base class, if you read this message, you have done a mistake"
-		return val
-	##}}}
 	
-	def __repr__(self):##{{{
-		return self.__str__()
-	##}}}
-	
-	def _to_str( self ):##{{{
-		tab = tt.Texttable( max_width = 0 )
-		
-		## Header
-		header = [ str(type(self)).split(".")[-1][:-2] + " ({})".format(self.method) , "Link" , "Type" , "coef" ]
-		if self.confidence_interval is not None:
-			header += [ "Quantile {}".format(self.alpha/2) , "Quantile {}".format( 1 - self.alpha / 2 ) ]
-		tab.header( header )
-		
-		## Loop on params
-		a = 0
-		for k in self.params._dparams:
-			p = self.params._dparams[k]
-			coef = None if p.coef_ is None else str(p.coef_.squeeze().round(3).tolist())
-			row = [ p.kind , str(p.link).split(".")[-1] , str(type(p)).split(".")[-1].split("Param")[0] , coef ]
-			if self.confidence_interval is not None:
-				if not p.is_fix():
-					b = a + p.n_features
-					row += [ self.confidence_interval[i,a:b].squeeze().round(3).tolist() for i in range(2) ]
-					a = b
-				else:
-					row += [ str(None) , str(None) ]
-			tab.add_row( row )
-		return tab.draw() + "\n"
-	##}}}
+	## Properties
+	##===========
 	
 	@property
-	def kinds_params(self):##{{{
-		return self._kinds_params
-	##}}}
-	
-	@kinds_params.setter
-	def kinds_params( self , kp ):##{{{
-		pass
+	def method(self):##{{{
+		return self._method
 	##}}}
 	
 	@property
 	def coef_(self):##{{{
-		return self.params.coef_
+		return self._rhs.coef_
 	##}}}
 	
 	@coef_.setter
-	def coef_( self , coef_  ):##{{{
-		self.params.update_coef(coef_)
+	def coef_( self , coef_ ): ##{{{
+		self._rhs.coef_ = coef_
 	##}}}
 	
-	def _predict_covariate( self , kind , c_p ): ##{{{
-		p = self.params._dparams[kind]
+	@property
+	def cov_(self):##{{{
+		return self.info_.cov_
+	##}}}
+	
+	
+	## Fit functions
+	##==============
+	
+	def _random_valid_point(self):##{{{
+		"""
+		Try to find a valid point in the neighborhood of self.coef_
+		"""
+		coef_ = self.coef_.copy()
+		cov_  = 0.1 * np.identity(coef_.size)
 		
-		if isinstance(p,CovariateParam) and c_p is not None:
-			return p.coef_[0] + c_p.T @ p.coef_[1:]
-		return p.value
+		p_coef = coef_.copy()
+		n_it   = 1
+		while not np.isfinite(self._negloglikelihood(p_coef)) or not np.all(np.isfinite(self._gradient_nlll(p_coef))):
+			if n_it % 100 == 0: cov_ *= 2
+			p_coef = np.random.multivariate_normal( coef_ , cov_ )
+			n_it += 1
+		self.coef_ = p_coef
 	##}}}
 	
-	def _update_coef(func):##{{{
-		def wrapper(*args):
-			args[0].params.update_coef(args[1])
-			return func(*args)
-		return wrapper
-	##}}}
-	
-	@_Bootstrap._bootstrap_method
-	def fit( self , Y , **kwargs ): ##{{{
+	def _fit_MLE(self): ##{{{
 		
-		## Fit part
-		self.params = LawParams( kinds = self.kinds_params )
-		self.params.add_params( n_samples = Y.size , resample = None , **kwargs )
-		self._Y = Y.reshape(-1,1)
-		if self.method not in ["mle","bayesian"]:
-			self._fit()
-		elif self.method == "bayesian":
-			self._fit_bayesian(**kwargs)
-		else:
-			self._fit_mle()
-		del self._Y
+		self._init_MLE()
+		self._random_valid_point()
+		
+		self.info_.mle_optim_result = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
+		self.info_._cov = self.info_.mle_optim_result.hess_inv
+		self.coef_ = self.info_.mle_optim_result.x
+		
 	##}}}
 	
-	def _fit_bayesian( self , **kwargs ):##{{{
-		
+	def _fit_Bayesian( self , **kwargs ):##{{{
 		## Find numbers of features
 		##=========================
-		n_features = 0
-		for k in self.params._dparams:
-			n_features += self.params._dparams[k].n_features
+		n_features = self._rhs.n_features
 		
 		## Define prior
 		##=============
@@ -412,7 +230,7 @@ class AbstractLaw:
 		
 		## MCMC algorithm
 		##===============
-		draw = np.zeros( (n_mcmc_drawn,n_features) )
+		draw   = np.zeros( (n_mcmc_drawn,n_features) )
 		accept = np.zeros( n_mcmc_drawn , dtype = np.bool )
 		
 		## Init values
@@ -445,22 +263,33 @@ class AbstractLaw:
 				draw[i,:] = draw[i-1,:]
 				accept[i] = False
 		
-		self.params.update_coef( np.mean( draw , axis = 0 ) )
+		self.coef_ = np.mean( draw[int(n_mcmc_drawn/2):,:] , axis = 0 )
 		
 		## Update information
-		self._info.draw         = draw
-		self._info.accept       = accept
-		self._info.n_mcmc_drawn = n_mcmc_drawn
-		self._info.rate_accept  = np.sum(accept) / n_mcmc_drawn
-		self._info.cov          = np.cov(draw.T)
+		self.info_.draw         = draw
+		self.info_.accept       = accept
+		self.info_.n_mcmc_drawn = n_mcmc_drawn
+		self.info_.rate_accept  = np.sum(accept) / n_mcmc_drawn
+		self.info_._cov         = np.cov(draw.T)
 	##}}}
 	
-	def _fit_mle( self ):##{{{
-		self._initialization_mle()
-		self._info.optim_result = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
-		self.coef_ = self._info.optim_result.x
-		self._info.cov = self._info.optim_result.hess_inv
+	def fit( self , Y , **kwargs ): ##{{{
+		
+		## Add Y
+		self._Y = Y.reshape(-1,1)
+		
+		## Init LHS/RHS
+		self._lhs.n_samples = Y.size
+		self._rhs.build(**kwargs)
+		
+		## Now fit
+		if self._method not in ["mle","bayesian"] and self._rhs.l_global._special_fit_allowed:
+			self._special_fit()
+		elif self._method == "mle" :
+			self._fit_MLE()
+		else:
+			self._fit_Bayesian(**kwargs)
+		
 	##}}}
-
 
 

@@ -1,233 +1,148 @@
 # -*- coding: utf-8 -*-
 
-##################################################################################
-##################################################################################
-##                                                                              ##
-## Copyright Yoann Robin, 2019                                                  ##
-##                                                                              ##
-## yoann.robin.k@gmail.com                                                      ##
-##                                                                              ##
-## This software is a computer program that is part of the SDFC (Statistical    ##
-## Distribution Fit with Covariates) library. This library makes it possible    ##
-## to regress the parameters of some statistical law with co-variates.          ##
-##                                                                              ##
-## This software is governed by the CeCILL-C license under French law and       ##
-## abiding by the rules of distribution of free software.  You can  use,        ##
-## modify and/ or redistribute the software under the terms of the CeCILL-C     ##
-## license as circulated by CEA, CNRS and INRIA at the following URL            ##
-## "http://www.cecill.info".                                                    ##
-##                                                                              ##
-## As a counterpart to the access to the source code and  rights to copy,       ##
-## modify and redistribute granted by the license, users are provided only      ##
-## with a limited warranty  and the software's author,  the holder of the       ##
-## economic rights,  and the successive licensors  have only  limited           ##
-## liability.                                                                   ##
-##                                                                              ##
-## In this respect, the user's attention is drawn to the risks associated       ##
-## with loading,  using,  modifying and/or developing or reproducing the        ##
-## software by the user in light of its specific status of free software,       ##
-## that may mean  that it is complicated to manipulate,  and  that  also        ##
-## therefore means  that it is reserved for developers  and  experienced        ##
-## professionals having in-depth computer knowledge. Users are therefore        ##
-## encouraged to load and test the software's suitability as regards their      ##
-## requirements in conditions enabling the security of their systems and/or     ##
-## data to be ensured and,  more generally, to use and operate it in the        ##
-## same conditions as regards security.                                         ##
-##                                                                              ##
-## The fact that you are presently reading this means that you have had         ##
-## knowledge of the CeCILL-C license and that you accept its terms.             ##
-##                                                                              ##
-##################################################################################
-##################################################################################
+## Copyright(c) 2020 Yoann Robin
+## 
+## This file is part of SDFC.
+## 
+## SDFC is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+## 
+## SDFC is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+## 
+## You should have received a copy of the GNU General Public License
+## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
-##################################################################################
-##################################################################################
-##                                                                              ##
-## Copyright Yoann Robin, 2019                                                  ##
-##                                                                              ##
-## yoann.robin.k@gmail.com                                                      ##
-##                                                                              ##
-## Ce logiciel est un programme informatique faisant partie de la librairie     ##
-## SDFC (Statistical Distribution Fit with Covariates). Cette librairie         ##
-## permet de calculer de regresser les parametres de lois statistiques selon    ##
-## plusieurs co-variables                                                       ##
-##                                                                              ##
-## Ce logiciel est régi par la licence CeCILL-C soumise au droit français et    ##
-## respectant les principes de diffusion des logiciels libres. Vous pouvez      ##
-## utiliser, modifier et/ou redistribuer ce programme sous les conditions       ##
-## de la licence CeCILL-C telle que diffusée par le CEA, le CNRS et l'INRIA     ##
-## sur le site "http://www.cecill.info".                                        ##
-##                                                                              ##
-## En contrepartie de l'accessibilité au code source et des droits de copie,    ##
-## de modification et de redistribution accordés par cette licence, il n'est    ##
-## offert aux utilisateurs qu'une garantie limitée.  Pour les mêmes raisons,    ##
-## seule une responsabilité restreinte pèse sur l'auteur du programme, le       ##
-## titulaire des droits patrimoniaux et les concédants successifs.              ##
-##                                                                              ##
-## A cet égard  l'attention de l'utilisateur est attirée sur les risques        ##
-## associés au chargement,  à l'utilisation,  à la modification et/ou au        ##
-## développement et à la reproduction du logiciel par l'utilisateur étant       ##
-## donné sa spécificité de logiciel libre, qui peut le rendre complexe à        ##
-## manipuler et qui le réserve donc à des développeurs et des professionnels    ##
-## avertis possédant  des  connaissances  informatiques approfondies.  Les      ##
-## utilisateurs sont donc invités à charger  et  tester  l'adéquation  du       ##
-## logiciel à leurs besoins dans des conditions permettant d'assurer la         ##
-## sécurité de leurs systèmes et ou de leurs données et, plus généralement,     ##
-## à l'utiliser et l'exploiter dans les mêmes conditions de sécurité.           ##
-##                                                                              ##
-## Le fait que vous puissiez accéder à cet en-tête signifie que vous avez       ##
-## pris connaissance de la licence CeCILL-C, et que vous en avez accepté les    ##
-## termes.                                                                      ##
-##                                                                              ##
-##################################################################################
-##################################################################################
 
-###############
-## Libraries ##
-###############
+##############
+## Packages ##
+##############
 
 import numpy as np
+from .__AbstractLaw import AbstractLaw
 
-from SDFC.__AbstractLaw        import AbstractLaw
-from SDFC.NonParametric.__mean import mean
-from SDFC.NonParametric.__std  import std
+from .NonParametric.__mean import mean
+from .NonParametric.__std  import std
 
 
-#############
-## Classes ##
-#############
+###############
+## Class(es) ##
+###############
 
 class Normal(AbstractLaw):
 	"""
 	Class to fit a Normal law with covariates, available methods are:
 	
-	moments  : use empirical estimator of mean and standard deviation to find loc and scale, possibly with least square
-			   regression if covariates are given
-	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of n_mcmc_iteration sample draw from
-	           the posterior P(coef_ | Y)
+	moments  : use empirical estimator of mean and standard deviation to find
+	           loc and scale, possibly with least square regression if
+	           covariates are given
+	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of
+	           n_mcmc_iteration sample draw from the posterior P(coef_ | Y)
 	mle      : Maximum likelihood estimation
 	
 	Parameters
 	==========
 	loc   : location parameter
 	scale : scale parameter
+	
 	"""
 	__doc__ += AbstractLaw.__doc__
 	
-	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
+	def __init__( self , method = "MLE" ):##{{{
 		"""
 		Initialization of Normal law
 		
 		Parameters
 		----------
-		method         : string
-			Method called to fit parameters, options are "moments" and "MLE" (Maximum Likelihood estimation)
-		n_bootstrap    : integer
-			Numbers of bootstrap for confidence interval, default = 0 (no bootstrap)
-		alpha          : float
-			Level of confidence interval, default = 0.05
+		method : string
+			Method called to fit parameters
 		
 		"""
-		AbstractLaw.__init__( self , ["loc","scale"] , method , n_bootstrap , alpha )
+		AbstractLaw.__init__( self , ["loc","scale"] , method )
+		self._loc   = None
+		self._scale = None
 	##}}}
 	
-	def __str__(self):##{{{
-		return self._to_str()
-	##}}}
-	
-	def __repr__(self):##{{{
-		return self.__str__()
-	##}}}
-	
+	## Properties
+	##===========
 	
 	@property
 	def loc(self):##{{{
-		return self.params._dparams["loc"].value
+		return self._lhs.values_["loc"]
 	##}}}
 	
 	@property
 	def scale(self):##{{{
-		return self.params._dparams["scale"].value
-	##}}}
-	
-	def predict_loc( self , c_loc = None ):##{{{
-		"""
-		Return location parameter with a new co-variates
-		
-		Arguments
-		---------
-		c_loc : np.array or None
-			Covariate
-		
-		Return
-		------
-		loc : np.array
-			Location parameters, if c_loc is None return self.loc
-		"""
-		return self._predict_covariate( "loc" , c_loc )
-	##}}}
-	
-	def predict_scale( self , c_scale  = None ):##{{{
-		"""
-		Return scale parameter with a new co-variates
-		
-		Arguments
-		---------
-		c_scale : np.array or None
-			Covariate
-		
-		Return
-		------
-		scale : np.array
-			Scale parameters, if c_scale is None return self.scale
-		"""
-		return self._predict_covariate( "scale" , c_scale )
+		return self._lhs.values_["scale"]
 	##}}}
 	
 	
-	def _fit_moments(self):##{{{
-		ploc   = self.params._dparams["loc"]
-		pscale = self.params._dparams["scale"]
+	## Fit methods
+	##============
+	
+	def _fit_moments( self ): ##{{{
 		
-		## Fit loc
-		if not ploc.is_fix():
-			self.params.update_coef( mean( self._Y , ploc.design_wo1() , value = False , link = ploc.link ) , "loc" )
+		coefs = np.zeros(np.sum(self._rhs.l_global._s_p))
 		
-		## Fit scale
-		if not pscale.is_fix():
-			self.params.update_coef( std( self._Y , pscale.design_wo1() , m_Y = self.loc , value = False , link = pscale.link ) , "scale" )
+		## Find loc
+		##=========
+		if not self._lhs.is_fixed("loc"):
+			X_loc = self._rhs.c_global[0]
+			coefs[:self._rhs.l_global._s_p[0]] = mean( self._Y , X_loc , self._rhs.l_global._l_p[0]._l , False ).squeeze()
+			self.coef_ = coefs
+		
+		## Find scale
+		##===========
+		if not self._lhs.is_fixed("scale"):
+			X_scale = self._rhs.c_global[1]
+			coefs[self._rhs.l_global._s_p[0]:] = std( self._Y , X_scale , self.loc , self._rhs.l_global._l_p[1]._l , False ).squeeze()
+			self.coef_ = coefs
 	##}}}
 	
-	def _initialization_mle(self):##{{{
-		self._fit_moments()
-	##}}}
-	
-	def _fit( self ):##{{{
-		
-		## Fit itself
+	def _special_fit( self ):##{{{
 		if self.method == "moments":
 			self._fit_moments()
 	##}}}
 	
-	@AbstractLaw._update_coef
-	def _negloglikelihood( self , coef ): ##{{{
-		scale2 = np.power( self.scale , 2 )
-		return np.Inf if not np.all( self.scale > 0 ) else np.sum( np.log( scale2 ) ) / 2. + np.sum( np.power( self._Y - self.loc , 2 ) / scale2 ) / 2.
+	def _init_MLE( self ): ##{{{
+		if self._rhs.l_global._special_fit_allowed:
+			self._fit_moments()
+		else:
+			self.coef_ = self._rhs.l_global.valid_point( self )
 	##}}}
 	
-	@AbstractLaw._update_coef
-	def _gradient_nlll( self , coef ): ##{{{
-		grad = np.array( [] )
-		Yc = self._Y - self.loc
-		
-		ploc = self.params._dparams["loc"]
-		if not ploc.is_fix():
-			grad_loc   = - ploc.design_.T @ (Yc / self.scale**2 * ploc.gradient() )
-			grad = np.hstack( (grad,grad_loc.squeeze()) )
-		
-		pscale = self.params._dparams["scale"]
-		if not pscale.is_fix():
-			grad_scale = pscale.design_.T @ ( ( 1. / self.scale - Yc**2 / self.scale**3 ) * pscale.gradient() )
-			grad = np.hstack( (grad,grad_scale.squeeze()) )
-		return grad
+	def _negloglikelihood( self , coef ): ##{{{
+		self.coef_ = coef
+		shape = self._Y.shape
+		scale2 = np.power( self.scale , 2 )
+		if not np.isscalar(scale2): scale2 = scale2.reshape(shape)
+		return np.Inf if not np.all( self.scale > 0 ) else np.sum( np.log( scale2 ) ) / 2. + np.sum( np.power( self._Y - self.loc.reshape(shape) , 2 ) / scale2 ) / 2.
 	##}}}
+	
+	def _gradient_nlll( self , coef ): ##{{{
+		self.coef_ = coef
+		## Parameters
+		shape = self._Y.shape
+		loc   = self.loc.reshape(shape)
+		scale = self.scale.reshape(shape)
+		Z     = ( self._Y - loc ) / scale
+		
+		## Compute gradient
+		T0 = - Z / scale
+		T1 = - self._Y * Z / scale**2 + loc * Z / scale**2 + 1 / scale
+		jac = self._lhs.jacobian_
+		p = 0
+		if not self._lhs.is_fixed("loc"):
+			jac[p,:,:] *= T0
+			p += 1
+		if not self._lhs.is_fixed("scale"):
+			jac[p,:,:] *= T1
+		
+		return jac.sum( axis = (0,1) )
+	##}}}
+	
+

@@ -35,7 +35,7 @@ import scipy.linalg as scl
 import pandas as pd
 import xarray as xr
 import SDFC as sd
-import SDFC.NonParametric as sdnp
+import SDFC.link as sdl
 
 ## Plot libraries ##
 ##==================
@@ -48,20 +48,6 @@ import matplotlib.pyplot as plt
 ##}}}
 ###############
 
-from experimental.core.__RHS import LHS
-from experimental.core.__RHS import RHS
-from experimental.link.__Univariate import ULIdentity
-from experimental.link.__Univariate import ULExponential
-from experimental.link.__Multivariate import MultivariateLink
-from experimental.link.__Multivariate import MLLinear
-from experimental.link.__Multivariate import MLTensor
-from experimental.link.__Normal import NormalRatioLocScaleConstant
-from experimental.link.__GEV    import    GEVRatioLocScaleConstant
-
-
-from experimental import Normal
-from experimental import GEV
-
 
 ###############
 ## Fonctions ##
@@ -72,20 +58,11 @@ from experimental import GEV
 ## Classes ##
 #############
 
-
-## GEV part
-##=========
-
-
-
-## Tests
-##======
-
 class NormalTest: ##{{{
 	
 	def __init__( self , n_sample = 2000 ): ##{{{
 		self.n_samples     = n_sample
-		t,X_loc,X_scale,_ = sd.tools.Dataset.covariates(self.n_samples)
+		t,X_loc,X_scale,_ = sd.Dataset.covariates(self.n_samples)
 		self.t       = t
 		self.X_loc   = X_loc.reshape(-1,1)
 		self.X_scale = X_scale.reshape(-1,1)
@@ -97,9 +74,9 @@ class NormalTest: ##{{{
 		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
-		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : ULExponential() }
+		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.norm = Normal( method = method )
+		self.norm = sd.Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
@@ -109,10 +86,10 @@ class NormalTest: ##{{{
 		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
-		l_global = MLTensor( [MLLinear( c = self.X_loc , l = ULIdentity() ) , MLLinear( c = self.X_scale , l = ULExponential() ) ] , [2,2] , n_samples = self.n_samples , n_features = 4 )
+		l_global = sdl.MLTensor( [sdl.MLLinear( c = self.X_loc , l = sdl.ULIdentity() ) , sdl.MLLinear( c = self.X_scale , l = sdl.ULExponential() ) ] , [2,2] , n_samples = self.n_samples , n_features = 4 )
 		kwargs = { "c_global" : [self.X_loc,self.X_scale] , "l_global" : l_global }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.norm = Normal( method = method )
+		self.norm = sd.Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
@@ -125,7 +102,7 @@ class NormalTest: ##{{{
 		
 		kwargs = { "c_loc" : self.X_loc , "f_scale" : self.scale }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.norm = Normal( method = method )
+		self.norm = sd.Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
@@ -136,21 +113,21 @@ class NormalTest: ##{{{
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		self.coef_ = self.coef_[2:]
 		
-		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : ULExponential() }
+		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.norm = Normal( method = method )
+		self.norm = sd.Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
 	def test4( self , method = "MLE" ):##{{{
 		self.coef_  = np.array([0.8,1.5,2])
-		l_global    = NormalRatioLocScaleConstant( self.n_samples )
+		l_global    = sdl.NormalRatioLocScaleConstant( self.n_samples )
 		self.loc,self.scale = l_global.transform( self.coef_ , self.X_loc )
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
 		kwargs = { "c_global" : [self.X_loc] , "l_global" : l_global }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.norm = Normal( method = method )
+		self.norm = sd.Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
@@ -160,9 +137,9 @@ class NormalTest: ##{{{
 		self.scale = np.exp(self.coef_[1] + self.coef_[2] * self.X_scale)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
-		kwargs = { "c_scale" : self.X_scale , "l_scale" : ULExponential() }
+		kwargs = { "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.norm = Normal( method = method )
+		self.norm = sd.Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
@@ -172,9 +149,9 @@ class NormalTest: ##{{{
 		self.scale = np.repeat( np.exp(self.coef_[2]) , self.n_samples ).reshape(-1,1)
 		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
 		
-		kwargs = { "c_loc" : self.X_loc , "l_scale" : ULExponential() }
+		kwargs = { "c_loc" : self.X_loc , "l_scale" : sdl.ULExponential() }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.norm = Normal( method = method )
+		self.norm = sd.Normal( method = method )
 		self.norm.fit( self.Y , **kwargs )
 	##}}}
 	
@@ -202,7 +179,7 @@ class GEVTest:##{{{
 	
 	def __init__( self , n_sample = 2000 ): ##{{{
 		self.n_samples     = n_sample
-		t,X_loc,X_scale,X_shape = sd.tools.Dataset.covariates(self.n_samples)
+		t,X_loc,X_scale,X_shape = sd.Dataset.covariates(self.n_samples)
 		self.t       = t
 		self.X_loc   = X_loc.reshape(-1,1)
 		self.X_scale = X_scale.reshape(-1,1)
@@ -216,9 +193,9 @@ class GEVTest:##{{{
 		self.shape = np.repeat( self.coef_[4] , self.n_samples ).reshape(-1,1)
 		self.Y     = sc.genextreme.rvs( loc = self.loc , scale = self.scale , c = - self.shape )
 		
-		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : ULExponential() }
+		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.gev = GEV( method = method )
+		self.gev = sd.GEV( method = method )
 		self.gev.fit( self.Y , **kwargs )
 	##}}}
 	
@@ -230,9 +207,9 @@ class GEVTest:##{{{
 		self.Y     = sc.genextreme.rvs( loc = self.loc , scale = self.scale , c = - self.shape )
 		self.coef_ = np.array( [0.3,-0.9,-0.2] )
 		
-		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : ULExponential() }
+		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.gev = GEV( method = method )
+		self.gev = sd.GEV( method = method )
 		self.gev.fit( self.Y , **kwargs )
 	##}}}
 	
@@ -246,7 +223,7 @@ class GEVTest:##{{{
 		
 		kwargs = { "c_loc" : self.X_loc , "f_scale" : self.scale }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.gev = GEV( method = method )
+		self.gev = sd.GEV( method = method )
 		self.gev.fit( self.Y , **kwargs )
 	##}}}
 	
@@ -258,21 +235,21 @@ class GEVTest:##{{{
 		self.Y     = sc.genextreme.rvs( loc = self.loc , scale = self.scale , c = - self.shape )
 		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
 		
-		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : ULExponential() , "f_shape" : self.shape }
+		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() , "f_shape" : self.shape }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.gev = GEV( method = method )
+		self.gev = sd.GEV( method = method )
 		self.gev.fit( self.Y , **kwargs )
 	##}}}
 	
 	def test4( self , method = "MLE" ):##{{{
 		self.coef_  = np.array([0.8,1.5,2,-0.2])
-		l_global    = GEVRatioLocScaleConstant( self.n_samples )
+		l_global    = sdl.GEVRatioLocScaleConstant( self.n_samples )
 		self.loc,self.scale,self.shape = l_global.transform( self.coef_ , self.X_loc )
 		self.Y     = sc.genextreme.rvs( loc = self.loc , scale = self.scale , c = - self.shape )
 		
 		kwargs = { "c_global" : [self.X_loc] , "l_global" : l_global }
 		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.gev = GEV( method = method )
+		self.gev = sd.GEV( method = method )
 		self.gev.fit( self.Y , **kwargs )
 	##}}}
 	
@@ -296,6 +273,7 @@ class GEVTest:##{{{
 	
 ##}}}
 
+
 ##########
 ## main ##
 ##########
@@ -306,11 +284,11 @@ if __name__ == "__main__":
 	
 	nt = NormalTest()
 	nt.run_all("MLE")
-#	nt.run_all("bayesian")
+	nt.run_all("bayesian")
 	
 	gt = GEVTest()
 	gt.run_all("MLE")
-#	gt.run_all("bayesian")
+	gt.run_all("bayesian")
 	
 	
 	print("Done")

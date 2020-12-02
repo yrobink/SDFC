@@ -32,8 +32,34 @@ import SDFC.NonParametric as sdnp
 ###############
 
 class Normal(AbstractLaw):
+	"""
+	Class to fit a Normal law with covariates, available methods are:
+	
+	moments  : use empirical estimator of mean and standard deviation to find
+	           loc and scale, possibly with least square regression if
+	           covariates are given
+	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of
+	           n_mcmc_iteration sample draw from the posterior P(coef_ | Y)
+	mle      : Maximum likelihood estimation
+	
+	Parameters
+	==========
+	loc   : location parameter
+	scale : scale parameter
+	
+	"""
+	__doc__ += AbstractLaw.__doc__
 	
 	def __init__( self , method = "MLE" ):##{{{
+		"""
+		Initialization of Normal law
+		
+		Parameters
+		----------
+		method : string
+			Method called to fit parameters
+		
+		"""
 		AbstractLaw.__init__( self , ["loc","scale"] , method )
 		self._loc   = None
 		self._scale = None

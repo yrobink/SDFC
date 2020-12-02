@@ -33,8 +33,43 @@ from SDFC.NonParametric import lmoments
 ###############
 
 class GEV(AbstractLaw):
+	"""
+	Class to fit a GEV law with covariates, available methods are:
+	
+	moments  : use empirical estimator of mean and standard deviation to find
+	           loc and scale, possibly with least square regression if
+	           covariates are given
+	lmoments : Use L-Moments estimation, only in stationary context
+	lmoments_experimental: Use non-stationary L-Moments with Quantile
+	           Regression, experimental and not published, only
+	           used to find an initialization of MLE
+	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of
+	           n_mcmc_iteration sample draw from the posterior P(coef_ | Y)
+	mle      : Maximum likelihood estimation
+	
+	Parameters
+	==========
+	loc   : location parameter
+	scale : scale parameter
+	shape : shape parameter
+	
+	Warning
+	=======
+	The shape parameter is the opposite of the shape parameter from scipy:
+	GEV ~ scipy.stats.genextreme( loc = loc , scale = scale , c = - shape )
+	
+	"""
+	__doc__ += AbstractLaw.__doc__
 	
 	def __init__( self , method = "MLE" ):##{{{
+		"""
+		Initialization of GEV law
+		
+		Parameters
+		----------
+		method         : string
+			Method called to fit parameters
+		"""
 		AbstractLaw.__init__( self , ["loc","scale","shape"] , method )
 	##}}}
 	

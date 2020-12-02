@@ -33,5 +33,7 @@ from .__GEV    import    GEVRatioLocScaleConstant
 from .__Univariate import UnivariateLink
 from .__Univariate import ULIdentity
 from .__Univariate import ULExponential
+from .__Univariate import ULInverse
+from .__Univariate import ULLogit
 
 

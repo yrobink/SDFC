@@ -25,7 +25,7 @@
 __version__ = "0.6.0a0"
 
 from .__Normal      import Normal
-#from .__Exponential import Exponential
+from .__Exponential import Exponential
 #from .__Gamma       import Gamma
 from .__GEV         import GEV
 #from .__GPD         import GPD

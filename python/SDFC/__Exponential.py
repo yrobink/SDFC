@@ -24,22 +24,23 @@
 
 import numpy as np
 
-from SDFC.__AbstractLaw        import AbstractLaw
-from SDFC.NonParametric.__mean import mean
+from .__AbstractLaw        import AbstractLaw
+from .NonParametric.__mean import mean
 
 
-#############
-## Classes ##
-#############
+###############
+## Class(es) ##
+###############
 
 class Exponential(AbstractLaw):
 	"""
 	Class to fit an Exponential law with covariates, available methods are:
 	
-	moments  : use empirical estimator of mean and standard deviation to find loc and scale, possibly with least square
-			   regression if covariates are given
-	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of n_mcmc_iteration sample draw from
-	           the posterior P(coef_ | Y)
+	moments  : use empirical estimator of mean and standard deviation to find
+	           loc and scale, possibly with least square regression if
+	           covariates are given
+	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of
+	           n_mcmc_iteration sample draw from the posterior P(coef_ | Y)
 	mle      : Maximum likelihood estimation
 	
 	Parameters
@@ -48,92 +49,64 @@ class Exponential(AbstractLaw):
 	"""
 	__doc__ += AbstractLaw.__doc__
 	
-	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
+	def __init__( self , method = "MLE" ): ##{{{
 		"""
 		Initialization of Exponential law
 		
 		Parameters
 		----------
 		method         : string
-			Method called to fit parameters, options are "moments", "lmoments", "quantiles" and "MLE" (Maximum Likelihood estimation)
-		n_bootstrap    : integer
-			Numbers of bootstrap for confidence interval, default = 0 (no bootstrap)
-		alpha          : float
-			Level of confidence interval, default = 0.05
+			Method called to fit parameters
 		
 		"""
-		AbstractLaw.__init__( self , ["scale"] , method , n_bootstrap , alpha )
+		AbstractLaw.__init__( self , ["scale"] , method )
 	##}}}
-	
-	def __str__(self):##{{{
-		return self._to_str()
-	##}}}
-	
-	def __repr__(self):##{{{
-		return self.__str__()
-	##}}}
-	
 	
 	@property
 	def scale(self):##{{{
-		return self.params._dparams["scale"].value
-	##}}}
-	
-	def predict_scale( self , c_scale  = None ):##{{{
-		"""
-		Return scale parameter with a new co-variates
-		
-		Arguments
-		---------
-		c_scale : np.array or None
-			Covariate
-		
-		Return
-		------
-		scale : np.array
-			Scale parameters, if c_scale is None return self.scale
-		"""
-		return self._predict_covariate( "scale" , c_scale )
+		return self._lhs.values_["scale"]
 	##}}}
 	
 	
 	def _fit_moments(self):##{{{
 		
-		pscale = self.params._dparams["scale"]
-		
-		## Fit loc
-		if not pscale.is_fix():
-			self.params.update_coef( mean( self._Y , pscale.design_wo1() , value = False , link = pscale.link ) , "scale" )
+		X_scale = self._rhs.c_global[0]
+		self.coef_ = mean( self._Y , X_scale , self._rhs.l_global._l_p[0]._l , False ).squeeze()
 	##}}}
 	
-	def _initialization_mle(self):##{{{
-		self._fit_moments()
-	##}}}
-	
-	def _fit( self ):##{{{
-		
-		## Fit itself
+	def _special_fit( self ):##{{{
 		if self.method == "moments":
 			self._fit_moments()
 	##}}}
 	
-	@AbstractLaw._update_coef
+	def _init_MLE( self ): ##{{{
+		if self._rhs.l_global._special_fit_allowed:
+			self._fit_moments()
+		else:
+			self.coef_ = self._rhs.l_global.valid_point( self )
+	##}}}
+	
 	def _negloglikelihood( self , coef ): ##{{{
+		self.coef_ = coef
 		if not np.all(self.scale > 0):
 			return np.Inf
 		
-		return np.sum( np.log(self.scale) - self._Y / self.scale )
+		dshape = self._Y.shape
+		return np.sum( np.log(self.scale.reshape(dshape)) - self._Y / self.scale.reshape(dshape) )
 	##}}}
 	
-	@AbstractLaw._update_coef
 	def _gradient_nlll( self , coef ): ##{{{
-		grad_scale = np.zeros_like(coef) + np.nan
+		self.coef_ = coef
 		
-		pscale = self.params._dparams["scale"]
-		if np.all(self.scale > 0):
-			grad_scale = pscale.design_.T @ ( ( 1. / self.scale - self._Y / self.scale**2 ) * pscale.gradient() )
+		if not np.all(self.scale > 0):
+			return np.zeros_like(self.coef_) + np.nan
 		
-		return grad_scale.squeeze()
+		scale = self.scale.reshape(self._Y.shape)
+		T0 = 1. / scale - self._Y / scale**2
+		jac = self._lhs.jacobian_
+		jac[0,:,:] *= T0
+		
+		return jac.sum( axis = (0,1) )
 	##}}}
 
 

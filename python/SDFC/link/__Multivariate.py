@@ -64,7 +64,7 @@ class MLConstant(MultivariateLink):##{{{
 	def __init__( self , value , *args , **kwargs ):##{{{
 		kwargs["n_features"] = 0
 		MultivariateLink.__init__( self , *args , **kwargs )
-		self.value_ = np.array([value])
+		self.value_ = np.array([value]).reshape(-1)
 		if self.value_.size == 1:
 			self.value_ = np.repeat( value , self.n_samples )
 	##}}}

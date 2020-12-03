@@ -23,14 +23,11 @@
 ##############
 
 import numpy          as np
-import scipy.stats    as sc
-import scipy.linalg   as scl
-import scipy.optimize as sco
-import scipy.special  as scp
+import scipy.special  as scs
 
-from SDFC.__AbstractLaw        import AbstractLaw
-from SDFC.NonParametric.__mean import mean
-from SDFC.NonParametric.__var  import var
+from .__AbstractLaw        import AbstractLaw
+from .NonParametric.__mean import mean
+from .NonParametric.__var  import var
 
 
 #############
@@ -41,169 +38,151 @@ class Gamma(AbstractLaw):
 	"""
 	Class to fit a Gamma law with covariates, available methods are:
 	
-	moments  : use empirical estimator of mean and standard deviation to find loc and scale, possibly with least square
-			   regression if covariates are given
-	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of n_mcmc_iteration sample draw from
-	           the posterior P(coef_ | Y)
+	moments  : use empirical estimator of mean and standard deviation to find
+	           scale and shape, possibly with least square regression if
+	           covariates are given
+	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of
+	           n_mcmc_iteration sample draw from the posterior P(coef_ | Y)
 	mle      : Maximum likelihood estimation
 	
 	Parameters
 	==========
 	scale : scale parameter
 	shape : shape parameter
+	
 	"""
 	__doc__ += AbstractLaw.__doc__
 	
-	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
+	def __init__( self , method = "MLE" ): ##{{{
 		"""
 		Initialization of Gamma law
 		
 		Parameters
 		----------
 		method         : string
-			Method called to fit parameters, options are "moments" and "MLE" (Maximum Likelihood estimation)
-		n_bootstrap    : integer
-			Numbers of bootstrap for confidence interval, default = 0 (no bootstrap)
-		alpha          : float
-			Level of confidence interval, default = 0.05
+			Method called to fit parameters
 		"""
-		AbstractLaw.__init__( self , ["scale","shape"] , method , n_bootstrap , alpha )
-	##}}}
-	
-	def __str__(self):##{{{
-		return self._to_str()
-	##}}}
-	
-	def __repr__(self):##{{{
-		return self.__str__()
+		AbstractLaw.__init__( self , ["scale","shape"] , method )
 	##}}}
 	
 	@property
 	def scale(self):##{{{
-		return self.params._dparams["scale"].value
+		return self._lhs.values_["scale"]
 	##}}}
 	
 	@property
 	def shape(self):##{{{
-		return self.params._dparams["shape"].value
-	##}}}
-	
-	def predict_scale( self , c_scale  = None ):##{{{
-		"""
-		Return scale parameter with a new co-variates
-		
-		Arguments
-		---------
-		c_scale : np.array or None
-			Covariate
-		
-		Return
-		------
-		scale : np.array
-			Scale parameters, if c_scale is None return self.scale
-		"""
-		return self._predict_covariate( "scale" , c_scale )
-	##}}}
-	
-	def predict_shape( self , c_shape  = None ):##{{{
-		"""
-		Return scale parameter with a new co-variates
-		
-		Arguments
-		---------
-		c_shape : np.array or None
-			Covariate
-		
-		Return
-		------
-		shape : np.array
-			Shape parameters, if c_scale is None return self.shape
-		"""
-		return self._predict_covariate( "shape" , c_shape )
+		return self._lhs.values_["shape"]
 	##}}}
 	
 	
 	def _fit_moments(self):##{{{
 		
-		pscale = self.params._dparams["scale"]
-		pshape = self.params._dparams["shape"]
-		n_samples = pscale.n_samples
+		n_samples = self._lhs.n_samples
 		
-		if not pscale.is_fix() and not pshape.is_fix():
+		self.coef_ = np.zeros(self._rhs.n_features)
+		
+		if not self._lhs.is_fixed("scale") and not self._lhs.is_fixed("shape"):
 			mX = np.ones( (n_samples,1) )
 			vX = np.ones( (n_samples,1) )
-			for i in range(1,pscale.n_features):
-				for j in range(pshape.n_features):
-					mX = np.hstack( (mX,np.reshape( pscale.design_[:,i]    * pshape.design_[:,j] , (n_samples,1) ) ) )
-					vX = np.hstack( (vX,np.reshape( pscale.design_[:,i]**2 * pshape.design_[:,j] , (n_samples,1) ) ) )
+			design_scale = self._rhs.l_global._l_p[0].design_
+			design_shape = self._rhs.l_global._l_p[1].design_
+			for i in range(1,design_scale.shape[1]):
+				for j in range(design_shape.shape[1]):
+					mX = np.hstack( (mX,np.reshape( design_scale[:,i]    * design_shape[:,j] , (n_samples,1) ) ) )
+					vX = np.hstack( (vX,np.reshape( design_scale[:,i]**2 * design_shape[:,j] , (n_samples,1) ) ) )
 			m = mean( self._Y , mX[:,1:] )
 			v = var(  self._Y , vX[:,1:] )
+			
 			
 			idx  = np.logical_or( np.abs(m) < 1e-8 , v < 1e-8 )
 			cidx = np.logical_not(idx)
 			scale = np.zeros_like(m)
 			shape = np.zeros_like(m)
-			scale[cidx] = v[cidx] / m[cidx]
-			shape[cidx] = m[cidx]**2 / v[cidx]
+			scale[cidx] = np.abs( v[cidx] / m[cidx] )
+			shape[cidx] = np.abs( m[cidx]**2 / v[cidx] )
 			
 			if np.any(idx):
 				scale[idx] = scale[cidx].min()
 				shape[idx] = shape[cidx].min()
 			
-			self.params.update_coef( mean( scale , pscale.design_wo1() , value = False , link = pscale.link ) , "scale" )
-			self.params.update_coef( mean( shape , pshape.design_wo1() , value = False , link = pshape.link ) , "shape" )
-		elif pscale.is_fix():
+			coef = np.array([])
+			coef = np.hstack( (coef,mean( scale , design_scale[:,1:] , value = False , link = self._rhs.l_global._l_p[0]._l ).reshape(-1)) )
+			coef = np.hstack( (coef,mean( shape , design_shape[:,1:] , value = False , link = self._rhs.l_global._l_p[1]._l ).reshape(-1)) )
 			
-			m = mean( self._Y  , pshape.design_wo1() * self.scale )
-			v = var(  self._Y  , pshape.design_wo1() * self.scale**2 )
+		elif self._lhs.is_fixed("scale"):
 			
-			shape = m**2 / v
-			self.params.update_coef( mean( shape , pshape.design_wo1() , value = False , link = pshape.link ) , "shape" )
 			
-		elif pshape.is_fix():
-			m = mean( self._Y  , pscale.design_wo1()    * self.shape )
-			v = var(  self._Y  , pscale.design_wo1()**2 * self.shape )
+			design_shape = self._rhs.l_global._l_p[1].design_
+			m = mean( self._Y  , design_shape[:,1:] * self.scale.reshape(-1,1) )
+			v = var(  self._Y  , design_shape[:,1:] * self.scale.reshape(-1,1)**2 )
 			
-			scale = v / m
-			self.params.update_coef( mean( scale , pscale.design_wo1() , value = False , link = pscale.link ) , "scale" )
+			shape = np.abs( m**2 / v )
+			coef = mean( shape , design_shape[:,1:] , value = False , link = self._rhs.l_global._l_p[1]._l )
+			
+		elif self._lhs.is_fixed("shape"):
+			design_scale = self._rhs.l_global._l_p[0].design_
+			m = mean( self._Y  , design_scale[:,1:]    * self.shape.reshape(-1,1) )
+			v = var(  self._Y  , design_scale[:,1:]**2 * self.shape.reshape(-1,1) )
+			
+			scale = np.abs( v / m )
+			coef = mean( scale , design_scale[:,1:] , value = False , link = self._rhs.l_global._l_p[0]._l )
+		
+		self.coef_ = coef
 	##}}}
 	
-	def _initialization_mle(self):##{{{
-		self._fit_moments()
-	##}}}
 	
-	def _fit( self ): ##{{{
+	def _special_fit( self ):##{{{
 		if self.method == "moments":
 			self._fit_moments()
 	##}}}
 	
-	@AbstractLaw._update_coef
+	def _init_MLE( self ): ##{{{
+		if self._rhs.l_global._special_fit_allowed:
+			self._fit_moments()
+		else:
+			self.coef_ = self._rhs.l_global.valid_point( self )
+	##}}}
+	
+	
 	def _negloglikelihood( self , coef ): ##{{{
+		self.coef_ = coef
 		if not np.all(self.scale > 0) or not np.all(self.shape > 0) or not np.all(self._Y > 0):
 			return np.Inf
 		
-		return np.sum( self._Y / self.scale + scp.loggamma(self.shape) + self.shape * np.log(self.scale) - (self.shape-1) * np.log(self._Y) )
+		scale = self.scale.reshape(self._Y.shape)
+		shape = self.shape.reshape(self._Y.shape)
+		
+		return np.sum( self._Y / scale + scs.loggamma(shape) + shape * np.log(scale) - (shape-1) * np.log(self._Y) )
 	##}}}
 	
-	@AbstractLaw._update_coef
 	def _gradient_nlll( self , coef ): ##{{{
-		grad = np.array( [] )
 		
-		pscale = self.params._dparams["scale"]
-		pshape = self.params._dparams["shape"]
+		self.coef_ = coef
 		
-		if np.all(self.scale > 0) and np.all(self.shape > 0) and np.all(self._Y > 0):
-			if not pscale.is_fix():
-				grad_scale = pscale.design_.T @ ( ( self.shape / self.scale - self._Y / self.scale**2 ) * pscale.gradient() )
-				grad = np.hstack( (grad,grad_scale.squeeze()) )
-			if not pshape.is_fix():
-				grad_shape = pshape.design_.T @ ( ( scp.digamma(self.shape) + np.log(self.scale) - np.log(self._Y) ) * pshape.gradient() )
-				grad = np.hstack( (grad,grad_shape.squeeze()) )
-		else:
-			grad = np.zeros( coef.size ) + np.nan
-		return grad
+		if not (np.all(self.scale > 0) and np.all(self.shape > 0) and np.all(self._Y > 0)):
+			return np.zeros(self.coef_.size) + np.nan
+		
+		dshape = self._Y.shape
+		scale = self.scale.reshape(dshape)
+		shape = self.shape.reshape(dshape)
+		
+		## Gradient
+		T0 = - self._Y / scale**2 + shape / scale
+		T1 = scs.digamma(shape) + np.log(scale) - np.log(self._Y)
+		
+		## Compute jacobian
+		jac = self._lhs.jacobian_
+		p = 0
+		if not self._lhs.is_fixed("scale"):
+			jac[p,:,:] *= T0
+			p += 1
+		if not self._lhs.is_fixed("shape"):
+			jac[p,:,:] *= T1
+		
+		return jac.sum( axis = (0,1) )
 	##}}}
-
+	
 
 
 

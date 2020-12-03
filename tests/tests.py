@@ -403,11 +403,28 @@ if __name__ == "__main__":
 	np.seterr( all = "ignore" )
 #	np.random.seed(42)
 	
-	l_test = [NormalTest,ExponentialTest,GammaTest,GEVTest]
-	for test in l_test:
-		t = test()
-		t.run_all("MLE")
+#	l_test = [NormalTest,ExponentialTest,GammaTest,GEVTest]
+#	for test in l_test:
+#		t = test()
+#		t.run_all("MLE")
 	
+	n_samples     = 2000
+	t,X_loc,X_scale,X_shape = sd.Dataset.covariates(n_samples)
+	t       = t
+	X_loc   = X_loc.reshape(-1,1)
+	X_scale = X_scale.reshape(-1,1)
+	X_shape = X_shape.reshape(-1,1)
+	
+	coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
+	loc   = coef_[0] + coef_[1] * X_loc
+	scale = np.exp(coef_[2] + coef_[3] * X_scale)
+	shape = np.repeat( coef_[4] , n_samples ).reshape(-1,1)
+	
+	Y = sc.genpareto.rvs( loc = loc , scale = scale , c = shape )
+	
+	gpd = sd.GPD("moments")
+	gpd.fit( Y , f_loc = loc , c_scale = X_scale , l_scale = sdl.ULExponential() )
+	print(gpd.coef_)
 	
 	print("Done")
 

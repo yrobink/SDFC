@@ -28,6 +28,6 @@ from .__Normal      import Normal
 from .__Exponential import Exponential
 from .__Gamma       import Gamma
 from .__GEV         import GEV
-#from .__GPD         import GPD
+from .__GPD         import GPD
 
 from .__dataset import Dataset

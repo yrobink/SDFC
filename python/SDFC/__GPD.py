@@ -25,10 +25,10 @@
 import numpy         as np
 import scipy.special as scs
 
-from SDFC.__AbstractLaw            import AbstractLaw
-from SDFC.NonParametric.__mean     import mean
-from SDFC.NonParametric.__std      import std
-from SDFC.NonParametric.__lmoments import lmoments
+from .__AbstractLaw            import AbstractLaw
+from .NonParametric.__mean     import mean
+from .NonParametric.__std      import std
+from .NonParametric.__lmoments import lmoments
 
 
 #############
@@ -39,116 +39,83 @@ class GPD(AbstractLaw):
 	"""
 	Class to fit a GPD law with covariates, available methods are:
 	
-	moments  : use empirical estimator of mean and standard deviation to find loc and scale, possibly with least square
-			   regression if covariates are given
+	moments  : use empirical estimator of mean and standard deviation to find
+	           scale and shape, possibly with least square regression if
+	           covariates are given
 	lmoments : Use L-Moments estimation, only in stationary context
-	lmoments_experimental: Use non-stationary L-Moments with Quantile Regression, experimental and not published, only
+	lmoments_experimental: Use non-stationary L-Moments with Quantile
+	           Regression, experimental and not published, only
 	           used to find an initialization of MLE
-	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of n_mcmc_iteration sample draw from
-	           the posterior P(coef_ | Y)
+	bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of
+	           n_mcmc_iteration sample draw from the posterior P(coef_ | Y)
 	mle      : Maximum likelihood estimation
 	
-	WARNING: For this class, f_loc must be always given, because we fit a pareto beyond the loc parameter!
+	WARNING: 
 	========
+	For this class, f_loc must be always given, because we fit a pareto beyond
+	the loc parameter!
 	
 	Parameters
 	==========
 	loc   : location parameter, must be pass with f_loc
 	scale : scale parameter
 	shape : shape parameter
+	
 	"""
 	__doc__ += AbstractLaw.__doc__
 	
-	def __init__( self , method = "MLE" , n_bootstrap = 0 , alpha = 0.05 ): ##{{{
+	def __init__( self , method = "MLE" ): ##{{{
 		"""
 		Initialization of Normal law
 		
 		Parameters
 		----------
 		method         : string
-			Method called to fit parameters, options are "moments" and "MLE" (Maximum Likelihood estimation)
-		n_bootstrap    : integer
-			Numbers of bootstrap for confidence interval, default = 0 (no bootstrap)
-		alpha          : float
-			Level of confidence interval, default = 0.05
+			Method called to fit parameters
 		
 		"""
-		AbstractLaw.__init__( self , ["loc","scale","shape"] , method , n_bootstrap , alpha )
-	##}}}
-	
-	def __str__(self):##{{{
-		return self._to_str()
-	##}}}
-	
-	def __repr__(self):##{{{
-		return self.__str__()
+		AbstractLaw.__init__( self , ["loc","scale","shape"] , method )
 	##}}}
 	
 	
 	@property
 	def loc(self):##{{{
-		return self.params._dparams["loc"].value
+		return self._lhs.values_["loc"]
 	##}}}
 	
 	@property
 	def scale(self):##{{{
-		return self.params._dparams["scale"].value
+		return self._lhs.values_["scale"]
 	##}}}
 	
 	@property
 	def shape(self):##{{{
-		return self.params._dparams["shape"].value
-	##}}}
-	
-	def predict_scale( self , c_scale  = None ):##{{{
-		"""
-		Return scale parameter with a new co-variates
-		
-		Arguments
-		---------
-		c_scale : np.array or None
-			Covariate
-		
-		Return
-		------
-		scale : np.array
-			Scale parameters, if c_scale is None return self.scale
-		"""
-		return self._predict_covariate( "scale" , c_scale )
-	##}}}
-	
-	def predict_shape( self , c_shape  = None ):##{{{
-		"""
-		Return scale parameter with a new co-variates
-		
-		Arguments
-		---------
-		c_shape : np.array or None
-			Covariate
-		
-		Return
-		------
-		shape : np.array
-			Shape parameters, if c_scale is None return self.shape
-		"""
-		return self._predict_covariate( "shape" , c_shape )
+		return self._lhs.values_["shape"]
 	##}}}
 	
 	
 	def _fit_moments(self):##{{{
-		pscale = self.params._dparams["scale"]
-		pshape = self.params._dparams["shape"]
 		
-		idx = (self._Y > self.loc)
-		Y   = (self._Y[idx] - self.loc[idx]).reshape(-1,1)
-		if not pscale.is_fix():
-			c_scale = pscale.design_wo1()
-			if c_scale is not None:
-				c_scale = c_scale.reshape(-1,pscale.n_features-1)[idx]
-			self.params.update_coef( std( Y , c_scale , m_Y = 0 , value = False , link = pscale.link ) , "scale" )
+		self.coef_ = np.zeros(self._rhs.n_features)
 		
-		if not pshape.is_fix():
-			self.params.set_intercept( -1e-8 , "shape" )
+		Z = self._Y - self.loc.reshape(self._Y.shape)
+		
+		coef  = np.zeros(self._rhs.n_features)
+		il_b  = 0
+		il_e  = il_b + self._rhs.s_global[0]
+		isc_b = il_e
+		isc_e = isc_b + self._rhs.s_global[1]
+		ish_b = isc_e
+		ish_e = ish_b + self._rhs.s_global[2]
+		
+		if not self._lhs.is_fixed("scale"):
+			X_scale = self._rhs.c_global[1]
+			coef[isc_b:isc_e] = std( Z , X_scale , m_Y = 0 , value = False , link = self._rhs.l_global._l_p[1]._l ).reshape(-1)
+		
+		if not self._lhs.is_fixed("shape"):
+			coef[ish_b] = -1e-8
+		
+		self.coef_ = coef
 	##}}}
 	
 	def _fit_lmoments( self ): ##{{{
@@ -220,61 +187,8 @@ class GPD(AbstractLaw):
 			self.params.update_coef( mean( shape , shape_design , link = pshape.link , value = False ) , "shape" )
 	##}}}
 	
-	def _initialization_mle(self):##{{{
-		self._fit_lmoments_experimental()
-		nlll = self._negloglikelihood(self.coef_)
-		grad = self._gradient_nlll(self.coef_)
-		
-		f_scale = 1
-		f_shape = 1
-		while ( not nlll < np.inf ) or np.any(np.isnan(grad)):
-			pscale = self.params._dparams["scale"]
-			pshape = self.params._dparams["shape"]
-			
-			if pshape.is_fix() and not pscale.is_fix():
-				coef_ = np.zeros(pscale.n_features)
-				coef_[0] = pscale.link.inverse( 1. * f_scale )
-				self.params.update_coef( coef_ , "scale" )
-			elif not pshape.is_fix():
-				coef_ = np.zeros(pshape.n_features)
-				coef_[0] = pshape.link.inverse( 1e-1 / f_shape )
-				self.params.update_coef( coef_ , "shape" )
-			else:
-				self._fit_quantiles()
-			f_scale *= 2
-			f_shape *= 2
-			nlll = self._negloglikelihood(self.coef_)
-			grad = self._gradient_nlll(self.coef_)
-#		self._fit_moments()
-#		nlll_mom = self._negloglikelihood(self.coef_)
-#		grad_mom = np.any(np.isnan(self._gradient_nlll(self.coef_)))
-#		
-#		self._fit_lmoments()
-#		nlll_lmo = self._negloglikelihood(self.coef_)
-#		grad_lmo = np.any(np.isnan(self._gradient_nlll(self.coef_)))
-#		
-#		if grad_mom and grad_lmo and ( nlll_mom < np.inf or nlll_lmo < np.inf ):
-#			if nlll_mom < nlll_lmo:
-#				self._fit_moments()
-#			else:
-#				self._fit_lmoments()
-#		elif grad_mom and nlll_mom < np.inf:
-#			self._fit_moments()
-#		elif grad_lmo and nlll_lmo < np.inf:
-#			self._fit_lmoments()
-#		else:
-#			pscale = self.params._dparams["scale"]
-#			pshape = self.params._dparams["shape"]
-#			if not pscale.is_fix():
-#				self.params.set_intercept( 1.   , "scale" )
-#			if not pshape.is_fix():
-#				self.params.set_intercept( 0.01 , "shape" )
-		
-	##}}}
 	
-	def _fit( self ):##{{{
-		
-		## Fit itself
+	def _special_fit( self ):##{{{
 		if self.method == "moments":
 			self._fit_moments()
 		elif self.method == "lmoments":
@@ -283,9 +197,18 @@ class GPD(AbstractLaw):
 			self._fit_lmoments_experimental()
 	##}}}
 	
+	def _init_MLE( self ): ##{{{
+		if self._rhs.l_global._special_fit_allowed:
+			self._fit_lmoments_experimental()
+		else:
+			self.coef_ = self._rhs.l_global.valid_point( self )
+	##}}}
 	
-	@AbstractLaw._update_coef
+	
 	def _negloglikelihood( self , coef ): ##{{{
+		
+		self.coef_ = coef
+		
 		## Impossible scale
 		if not np.all( self.scale > 0 ):
 			return np.inf
@@ -298,11 +221,10 @@ class GPD(AbstractLaw):
 		
 		
 		##
-		idx   = (self._Y > self.loc).squeeze()
-		loc   = self.loc[idx,:]
-		scale = self.scale[idx,:]
-		shape = shape[idx,:]
-		Z = 1. + shape * ( self._Y[idx,:] - loc ) / scale
+		loc   = self.loc.reshape(self._Y.shape)
+		scale = self.scale.reshape(self._Y.shape)
+		shape = self.shape.reshape(self._Y.shape)
+		Z = 1. + shape * ( self._Y - loc ) / scale
 		
 		if not np.all(Z > 0):
 			return np.inf
@@ -310,7 +232,6 @@ class GPD(AbstractLaw):
 		return res
 	##}}}
 	
-	@AbstractLaw._update_coef
 	def _gradient_nlll( self , coef ): ##{{{
 		
 		## Remove exponential case
@@ -348,4 +269,5 @@ class GPD(AbstractLaw):
 			grad       = np.hstack( (grad,grad_shape.squeeze()) )
 		return grad
 	##}}}
+	
 

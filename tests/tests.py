@@ -408,8 +408,6 @@ if __name__ == "__main__":
 		t = test()
 		t.run_all("MLE")
 	
-	gt = GammaTest()
-	gt.test1()
 	
 	print("Done")
 

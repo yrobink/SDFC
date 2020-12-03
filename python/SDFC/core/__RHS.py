@@ -122,7 +122,7 @@ class RHS:
 	
 	@coef_.setter
 	def coef_( self , coef_ ):
-		self._coef_         = np.array( [coef_] ).squeeze()
+		self._coef_         = np.array( [coef_] ).squeeze().reshape(-1)
 		self.lhs_.values_   = self.l_global.transform( self.coef_ , self.c_global )
 		self.lhs_.jacobian_ = self.l_global.jacobian( self.coef_ , self.c_global )
 	

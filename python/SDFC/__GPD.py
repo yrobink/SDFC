@@ -120,71 +120,80 @@ class GPD(AbstractLaw):
 	
 	def _fit_lmoments( self ): ##{{{
 		
-		pscale = self.params._dparams["scale"]
-		pshape = self.params._dparams["shape"]
-		idx = (self._Y > self.loc)
-		Y   = (self._Y[idx] - self.loc[idx]).reshape(-1,1)
+		self.coef_ = np.zeros(self._rhs.n_features)
+		Z = self._Y - self.loc.reshape(self._Y.shape)
+		
+		coef  = np.zeros(self._rhs.n_features)
+		il_b  = 0
+		il_e  = il_b + self._rhs.s_global[0]
+		isc_b = il_e
+		isc_e = isc_b + self._rhs.s_global[1]
+		ish_b = isc_e
+		ish_e = ish_b + self._rhs.s_global[2]
 		
 		## L-moments
-		lmom = lmoments( Y )
-		if not pscale.is_fix() and not pshape.is_fix():
+		lmom = lmoments( Z )
+		if not self._lhs.is_fixed("scale") and not self._lhs.is_fixed("shape"):
 			itau     = lmom[0] / lmom[1]
 			scale_lm = lmom[0] * ( itau - 1 )
 			scale_lm = scale_lm if scale_lm > 0 else 1e-8
 			shape_lm = 2 - itau
-			self.params.set_intercept( scale_lm , "scale" )
-			self.params.set_intercept( shape_lm , "shape" )
-		elif not pscale.is_fix():
+			coef[isc_b] = scale_lm
+			coef[ish_b] = shape_lm
+		elif not self._lhs.is_fixed("scale"):
 			scale = lmom[0] * ( 1 - self.shape )
 			scale[ np.logical_not(scale > 0) ] = 1e-8
-			self.params.update_coef( mean( scale , pscale.design_wo1() , value = False , link = pscale.link ) , "scale" )
-		elif not pshape.is_fix():
-			Y /= self.scale[idx].reshape(-1,1)
+			coef[isc_b:isc_e] = mean( scale , self._rhs.c_global[1] , value = False , link = self._rhs.l_global._l_p[1]._l )
+		elif not self._lhs.is_fixed("shape"):
+			Y = self._Y / self.scale.reshape(-1,1)
 			lmom = lmoments(Y)
 			itau     = lmom[0] / lmom[1]
-			self.params.set_intercept( 2 - itau , "shape" )
+			coef[ish_b] = 2 - itau
+		
+		self.coef_ = coef
 	##}}}
 	
 	def _fit_lmoments_experimental( self ): ##{{{
 		
-		pscale = self.params._dparams["scale"]
-		pshape = self.params._dparams["shape"]
-		idx = (self._Y > self.loc)
-		Y   = (self._Y[idx] - self.loc[idx]).reshape(-1,1)
+		self.coef_ = np.zeros(self._rhs.n_features)
+		Z = self._Y - self.loc.reshape(self._Y.shape)
 		
 		## First step, find lmoments
-		c_Y = self.params.merge_covariate()
+		try:
+			c_Y = np.hstack( [ c for c in self._rhs.c_global if c is not None ] )
+		except:
+			c_Y = None
 		if c_Y is None:
 			self._fit_lmoments()
 			return
+		lmom = lmoments( self._Y , c_Y )
 		
-		c_Y = c_Y[idx.squeeze(),:]
-		lmom = lmoments( Y , c_Y )
+		coef  = np.zeros(self._rhs.n_features)
+		il_b  = 0
+		il_e  = il_b + self._rhs.s_global[0]
+		isc_b = il_e
+		isc_e = isc_b + self._rhs.s_global[1]
+		ish_b = isc_e
+		ish_e = ish_b + self._rhs.s_global[2]
 		
-		if not pscale.is_fix() and not pshape.is_fix():
+		if not self._lhs.is_fixed("scale") and not self._lhs.is_fixed("shape"):
 			itau  = lmom[:,0] / lmom[:,1]
 			scale = lmom[:,0] * ( itau - 1 )
 			shape = 2 - itau
 			
-			scale_design = pscale.design_wo1()
-			if scale_design is not None: scale_design = scale_design[idx.squeeze(),:]
-			self.params.update_coef( mean( scale , scale_design , link = pscale.link , value = False ) , "scale" )
+			coef[isc_b:isc_e] = mean( scale , self._rhs.c_global[1] , link = self._rhs.l_global._l_p[1]._l , value = False )
+			coef[ish_b:ish_e] = mean( shape , self._rhs.c_global[2] , link = self._rhs.l_global._l_p[2]._l , value = False )
 			
-			shape_design = pshape.design_wo1()
-			if shape_design is not None: shape_design = shape_design[idx.squeeze(),:]
-			self.params.update_coef( mean( shape , shape_design , link = pshape.link , value = False ) , "shape" )
-		elif not pscale.is_fix():
-			scale = lmom[:,0].reshape(-1,1) * ( 1 - self.shape )
-			scale_design = pscale.design_wo1()
-			if scale_design is not None: scale_design = scale_design[idx.squeeze(),:]
-			self.params.update_coef( mean( scale , scale_design , link = pscale.link , value = False ) , "scale" )
-		elif not pshape.is_fix():
-			Y    /= self.scale[idx].reshape(-1,1)
-			lmom  = lmoments( Y , pshape.design_wo1() )
+		elif not self._lhs.is_fixed("scale"):
+			scale = lmom[:,0].reshape(-1,1) * ( 1 - self.shape.reshape(-1,1) )
+			coef[isc_b:isc_e] = mean( scale , self._rhs.c_global[1] , link = self._rhs.l_global._l_p[1]._l , value = False )
+		elif not self._lhs.is_fixed("shape"):
+			Y     = self._Y / self.scale.reshape(-1,1)
+			lmom  = lmoments( Y , self._rhs.c_global[2] )
 			shape = 2 - lmom[:,0] / lmom[:,1]
-			shape_design = pshape.design_wo1()
-			if shape_design is not None: shape_design = shape_design[idx.squeeze(),:]
-			self.params.update_coef( mean( shape , shape_design , link = pshape.link , value = False ) , "shape" )
+			coef[ish_b:ish_e] = mean( shape , self._rhs.c_global[2] , link = self._rhs.l_global._l_p[2]._l , value = False )
+		
+		self.coef_ = coef
 	##}}}
 	
 	
@@ -199,7 +208,7 @@ class GPD(AbstractLaw):
 	
 	def _init_MLE( self ): ##{{{
 		if self._rhs.l_global._special_fit_allowed:
-			self._fit_lmoments_experimental()
+			self._fit_lmoments()
 		else:
 			self.coef_ = self._rhs.l_global.valid_point( self )
 	##}}}
@@ -234,6 +243,8 @@ class GPD(AbstractLaw):
 	
 	def _gradient_nlll( self , coef ): ##{{{
 		
+		self.coef_ = coef
+		
 		## Remove exponential case
 		shape = self.shape
 		zero_shape = ( np.abs(shape) < 1e-10 )
@@ -242,32 +253,26 @@ class GPD(AbstractLaw):
 		
 		
 		##
-		idx   = (self._Y > self.loc).squeeze()
-		Y      = self._Y[idx,:]
-		loc   = self.loc[idx,:]
-		scale = self.scale[idx,:]
-		shape = shape[idx,:]
+		loc   = self.loc.reshape(self._Y.shape)
+		scale = self.scale.reshape(self._Y.shape)
+		shape = shape.reshape(self._Y.shape)
 		
-		Z        = ( Y - loc ) / scale
-		ZZ       = 1. + shape * Z
-		exponent = 1. + 1. / shape
+		Z  = ( self._Y - loc ) / scale
+		ZZ = 1. + shape * Z
+		C  = ( 1. + 1. / shape ) * Z / ZZ
 		
-		grad = np.array([])
+		T0 = 1 / scale - C * shape / scale
+		T1 = - np.log(ZZ) / shape**2 + C
 		
-		pscale = self.params._dparams["scale"]
-		if not pscale.is_fix():
-			gr_scale   = pscale.gradient()[idx,:]
-			A = gr_scale * ( - exponent * shape * Z / ZZ / scale + 1. / scale )
-			B = pscale.design_[idx,:].T
-			grad_scale =  B @ A
-			grad       = np.hstack( (grad,grad_scale.squeeze()) )
+		jac = self._lhs.jacobian_
+		p = 0
+		if not self._lhs.is_fixed("scale"):
+			jac[p,:,:] *= T0
+			p += 1
+		if not self._lhs.is_fixed("shape"):
+			jac[p,:,:] *= T1
 		
-		pshape = self.params._dparams["shape"]
-		if not pshape.is_fix():
-			gr_shape   = pshape.gradient()[idx,:].reshape(-1,1)
-			grad_shape = pshape.design_[idx,:].T @ ( gr_shape * ( - np.log(ZZ) / shape**2 + exponent * Z / ZZ ) ) if np.all( ZZ > 0 ) else np.repeat(np.nan,pshape.n_features)
-			grad       = np.hstack( (grad,grad_shape.squeeze()) )
-		return grad
+		return jac.sum( axis = (0,1) )
 	##}}}
 	
 

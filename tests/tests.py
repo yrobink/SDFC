@@ -394,6 +394,79 @@ class GEVTest:##{{{
 	
 ##}}}
 
+class GPDTest:##{{{
+	
+	def __init__( self , n_sample = 2000 ): ##{{{
+		self.n_samples     = n_sample
+		t,X_loc,X_scale,X_shape = sd.Dataset.covariates(self.n_samples)
+		self.t       = t
+		self.X_loc   = X_loc.reshape(-1,1)
+		self.X_scale = X_scale.reshape(-1,1)
+		self.X_shape = X_shape.reshape(-1,1)
+	##}}}
+	
+	def test0( self , method = "MLE" ):##{{{
+		self.coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
+		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
+		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
+		self.shape = np.repeat( self.coef_[4] , self.n_samples ).reshape(-1,1)
+		self.Y     = sc.genpareto.rvs( loc = self.loc , scale = self.scale , c = self.shape )
+		self.coef_ = np.array( [0.3,-0.9,-0.2] )
+		
+		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
+		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
+		self.law = sd.GPD( method = method )
+		self.law.fit( self.Y , **kwargs )
+	##}}}
+	
+	def test1( self , method = "MLE" ):##{{{
+		self.coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
+		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
+		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
+		self.shape = np.repeat( self.coef_[4] , self.n_samples ).reshape(-1,1)
+		self.Y     = sc.genpareto.rvs( loc = self.loc , scale = self.scale , c = self.shape )
+		self.coef_ = np.array( [-0.2] )
+		
+		kwargs = { "f_loc" : self.loc , "f_scale" : self.scale }
+		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
+		self.law = sd.GPD( method = method )
+		self.law.fit( self.Y , **kwargs )
+	##}}}
+	
+	def test2( self , method = "MLE" ):##{{{
+		self.coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
+		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
+		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
+		self.shape = np.repeat( self.coef_[4] , self.n_samples ).reshape(-1,1)
+		self.Y     = sc.genpareto.rvs( loc = self.loc , scale = self.scale , c = self.shape )
+		self.coef_ = np.array( [0.3,-0.9] )
+		
+		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() , "f_shape" : self.shape }
+		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
+		self.law = sd.GPD( method = method )
+		self.law.fit( self.Y , **kwargs )
+	##}}}
+	
+	def summary( self , show = False ): ##{{{
+		print( "## => {} / {} / {}".format( np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , np.round(self.law.coef_,3) ) )
+	##}}}
+	
+	def run_all( self , method = "MLE" , show = True ):##{{{
+		tab = tt.Texttable( max_width = 0 )
+		tab.header( ["GPD law test ({})".format(method),"Status","Max diff","True value","Estimated value"] )
+		for i in range(3):
+			try:
+				eval( "self.test{}( method = \"{}\" )".format(i,method) )
+				tab.add_row( ["Test {}".format(i),"OK",np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , np.round(self.law.coef_,2)] )
+			except:
+				tab.add_row( ["Test {}".format(i),"Fail","/","/","/"] )
+		
+		if show: print(tab.draw())
+		return tab
+	##}}}
+	
+##}}}
+
 
 ##########
 ## main ##
@@ -403,28 +476,11 @@ if __name__ == "__main__":
 	np.seterr( all = "ignore" )
 #	np.random.seed(42)
 	
-#	l_test = [NormalTest,ExponentialTest,GammaTest,GEVTest]
-#	for test in l_test:
-#		t = test()
-#		t.run_all("MLE")
+	l_test = [NormalTest,ExponentialTest,GammaTest,GEVTest,GPDTest]
+	for test in l_test:
+		t = test()
+		t.run_all("MLE")
 	
-	n_samples     = 2000
-	t,X_loc,X_scale,X_shape = sd.Dataset.covariates(n_samples)
-	t       = t
-	X_loc   = X_loc.reshape(-1,1)
-	X_scale = X_scale.reshape(-1,1)
-	X_shape = X_shape.reshape(-1,1)
-	
-	coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
-	loc   = coef_[0] + coef_[1] * X_loc
-	scale = np.exp(coef_[2] + coef_[3] * X_scale)
-	shape = np.repeat( coef_[4] , n_samples ).reshape(-1,1)
-	
-	Y = sc.genpareto.rvs( loc = loc , scale = scale , c = shape )
-	
-	gpd = sd.GPD("moments")
-	gpd.fit( Y , f_loc = loc , c_scale = X_scale , l_scale = sdl.ULExponential() )
-	print(gpd.coef_)
 	
 	print("Done")
 

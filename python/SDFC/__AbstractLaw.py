@@ -281,6 +281,10 @@ class AbstractLaw:
 		## Init LHS/RHS
 		self._lhs.n_samples = Y.size
 		self._rhs.build(**kwargs)
+		
+		if self._rhs.n_features == 0:
+			raise NameError("All parameters are fixed (n_features == 0), no fit")
+		
 		self.coef_ = np.zeros(self._rhs.n_features)
 		## Now fit
 		if self._method not in ["mle","bayesian"] and self._rhs.l_global._special_fit_allowed:

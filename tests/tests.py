@@ -24,26 +24,15 @@
 
 import sys,os
 import texttable as tt
+import itertools as itt
 
 ## Scientific libraries
 ##=====================
 
 import numpy as np
 import scipy.stats as sc
-import scipy.optimize as sco
-import scipy.linalg as scl
-import pandas as pd
-import xarray as xr
 import SDFC as sd
 import SDFC.link as sdl
-
-## Plot libraries ##
-##==================
-
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-
-#mpl.rcParams['font.size'] = 30
 
 ##}}}
 ###############
@@ -58,321 +47,100 @@ import matplotlib.pyplot as plt
 ## Classes ##
 #############
 
-class NormalTest: ##{{{
-	
-	def __init__( self , n_sample = 2000 ): ##{{{
-		self.n_samples     = n_sample
-		t,X_loc,X_scale,_ = sd.Dataset.covariates(self.n_samples)
-		self.t       = t
-		self.X_loc   = X_loc.reshape(-1,1)
-		self.X_scale = X_scale.reshape(-1,1)
-	##}}}
-	
-	def test0( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
-		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
-		
-		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Normal( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test1( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
-		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
-		
-		l_global = sdl.MLTensor( [sdl.MLLinear( c = self.X_loc , l = sdl.ULIdentity() ) , sdl.MLLinear( c = self.X_scale , l = sdl.ULExponential() ) ] , [2,2] , n_samples = self.n_samples , n_features = 4 )
-		kwargs = { "c_global" : [self.X_loc,self.X_scale] , "l_global" : l_global }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Normal( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test2( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
-		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
-		self.coef_ = self.coef_[:2]
-		
-		kwargs = { "c_loc" : self.X_loc , "f_scale" : self.scale }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Normal( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test3( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
-		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
-		self.coef_ = self.coef_[2:]
-		
-		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Normal( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test4( self , method = "MLE" ):##{{{
-		self.coef_  = np.array([0.8,1.5,2])
-		l_global    = sdl.NormalRatioLocScaleConstant( self.n_samples )
-		self.loc,self.scale = l_global.transform( self.coef_ , self.X_loc )
-		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
-		
-		kwargs = { "c_global" : [self.X_loc] , "l_global" : l_global }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Normal( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test5( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,0.3,-0.9] )
-		self.loc   = np.repeat( self.coef_[0] , self.n_samples ).reshape(-1,1)
-		self.scale = np.exp(self.coef_[1] + self.coef_[2] * self.X_scale)
-		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
-		
-		kwargs = { "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Normal( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test6( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.3,-0.9] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.repeat( np.exp(self.coef_[2]) , self.n_samples ).reshape(-1,1)
-		self.Y     = np.random.normal( loc = self.loc , scale = self.scale )
-		
-		kwargs = { "c_loc" : self.X_loc , "l_scale" : sdl.ULExponential() }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Normal( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def summary( self , show = False ): ##{{{
-		print( "## => {} / {} / {}".format( np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , self.law.coef_ ) )
-	##}}}
-	
-	def run_all( self , method = "MLE" , show = True ):##{{{
-		tab = tt.Texttable( max_width = 0 )
-		tab.header( ["Normal law test ({})".format(method),"Status","Max diff","True value","Estimated value"] )
-		for i in range(7):
-			try:
-				eval( "self.test{}( method = \"{}\" )".format(i,method) )
-				tab.add_row( ["Test {}".format(i),"OK",np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , np.round(self.law.coef_,2)] )
-			except:
-				tab.add_row( ["Test {}".format(i),"Fail","/","/","/"] )
-		
-		if show: print(tab.draw())
-		return tab
-	##}}}
-	
-##}}}
 
-class ExponentialTest: ##{{{
+class SDFCLawTest:##{{{
 	
-	def __init__( self , n_sample = 2000 ): ##{{{
-		self.n_samples     = n_sample
-		t,X_loc,X_scale,_ = sd.Dataset.covariates(self.n_samples)
-		self.t       = t
-		self.X_loc   = X_loc.reshape(-1,1)
-		self.X_scale = X_scale.reshape(-1,1)
-	##}}}
-	
-	def test0( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.3,-0.9] )
-		self.scale = np.exp(self.coef_[0] + self.coef_[1] * self.X_scale)
-		self.Y     = np.random.exponential( scale = self.scale )
-		
-		kwargs = { "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Exponential( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test1( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.3] )
-		self.scale = np.repeat( np.exp(self.coef_[0]) , self.n_samples )
-		self.Y     = np.random.exponential( scale = self.scale )
-		
-		kwargs = { "l_scale" : sdl.ULExponential() }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Exponential( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def summary( self , show = False ): ##{{{
-		print( "## => {} / {} / {}".format( np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , self.law.coef_ ) )
-	##}}}
-	
-	def run_all( self , method = "MLE" , show = True ):##{{{
-		tab = tt.Texttable( max_width = 0 )
-		tab.header( ["Exponential law test ({})".format(method),"Status","Max diff","True value","Estimated value"] )
-		for i in range(2):
-			try:
-				eval( "self.test{}( method = \"{}\" )".format(i,method) )
-				tab.add_row( ["Test {}".format(i),"OK",np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , np.round(self.law.coef_,2)] )
-			except:
-				tab.add_row( ["Test {}".format(i),"Fail","/","/","/"] )
-		
-		if show: print(tab.draw())
-		return tab
-	##}}}
-	
-##}}}
-
-class GammaTest: ##{{{
-	
-	def __init__( self , n_sample = 2000 ): ##{{{
-		self.n_samples     = n_sample
+	def __init__( self , **kwargs ): ##{{{
+		self.name      = kwargs["name"]
+		self.n_samples = kwargs["n_samples"]
+		self.sd_law    = kwargs["sd_law"]
+		self.shape_p   = kwargs["shape_p"]
 		t,X_loc,X_scale,X_shape = sd.Dataset.covariates(self.n_samples)
 		self.t       = t
 		self.X_loc   = X_loc.reshape(-1,1)
 		self.X_scale = X_scale.reshape(-1,1)
 		self.X_shape = X_shape.reshape(-1,1)
+		self.has_loc   = "loc"   in kwargs["params"]
+		self.has_scale = "scale" in kwargs["params"]
+		self.has_shape = "shape" in kwargs["params"]
+		self.n_params  = self.has_loc + self.has_scale + self.has_shape
+		self.kwargs  = {}
+		self.coef_   = []
 	##}}}
 	
-	def test0( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.3,-0.9,0.5,0.3] )
-		self.scale = np.exp(self.coef_[0] + self.coef_[1] * self.X_scale)
-		self.shape = self.coef_[2] + self.coef_[3] * self.X_shape
-		self.Y     = np.random.gamma( scale = self.scale , shape = self.shape )
+	
+	def build_loc( self , code ):##{{{
+		coef_    = [0.5,1.]
+		if code == 1:
+			coef_      = [coef_[0]]
+			self.loc   = np.repeat( coef_[0] , self.n_samples ).reshape(-1,1)
+			self.coef_ = self.coef_ + coef_
+		else:
+			self.loc = coef_[0] + coef_[1] * self.X_loc
+			if code == 0:
+				self.kwargs["c_loc"] = self.X_loc
+				self.coef_ = self.coef_ + coef_
+			else:
+				self.kwargs["f_loc"] = self.loc
+	##}}}
+	
+	def build_scale( self , code ):##{{{
+		coef_    = [0.3,-0.9]
+		if code == 1:
+			coef_      = [coef_[0]]
+			self.scale = np.repeat( np.exp(coef_[0]) , self.n_samples ).reshape(-1,1)
+			self.coef_ = self.coef_ + coef_
+			self.kwargs["l_scale"] = sdl.ULExponential()
+		else:
+			self.scale = np.exp( coef_[0] + coef_[1] * self.X_scale )
+			if code == 0:
+				self.kwargs["c_scale"] = self.X_scale
+				self.kwargs["l_scale"] = sdl.ULExponential()
+				self.coef_ = self.coef_ + coef_
+			else:
+				self.kwargs["f_scale"] = self.scale
+	##}}}
+	
+	def build_shape( self , code ):##{{{
+		if self.shape_p:
+			coef_ = [1,-0.2]
+		else:
+			coef_    = [0.,0.2]
+		if code == 1:
+			coef_      = [-coef_[1]]
+			self.shape = np.repeat( coef_[0] , self.n_samples ).reshape(-1,1)
+			self.coef_ = self.coef_ + coef_
+		else:
+			self.shape = coef_[0] + coef_[1] * self.X_shape
+			if code == 0:
+				self.kwargs["c_shape"] = self.X_shape
+				self.coef_ = self.coef_ + coef_
+			else:
+				self.kwargs["f_shape"] = self.shape
+	##}}}
+	
+	
+	def testXXX( self , code , method = "MLE" ):##{{{
 		
-		kwargs = { "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() , "c_shape" : self.X_shape }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Gamma( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test1( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.3,-0.9,0.5,0.3] )
-		self.scale = np.exp(self.coef_[0] + self.coef_[1] * self.X_scale)
-		self.shape = self.coef_[2] + self.coef_[3] * self.X_shape
-		self.Y     = np.random.gamma( scale = self.scale , shape = self.shape )
-		self.coef_ = np.array( [0.5,0.3] )
+		i = 0
+		if self.has_loc:
+			self.build_loc( code[i] )
+			i += 1
+		if self.has_scale:
+			self.build_scale( code[i] )
+			i += 1
+		if self.has_shape:
+			self.build_shape( code[i] )
 		
-		kwargs = { "f_scale" : self.scale , "c_shape" : self.X_shape }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Gamma( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test2( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.3,-0.9,0.5,0.3] )
-		self.scale = np.exp(self.coef_[0] + self.coef_[1] * self.X_scale)
-		self.shape = self.coef_[2] + self.coef_[3] * self.X_shape
-		self.Y     = np.random.gamma( scale = self.scale , shape = self.shape )
-		self.coef_ = np.array( [0.3,-0.9] )
+		self.Y = self.rvs()
 		
-		kwargs = { "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() , "f_shape" : self.shape }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = np.identity(self.coef_.size) )
-		self.law = sd.Gamma( method = method )
-		self.law.fit( self.Y , **kwargs )
+		self.coef_ = np.array(self.coef_)
+		if self.coef_.size > 0:
+			self.kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
+		self.law = self.sd_law( method = method )
+		self.law.fit( self.Y , **self.kwargs )
 	##}}}
 	
-	def summary( self , show = False ): ##{{{
-		print( "## => {} / {} / {}".format( np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , self.law.coef_ ) )
-	##}}}
-	
-	def run_all( self , method = "MLE" , show = True ):##{{{
-		tab = tt.Texttable( max_width = 0 )
-		tab.header( ["Gamma law test ({})".format(method),"Status","Max diff","True value","Estimated value"] )
-		for i in range(3):
-			try:
-				eval( "self.test{}( method = \"{}\" )".format(i,method) )
-				tab.add_row( ["Test {}".format(i),"OK",np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , np.round(self.law.coef_,2)] )
-			except:
-				tab.add_row( ["Test {}".format(i),"Fail","/","/","/"] )
-		
-		if show: print(tab.draw())
-		return tab
-	##}}}
-	
-##}}}
-
-class GEVTest:##{{{
-	
-	def __init__( self , n_sample = 2000 ): ##{{{
-		self.n_samples     = n_sample
-		t,X_loc,X_scale,X_shape = sd.Dataset.covariates(self.n_samples)
-		self.t       = t
-		self.X_loc   = X_loc.reshape(-1,1)
-		self.X_scale = X_scale.reshape(-1,1)
-		self.X_shape = X_shape.reshape(-1,1)
-	##}}}
-	
-	def test0( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
-		self.shape = np.repeat( self.coef_[4] , self.n_samples ).reshape(-1,1)
-		self.Y     = sc.genextreme.rvs( loc = self.loc , scale = self.scale , c = - self.shape )
-		
-		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.law = sd.GEV( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test1( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
-		self.shape = np.repeat( self.coef_[4] , self.n_samples ).reshape(-1,1)
-		self.Y     = sc.genextreme.rvs( loc = self.loc , scale = self.scale , c = - self.shape )
-		self.coef_ = np.array( [0.3,-0.9,-0.2] )
-		
-		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.law = sd.GEV( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test2( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
-		self.shape = np.repeat( self.coef_[4] , self.n_samples ).reshape(-1,1)
-		self.Y     = sc.genextreme.rvs( loc = self.loc , scale = self.scale , c = - self.shape )
-		self.coef_ = np.array( [0.5,1.,-0.2] )
-		
-		kwargs = { "c_loc" : self.X_loc , "f_scale" : self.scale }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.law = sd.GEV( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test3( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
-		self.shape = np.repeat( self.coef_[4] , self.n_samples ).reshape(-1,1)
-		self.Y     = sc.genextreme.rvs( loc = self.loc , scale = self.scale , c = - self.shape )
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9] )
-		
-		kwargs = { "c_loc" : self.X_loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() , "f_shape" : self.shape }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.law = sd.GEV( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test4( self , method = "MLE" ):##{{{
-		self.coef_  = np.array([0.8,1.5,2,-0.2])
-		l_global    = sdl.GEVRatioLocScaleConstant( self.n_samples )
-		self.loc,self.scale,self.shape = l_global.transform( self.coef_ , self.X_loc )
-		self.Y     = sc.genextreme.rvs( loc = self.loc , scale = self.scale , c = - self.shape )
-		
-		kwargs = { "c_global" : [self.X_loc] , "l_global" : l_global }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.law = sd.GEV( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
 	
 	def summary( self , show = False ): ##{{{
 		print( "## => {} / {} / {}".format( np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , np.round(self.law.coef_,3) ) )
@@ -380,13 +148,21 @@ class GEVTest:##{{{
 	
 	def run_all( self , method = "MLE" , show = True ):##{{{
 		tab = tt.Texttable( max_width = 0 )
-		tab.header( ["GEV law test ({})".format(method),"Status","Max diff","True value","Estimated value"] )
-		for i in range(5):
+		tab.header( ["{} law test ({})".format(self.name,method),"Status","Max diff","True value","Estimated value"] )
+		for idx in itt.product( *(range(3) for _ in range(self.n_params))):
+			str_idx = "".join(( str(i) for i in idx))
 			try:
-				eval( "self.test{}( method = \"{}\" )".format(i,method) )
-				tab.add_row( ["Test {}".format(i),"OK",np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , np.round(self.law.coef_,2)] )
+				self.kwargs = {}
+				self.coef_  = []
+				self.testXXX( idx , method )
+				tab.add_row( ["Test {}".format(str_idx),"OK",np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , np.round(self.law.coef_,2)] )
+			except NameError:
+				if np.min(idx) == 2:
+					tab.add_row( ["Test {}".format(str_idx),"OK","/","/","/"] )
+				else:
+					tab.add_row( ["Test {}".format(str_idx),"Fail","/","/","/"] )
 			except:
-				tab.add_row( ["Test {}".format(i),"Fail","/","/","/"] )
+				tab.add_row( ["Test {}".format(str_idx),"Fail","/","/","/"] )
 		
 		if show: print(tab.draw())
 		return tab
@@ -394,75 +170,105 @@ class GEVTest:##{{{
 	
 ##}}}
 
-class GPDTest:##{{{
+
+class NormalTest(SDFCLawTest): ##{{{
 	
-	def __init__( self , n_sample = 2000 ): ##{{{
-		self.n_samples     = n_sample
-		t,X_loc,X_scale,X_shape = sd.Dataset.covariates(self.n_samples)
-		self.t       = t
-		self.X_loc   = X_loc.reshape(-1,1)
-		self.X_scale = X_scale.reshape(-1,1)
-		self.X_shape = X_shape.reshape(-1,1)
+	def __init__( self , n_samples = 2000 ): ##{{{
+		kwargs = { "n_samples" : n_samples ,
+				"name"    : "Normal" ,
+				"sd_law"  : sd.Normal ,
+		        "params"  : ["loc","scale"] ,
+		        "shape_p" : False
+		        }
+		SDFCLawTest.__init__( self , **kwargs )
+	
 	##}}}
 	
-	def test0( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
-		self.shape = np.repeat( self.coef_[4] , self.n_samples ).reshape(-1,1)
-		self.Y     = sc.genpareto.rvs( loc = self.loc , scale = self.scale , c = self.shape )
-		self.coef_ = np.array( [0.3,-0.9,-0.2] )
+	def rvs( self ):##{{{
+		return sc.norm.rvs( loc = self.loc , scale = self.scale )
+	##}}}
+	
+##}}}
+
+class ExponentialTest(SDFCLawTest): ##{{{
+	
+	def __init__( self , n_samples = 2000 ): ##{{{
+		kwargs = { "n_samples" : n_samples ,
+				"name"    : "Exponential" ,
+				"sd_law"  : sd.Exponential ,
+		        "params"  : ["scale"] ,
+		        "shape_p" : False
+		        }
+		SDFCLawTest.__init__( self , **kwargs )
+	
+	##}}}
+	
+	def rvs( self ):##{{{
+		return sc.expon.rvs( scale = self.scale )
+	##}}}
+	
+##}}}
+
+class GammaTest(SDFCLawTest): ##{{{
+	
+	def __init__( self , n_samples = 2000 ): ##{{{
+		kwargs = { "n_samples" : n_samples ,
+				"name"    : "Gamma" ,
+				"sd_law"  : sd.Gamma ,
+		        "params"  : ["scale","shape"] ,
+		        "shape_p" : True
+		        }
+		SDFCLawTest.__init__( self , **kwargs )
+	
+	##}}}
+	
+	def rvs( self ):##{{{
+		return np.random.gamma( scale = self.scale , shape = self.shape )
+	##}}}
+	
+##}}}
+
+class GEVTest(SDFCLawTest): ##{{{
+	
+	def __init__( self , n_samples = 2000 ): ##{{{
+		kwargs = { "n_samples" : n_samples ,
+				"name"    : "GEV" ,
+				"sd_law"  : sd.GEV ,
+		        "params"  : ["loc","scale","shape"] ,
+		        "shape_p" : False
+		        }
+		SDFCLawTest.__init__( self , **kwargs )
+	
+	##}}}
+	
+	def rvs( self ):##{{{
+		return sc.genextreme.rvs( loc = self.loc , scale = self.scale , c = - self.shape )
+	##}}}
+	
+##}}}
+
+class GPDTest(SDFCLawTest): ##{{{
+	
+	def __init__( self , n_samples = 2000 ): ##{{{
+		kwargs = { "n_samples" : n_samples ,
+				"name"    : "GPD" ,
+				"sd_law"  : sd.GPD ,
+		        "params"  : ["scale","shape"] ,
+		        "shape_p" : False
+		        }
+		SDFCLawTest.__init__( self , **kwargs )
+	
+	##}}}
+	
+	def rvs( self ):##{{{
+		return sc.genpareto.rvs( loc = self.loc , scale = self.scale , c = self.shape )
+	##}}}
+	
+	def testXXX( self , code , method = "MLE" ): ##{{{
+		self.loc = 1. + 0.5 * self.X_loc
+		self.kwargs["f_loc"] = self.loc
 		
-		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.law = sd.GPD( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test1( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
-		self.shape = np.repeat( self.coef_[4] , self.n_samples ).reshape(-1,1)
-		self.Y     = sc.genpareto.rvs( loc = self.loc , scale = self.scale , c = self.shape )
-		self.coef_ = np.array( [-0.2] )
-		
-		kwargs = { "f_loc" : self.loc , "f_scale" : self.scale }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.law = sd.GPD( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def test2( self , method = "MLE" ):##{{{
-		self.coef_ = np.array( [0.5,1.,0.3,-0.9,-0.2] )
-		self.loc   = self.coef_[0] + self.coef_[1] * self.X_loc
-		self.scale = np.exp(self.coef_[2] + self.coef_[3] * self.X_scale)
-		self.shape = np.repeat( self.coef_[4] , self.n_samples ).reshape(-1,1)
-		self.Y     = sc.genpareto.rvs( loc = self.loc , scale = self.scale , c = self.shape )
-		self.coef_ = np.array( [0.3,-0.9] )
-		
-		kwargs = { "f_loc" : self.loc , "c_scale" : self.X_scale , "l_scale" : sdl.ULExponential() , "f_shape" : self.shape }
-		kwargs["prior"] = sc.multivariate_normal( mean = self.coef_ , cov = 0.1 * np.identity(self.coef_.size) )
-		self.law = sd.GPD( method = method )
-		self.law.fit( self.Y , **kwargs )
-	##}}}
-	
-	def summary( self , show = False ): ##{{{
-		print( "## => {} / {} / {}".format( np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , np.round(self.law.coef_,3) ) )
-	##}}}
-	
-	def run_all( self , method = "MLE" , show = True ):##{{{
-		tab = tt.Texttable( max_width = 0 )
-		tab.header( ["GPD law test ({})".format(method),"Status","Max diff","True value","Estimated value"] )
-		for i in range(3):
-			try:
-				eval( "self.test{}( method = \"{}\" )".format(i,method) )
-				tab.add_row( ["Test {}".format(i),"OK",np.max(np.abs(self.coef_ - self.law.coef_)) , self.coef_ , np.round(self.law.coef_,2)] )
-			except:
-				tab.add_row( ["Test {}".format(i),"Fail","/","/","/"] )
-		
-		if show: print(tab.draw())
-		return tab
+		SDFCLawTest.testXXX( self , code , method )
 	##}}}
 	
 ##}}}

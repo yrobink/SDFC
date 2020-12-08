@@ -178,12 +178,21 @@ class GEV(AbstractLaw):
 		
 		## First step, find lmoments
 		try:
-			c_Y = np.hstack( [ c for c in self._rhs.c_global if c is not None ] )
+			c_Y  = np.array([])
+			c_Y2 = np.array([])
+			for c in self._rhs.c_global:
+				if c is None: continue
+				if c.ndim == 1: c = c.reshape(-1,1)
+				for i in range(c.shape[1]):
+					c_Y2 = np.hstack( [c_Y,c[:,i]] )
+					if np.linalg.matrix_rank(c_Y2) > np.linalg.matrix_rank(c_Y):
+						c_Y = c_Y2
 		except:
 			c_Y = None
-		if c_Y is None:
+		if c_Y is None or c_Y.size == 0:
 			self._fit_lmoments()
 			return
+		
 		lmom = lmoments( self._Y , c_Y )
 		
 		## Find shape
@@ -209,6 +218,8 @@ class GEV(AbstractLaw):
 		
 		## Find loc
 		loc = lmom[:,0] - scale * ( gshape - 1 ) / shape
+		scale = np.where( scale > 0 , scale , 1e-8 )
+		
 		
 		## And now find coefs
 		il_b  = 0

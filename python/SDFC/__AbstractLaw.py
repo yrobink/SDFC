@@ -295,5 +295,37 @@ class AbstractLaw:
 			self._fit_Bayesian(**kwargs)
 		
 	##}}}
-
+	
+	def fit_bootstrap( self , Y , n_bootstrap , alpha , **kwargs ):##{{{
+		
+		Y_       = Y.reshape(-1,1)
+		n_sample = Y_.size
+		
+		coefs_bs = []
+		kwargs_bs = kwargs.copy()
+		for i in range(n_bootstrap):
+			idx = np.random.choice( n_sample , n_sample )
+			if "l_global" in kwargs:
+				kwargs_bs["l_global"] = kwargs["l_global"]
+				if kwargs.get("c_global") is not None:
+					kwargs_bs["c_global"] = []
+					for c in kwargs["c_global"]:
+						if c is None: kwargs_bs["c_global"].append(None)
+						else:kwargs_bs["c_global"].append(c[idx,:])
+			else:
+				for lhs in self._lhs.names:
+					if kwargs.get( "c_{}".format(lhs) ) is not None:
+						kwargs_bs["c_{}".format(lhs)] = kwargs["c_{}".format(lhs)][idx,:]
+					if kwargs.get( "f_{}".format(lhs) ) is not None:
+						kwargs_bs["f_{}".format(lhs)] = kwargs["f_{}".format(lhs)][idx,:]
+			self.fit( Y[idx,:] , **kwargs_bs )
+			coefs_bs.append(self.coef_.copy())
+		
+		self.info_.n_bootstrap  = n_bootstrap
+		self.info_.alpha_ci_    = alpha
+		self.info_.coefs_bs_    = np.array(coefs_bs)
+		self.info_.coefs_ci_bs_ = np.quantile( self.info_.coefs_bs_ , [self.info_.alpha_ci_ / 2 , 1 - self.info_.alpha_ci_ / 2] , axis = 0 )
+		
+		self.fit( Y , **kwargs )
+	##}}}
 

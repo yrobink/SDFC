@@ -49,6 +49,7 @@ class AbstractLaw:
 	info_  : AbstractLaw.Info
 		Class containing info of the fit
 	
+	
 	Fit method
 	==========
 	
@@ -71,11 +72,37 @@ class AbstractLaw:
 	l_global  : Inherit of SDFC.link.MultivariateLink
 		Global link function. *_<param> are ignored if set
 	
-	Optional arguments for MLE fit
-	------------------------------
+	
+	Fit with bootstrap
+	==================
+	The method <law>.fit_bootstrap takes the same arguments that <law>.fit, with
+	two new parameters:
+	
+	n_bootstrap : int
+		Number of resampling
+	alpha       : float
+		Level of confidence interval
+	
+	
+	Possible attributes of <law>.info_
+	==================================
+	<law>.info_.cov_         : numpy.array
+		Covariance matrix, if MLE is used
+	<law>.info_.mle_optim_result : scipy.optimize.OptimizeResult
+		Result of the optimization of the MLE, if MLE is used
+	<law>.info_.n_bootstrap  : int
+		Number of resampling
+	<law>.info_.alpha_ci_    : float
+		Level of confidence interval
+	<law>.info_.coefs_bs_    : numpy.array[shape = (n_bootstrap,n_features)
+		Coef fitted with the bootstrap
+	<law>.info_.coefs_ci_bs_ : numpy.array[shape = (2,n_features)
+		Confidence interval computed with alpha / 2 and 1 - alpha / 2 quantiles
+		of <law>.info_.coefs_bs_
+	
 	
 	Optional arguments for Bayesian fit
-	-----------------------------------
+	===================================
 	prior : None or law or prior
 		Prior for Bayesian fit, if None a Multivariate Normal law assuming
 		independence between parameters is used, if you set it, this must be a
@@ -89,43 +116,38 @@ class AbstractLaw:
 	n_mcmc_drawn : None or integer
 		Number of drawn for MCMC algorithm, if None, the value 10000 is used.
 	
-	Example
-	=======
+	
+	Examples
+	========
 	Example with a Normal law:
-	>> _,X_loc,X_scale,_ = SDFC.tools.Dataset.covariates(2500)
-	>> loc   = 1. + 0.8 * X_loc
-	>> scale = 0.08 * X_scale
-	>> 
-	>> Y = numpy.random.normal( loc = loc , scale = scale )
-	>> 
-	>> ## Define the Normal law estimator, with the MLE method and 10 bootstrap for confidence interval:
-	>> law = SDFC.Normal( method = "MLE" , n_bootstrap = 10 )
-	>>
-	>> ## Now perform the fit, c_loc is the covariate of loc, and c_scale the covariate of scale, and we pass a link function to scale:
-	>> law.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = SDFC.tools.ExpLink() )
-	>> print(law) ## That print a summary of fit
-	>>
-	>> ## But we can assume that scale is stationary, so no covariates are given:
-	>> law.fit( Y , c_loc = X_loc , l_scale = SDFC.tools.ExpLink() )
-	>> print(law)
-	>>
-	>> ## Or the loc can be given, so we need to fit only the scale:
-	>> law.fit( Y , f_loc = loc , c_scale = X_scale )
-	>>
-	>> ## And that works for all laws defined in SDFC, you can call
-	>> print(law.kinds_params)
-	>> ## to print the name of parameters of each law
+	>>> _,X_loc,X_scale,_ = SDFC.Dataset.covariates(2500)
+	>>> loc   = 1. + 0.8 * X_loc
+	>>> scale = 0.08 * X_scale
+	>>> 
+	>>> Y = numpy.random.normal( loc = loc , scale = scale )
+	>>> 
+	>>> ## Define the Normal law estimator, with the MLE method
+	>>> law = SDFC.Normal( method = "MLE" )
+	>>>
+	>>> ## Now perform the fit, c_loc is the covariate of loc, and c_scale the
+	>>> ## covariate of scale, and we pass a link function to scale
+	>>> law.fit( Y , c_loc = X_loc , c_scale = X_scale , l_scale = SDFC.link.Exponential() )
+	>>> print(law.coef_)
+	>>>
+	>>> ## But we can assume that scale is stationary, so no covariates are given:
+	>>> law.fit( Y , c_loc = X_loc , l_scale = SDFC.link.Exponential() )
+	>>> print(law.coef_)
+	>>>
+	>>> ## Or the loc can be given, so we need to fit only the scale:
+	>>> law.fit( Y , f_loc = loc , c_scale = X_scale )
+	>>> print(law.coef_)
 	"""
 	##}}}
 	#####################################################################
 	
 	class _Info(object):##{{{
 		def __init__(self):
-			self._cov = None
-		
-		@property
-		def cov_(self):
-			return self._cov
+			pass
 	##}}}
 	
 	
@@ -200,8 +222,8 @@ class AbstractLaw:
 		self._random_valid_point()
 		
 		self.info_.mle_optim_result = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
-		self.info_._cov = self.info_.mle_optim_result.hess_inv
-		self.coef_ = self.info_.mle_optim_result.x
+		self.info_.cov_             = self.info_.mle_optim_result.hess_inv
+		self.coef_                  = self.info_.mle_optim_result.x
 		
 	##}}}
 	
@@ -274,6 +296,13 @@ class AbstractLaw:
 	##}}}
 	
 	def fit( self , Y , **kwargs ): ##{{{
+		"""
+		<law>.fit
+		=========
+		
+		See global documentation for parameters
+		"""
+		
 		
 		## Add Y
 		self._Y = Y.reshape(-1,1)
@@ -297,6 +326,12 @@ class AbstractLaw:
 	##}}}
 	
 	def fit_bootstrap( self , Y , n_bootstrap , alpha , **kwargs ):##{{{
+		"""
+		<law>.fit_bootstrap
+		===================
+		
+		See global documentation for parameters
+		"""
 		
 		Y_       = Y.reshape(-1,1)
 		n_sample = Y_.size

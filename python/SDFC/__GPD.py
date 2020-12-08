@@ -60,7 +60,6 @@ class GPD(AbstractLaw):
 	loc   : location parameter, must be pass with f_loc
 	scale : scale parameter
 	shape : shape parameter
-	
 	"""
 	__doc__ += AbstractLaw.__doc__
 	

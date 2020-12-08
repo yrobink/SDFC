@@ -48,7 +48,6 @@ class Normal(AbstractLaw):
 	==========
 	loc   : location parameter
 	scale : scale parameter
-	
 	"""
 	__doc__ += AbstractLaw.__doc__
 	

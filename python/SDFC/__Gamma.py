@@ -49,7 +49,6 @@ class Gamma(AbstractLaw):
 	==========
 	scale : scale parameter
 	shape : shape parameter
-	
 	"""
 	__doc__ += AbstractLaw.__doc__
 	

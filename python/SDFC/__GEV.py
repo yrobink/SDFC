@@ -58,7 +58,6 @@ class GEV(AbstractLaw):
 	=======
 	The shape parameter is the opposite of the shape parameter from scipy:
 	GEV ~ scipy.stats.genextreme( loc = loc , scale = scale , c = - shape )
-	
 	"""
 	__doc__ += AbstractLaw.__doc__
 	

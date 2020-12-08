@@ -209,7 +209,7 @@ class AbstractLaw:
 		
 		p_coef = coef_.copy()
 		n_it   = 1
-		while not np.isfinite(self._negloglikelihood(p_coef)) or not np.all(np.isfinite(self._gradient_nlll(p_coef))):
+		while not (np.isfinite(self._negloglikelihood(p_coef)) and np.all(np.isfinite(self._gradient_nlll(p_coef))) ):
 			if n_it % 100 == 0: cov_ *= 2
 			p_coef = np.random.multivariate_normal( coef_ , cov_ )
 			n_it += 1

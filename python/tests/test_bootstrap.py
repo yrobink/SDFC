@@ -300,19 +300,18 @@ if __name__ == "__main__":
 	np.random.seed(42)
 	
 	kwargs = {}
-	try:
-		kwargs["n_bootstrap"] = int(sys.argv[1])
-	except:
-		kwargs["n_bootstrap"] = 100
-	try:
-		kwargs["alpha"] = float(sys.argv[2])
-	except:
-		kwargs["alpha"] = 0.1
+	try:    kwargs["n_samples"]   = int(sys.argv[1])
+	except: kwargs["n_samples"]   = 2000
+	try:    kwargs["n_bootstrap"] = int(sys.argv[2])
+	except: kwargs["n_bootstrap"] = 100
+	try:    kwargs["alpha"]       = float(sys.argv[3])
+	except: kwargs["alpha"]       = 0.1
 	
 	l_test = [NormalTest,ExponentialTest,GammaTest,GEVTest,GPDTest]
 	for test in l_test:
 		t = test(**kwargs)
 		t.run_all("MLE")
+	
 	
 	
 	print("Done")

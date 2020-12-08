@@ -353,7 +353,7 @@ class AbstractLaw:
 						kwargs_bs["c_{}".format(lhs)] = kwargs["c_{}".format(lhs)][idx,:]
 					if kwargs.get( "f_{}".format(lhs) ) is not None:
 						kwargs_bs["f_{}".format(lhs)] = kwargs["f_{}".format(lhs)][idx,:]
-			self.fit( Y[idx,:] , **kwargs_bs )
+			self.fit( Y_[idx,:] , **kwargs_bs )
 			coefs_bs.append(self.coef_.copy())
 		
 		self.info_.n_bootstrap  = n_bootstrap

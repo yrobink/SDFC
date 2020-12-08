@@ -47,7 +47,7 @@ import SDFC.link as sdl
 ## Classes ##
 #############
 
-def global_lf_test( **kwargs ):
+def global_lf_test( show = False , **kwargs ):
 	
 	## Parameters
 	##===========
@@ -106,7 +106,10 @@ def global_lf_test( **kwargs ):
 		out = ["GEVRatioLocScaleConstant","Fail","/","/","/","/","/"]
 		tab.add_row(out)
 	
-	print(tab.draw())
+	if show:
+		print(tab.draw())
+	
+	return tab
 
 
 ##########
@@ -125,7 +128,9 @@ if __name__ == "__main__":
 	try:    kwargs["alpha"]       = float(sys.argv[3])
 	except: kwargs["alpha"]       = 0.1
 	
-	global_lf_test(**kwargs)
+	with open( "test_customML.log" , "w" ) as f:
+		tab = global_lf_test(**kwargs)
+		f.write( tab.draw() + "\n" )
 	
 	
 	print("Done")

@@ -307,10 +307,13 @@ if __name__ == "__main__":
 	try:    kwargs["alpha"]       = float(sys.argv[3])
 	except: kwargs["alpha"]       = 0.1
 	
-	l_test = [NormalTest,ExponentialTest,GammaTest,GEVTest,GPDTest]
-	for test in l_test:
-		t = test(**kwargs)
-		t.run_all("MLE")
+	
+	with open( "test_bootstrap.log" , "w" ) as f:
+		l_test = [NormalTest,ExponentialTest,GammaTest,GEVTest,GPDTest]
+		for test in l_test:
+			t = test(**kwargs)
+			tab = t.run_all( "MLE" , show = False )
+			f.write( tab.draw() + "\n" )
 	
 	
 	

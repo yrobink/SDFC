@@ -6,6 +6,7 @@ rm -rf python/build
 rm -rf python/dist
 rm -rf python/tmp
 rm -rf python/var
+rm -f  python/tests/*.log
 
 
 ## Delete R temporary files

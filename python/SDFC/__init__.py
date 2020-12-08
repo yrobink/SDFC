@@ -22,7 +22,7 @@
 ## Imports ##
 #############
 
-__version__ = "0.6.0a1"
+__version__ = "0.6.0a2"
 
 from .__Normal      import Normal
 from .__Exponential import Exponential

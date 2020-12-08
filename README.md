@@ -3,7 +3,6 @@
 
 ## Features
 - python3 and R version
-- c++ independent files for QuantileRegression
 - Fit with (or without) covariates parametric laws (Normal, Exp, Gamma, GEV, GPD)
 - MLE and Bayesian fit available for all laws
 - Fit of non parametric distribution (QuantileRegression)

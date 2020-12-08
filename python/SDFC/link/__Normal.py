@@ -33,6 +33,17 @@ from .__Multivariate import MultivariateLink
 ###############
 
 class NormalRatioLocScaleConstant(MultivariateLink):
+	"""
+	SDFC.link.NormalRatioLocScaleConstant
+	=====================================
+	Global link function for Normal law with three rhs parameter, giving:
+	
+	loc   = loc0   * exp( alpha / loc0 * X )
+	scale = scale0 * exp( alpha / loc0 * X )
+	
+	The vector (loc0,scale0,alpha) is fitted with this link function.
+	
+	"""
 	
 	def __init__( self , n_samples ):##{{{
 		MultivariateLink.__init__( self , n_features = 3 , n_samples = n_samples )

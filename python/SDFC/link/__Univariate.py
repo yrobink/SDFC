@@ -31,8 +31,13 @@ import numpy as np
 
 
 class UnivariateLink:##{{{
+	"""
+	SDFC.link.UnivariateLink
+	========================
+	base class for univariate link
+	"""
 	def __init__(self): pass
-
+	
 	def __call__( self , x ):
 		return self.transform(x)
 ##}}}

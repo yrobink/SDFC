@@ -32,6 +32,12 @@ from .__Univariate import ULIdentity
 
 
 class MultivariateLink:##{{{
+	"""
+	SDFC.link.MultivariateLink
+	==========================
+	Base class for MultivariateLink
+	
+	"""
 	
 	def __init__( self , *args , **kwargs ):##{{{
 		self._special_fit_allowed = False
@@ -60,6 +66,12 @@ class MultivariateLink:##{{{
 ##}}}
 
 class MLConstant(MultivariateLink):##{{{
+	"""
+	SDFC.link.MLConstant
+	====================
+	Link used for fixed parameters f_<param>
+	
+	"""
 	
 	def __init__( self , value , *args , **kwargs ):##{{{
 		kwargs["n_features"] = 0
@@ -76,6 +88,13 @@ class MLConstant(MultivariateLink):##{{{
 ##}}}
 
 class MLLinear(MultivariateLink): ##{{{
+	"""
+	SDFC.link.MLLinear
+	==================
+	Link function which contains an univariate link function. The idea is to
+	chain a linear map with an univariate transform
+	
+	"""
 	
 	def __init__( self , *args , **kwargs ):##{{{
 		self._l     = kwargs.get("l")
@@ -109,6 +128,13 @@ class MLLinear(MultivariateLink): ##{{{
 ##}}}
 
 class MLTensor(MultivariateLink):##{{{
+	"""
+	SDFC.link.MLTensor
+	==================
+	Link function used to build the product of univariate link function
+	
+	
+	"""
 	
 	def __init__( self , l_p , s_p , *args , **kwargs ):##{{{
 		kwargs["n_features"] = np.sum(s_p)

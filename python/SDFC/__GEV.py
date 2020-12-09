@@ -303,15 +303,24 @@ class GEV(AbstractLaw):
 		loc   = self.loc.reshape(dshape)
 		scale = self.scale.reshape(dshape)
 		shape = self.shape.reshape(dshape)
+		shc   = 1 + 1 / shape
 		Z     = ( self._Y - loc ) / scale
-		ZZ = 1 + shape * Z
-		ZZi = ZZ**( - 1 / shape )
-		kappa = ( 1 + 1 / shape ) / ZZ - ZZi / (shape * ZZ)
+		ZZ    = 1 + shape * Z
+		ZZi   = np.power( ZZ ,  - 1 / shape )
+		ZZim1 = np.power( ZZ ,  - shc )
+#		kappa = ( 1 + 1 / shape ) / ZZ - ZZi / (shape * ZZ)
 		
 		## Compute gradient
-		T0 = - shape * kappa / scale
-		T1 = 1 / scale - shape * Z / scale * kappa
-		T2 = np.log(ZZ) * ( ZZi - 1 ) / shape**2 + Z * kappa
+#		T0 = - shape * kappa / scale
+#		T1 = 1 / scale - shape * Z / scale * kappa
+#		T2 = np.log(ZZ) * ( ZZi - 1 ) / shape**2 + Z * kappa
+		T0 = ZZim1 / scale - shc * shape / ( ZZ * scale )
+		T1 = 1 / scale + ZZim1 * Z / scale - shc * shape * Z / ( ZZ * scale )
+		T2 = np.log(ZZ) * ZZi / shape**2 - ZZim1 * Z / shape - np.log(ZZ) / shape**2 + shc * Z / ZZ
+		
+		for T in [T0,T1,T2]:
+			if not np.isfinite(T).all():
+				return np.zeros_like(self.coef_) + np.nan
 		
 		
 		jac = self._lhs.jacobian_

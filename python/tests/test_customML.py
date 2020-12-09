@@ -128,6 +128,8 @@ if __name__ == "__main__":
 	try:    kwargs["alpha"]       = float(sys.argv[3])
 	except: kwargs["alpha"]       = 0.1
 	
+	kwargs["show"] = "--show" in sys.argv
+	
 	with open( "test_customML.log" , "w" ) as f:
 		tab = global_lf_test(**kwargs)
 		f.write( tab.draw() + "\n" )

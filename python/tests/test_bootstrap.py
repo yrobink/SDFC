@@ -299,6 +299,7 @@ if __name__ == "__main__":
 	np.seterr( all = "ignore" )
 	np.random.seed(42)
 	
+	show = "--show" in sys.argv
 	kwargs = {}
 	try:    kwargs["n_samples"]   = int(sys.argv[1])
 	except: kwargs["n_samples"]   = 2000
@@ -312,7 +313,7 @@ if __name__ == "__main__":
 		l_test = [NormalTest,ExponentialTest,GammaTest,GEVTest,GPDTest]
 		for test in l_test:
 			t = test(**kwargs)
-			tab = t.run_all( "MLE" , show = False )
+			tab = t.run_all( "MLE" , show = show )
 			f.write( tab.draw() + "\n" )
 	
 	

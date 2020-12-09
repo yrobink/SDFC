@@ -101,6 +101,14 @@ class AbstractLaw:
 		of <law>.info_.coefs_bs_
 	
 	
+	Optional arguments for MLE fit
+	==============================
+	mle_n_restart : integer
+		The MLE needs to find a starting point before optimization, this
+		parameter control how many time the fit is restarted with a new random
+		starting point
+	
+	
 	Optional arguments for Bayesian fit
 	===================================
 	prior : None or law or prior
@@ -216,14 +224,26 @@ class AbstractLaw:
 		self.coef_ = p_coef
 	##}}}
 	
-	def _fit_MLE(self): ##{{{
+	def _fit_MLE( self , **kwargs ): ##{{{
 		
 		self._init_MLE()
-		self._random_valid_point()
+		coef_ = self.coef_.copy()
 		
-		self.info_.mle_optim_result = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
-		self.info_.cov_             = self.info_.mle_optim_result.hess_inv
-		self.coef_                  = self.info_.mle_optim_result.x
+		is_success = False
+		n_test     = 0
+		max_test   = kwargs.get( "mle_n_restart" )
+		if max_test is None: max_test = 10
+		
+		while not is_success and n_test < max_test:
+			self._random_valid_point()
+			self.info_.mle_optim_result = sco.minimize( self._negloglikelihood , self.coef_ , jac = self._gradient_nlll , method = "BFGS" )
+			self.info_.cov_             = self.info_.mle_optim_result.hess_inv
+			self.coef_                  = self.info_.mle_optim_result.x
+			is_success                  = self.info_.mle_optim_result.success
+			n_test += 1
+		
+		if not is_success:
+			self.coef_ = coef_
 		
 	##}}}
 	
@@ -319,9 +339,10 @@ class AbstractLaw:
 		if self._method not in ["mle","bayesian"] and self._rhs.l_global._special_fit_allowed:
 			self._special_fit()
 		elif self._method == "mle" :
-			self._fit_MLE()
+			self._fit_MLE(**kwargs)
 		else:
 			self._fit_Bayesian(**kwargs)
+		
 		
 	##}}}
 	

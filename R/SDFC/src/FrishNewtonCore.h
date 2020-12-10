@@ -109,8 +109,8 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 
-#include "Xi.hpp"
-#include "QRState.hpp"
+#include "Xi.h"
+#include "QRState.h"
 
 namespace QuantileRegression
 {

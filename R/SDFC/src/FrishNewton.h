@@ -110,8 +110,8 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 
-#include "QRState.hpp"
-#include "FrishNewtonCore.hpp"
+#include "QRState.h"
+#include "FrishNewtonCore.h"
 
 namespace QuantileRegression
 {

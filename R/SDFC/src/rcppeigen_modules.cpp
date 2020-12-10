@@ -98,7 +98,7 @@
 #include <RcppEigen.h>
 
 // [[Rcpp::depends(RcppEigen)]]
-#include "FrishNewton.hpp"
+#include "FrishNewton.h"
 
 
 RCPP_MODULE(SDFC_cpp){

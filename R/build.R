@@ -1,4 +1,21 @@
 
+## Copyright(c) 2020 Yoann Robin
+## 
+## This file is part of SDFC.
+## 
+## SDFC is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+## 
+## SDFC is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+## 
+## You should have received a copy of the GNU General Public License
+## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
+
 library(devtools)
 library(roxygen2)
 
@@ -10,6 +27,7 @@ args = commandArgs( trailingOnly = TRUE )
 verbose = FALSE
 install = FALSE
 build   = TRUE
+build_manual = FALSE
 check   = FALSE
 if( length(args) > 0 )
 {
@@ -31,6 +49,10 @@ if( length(args) > 0 )
 		{
 			check = TRUE
 		}
+		if( a == "-bm" || a == "--build-manual" )
+		{
+			build_manual = TRUE
+		}
 	}
 }
 
@@ -50,6 +72,10 @@ if( build )
 	sdfc = devtools::build("SDFC")
 }
 
+if( build_manual )
+{
+	devtools::build_manual("ROOPSD")
+}
 
 ## Check
 ##======

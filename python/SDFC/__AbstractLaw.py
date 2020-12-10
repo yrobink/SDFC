@@ -232,7 +232,7 @@ class AbstractLaw:
 		is_success = False
 		n_test     = 0
 		max_test   = kwargs.get( "mle_n_restart" )
-		if max_test is None: max_test = 10
+		if max_test is None: max_test = 2
 		
 		while not is_success and n_test < max_test:
 			self._random_valid_point()

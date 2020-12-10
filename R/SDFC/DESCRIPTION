@@ -2,9 +2,10 @@ Package: SDFC
 Type: Package
 Title: Statistical Distribution Fit with Covariates
 Version: 0.6.0
-Date: 2019-04-07
+Date: 2020-12-10
 Authors@R: person("Yoann", "Robin", email = "yoann.robin.k@gmail.com", role = c("aut", "cre"))
 Description: Distribution Fit
+URL: https://github.com/yrobink/SDFC
 Depends: R (>= 3.3)
 License: GPL-3
 Encoding: UTF-8
@@ -12,4 +13,5 @@ LazyData: true
 NeedsCompilation: yes
 Imports: Rcpp, RcppEigen, methods, R6
 LinkingTo: Rcpp, RcppEigen
+RcppModules: SDFC_cpp
 RoxygenNote: 7.1.1

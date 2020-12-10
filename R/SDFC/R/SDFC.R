@@ -20,16 +20,13 @@
 #'
 #' Statistical Distributions Fit with Covariates
 #' 
-#' @details This library makes it possible to fit some statistical law with covariate, even in
-#'          non parametric case (Quantile Regression)
 #' @docType package
 #' @author Yoann Robin Maintainer: Yoann Robin <yoann.robin.k@gmail.com>
 #' @import Rcpp
 #' @import RcppEigen
-#' @importFrom Rcpp evalCpp sourceCpp loadModule
-#' @useDynLib SDFC
-#'
-#' @export
+#' @importFrom Rcpp evalCpp
+#' @useDynLib SDFC, .registration=TRUE
+#' @name SDFC
 NULL
 
 

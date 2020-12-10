@@ -17,7 +17,7 @@
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#' dataset.covariates
+#' dataset
 #'
 #' Function used to generate examples of covariates
 #'
@@ -29,13 +29,13 @@
 #'
 #' @examples
 #' ## Data
-#' c_data = dataset.covariates(2000)
+#' c_data = dataset(2000)
 #' c_data$t       ## Time axis
 #' c_data$t       ## Covariate for loc
 #' c_data$t       ## Covariate for scale
 #' c_data$t       ## Covariate for shape
 #' @export
-dataset.covariates = function( size )
+dataset = function( size )
 {
 	t       = base::seq( 0 , 1 , length = size )
 	X_loc   = t^2 + base::cos( 2 * base::pi * t ) * 0.2

@@ -23,7 +23,7 @@
 #'
 #' @param Y   [vector] Dataset to fit
 #' @param c_Y [vector or NULL] Covariate
-#' @param link  [SDFC::LinkFct] link function, default is identity
+#' @param link  [SDFC::UnivariateLink] link function, default is identity
 #' @param value  [bool] if TRUE return mean, else return coefficients of the fit
 #'
 #' @return [vector] Mean or coefficients of regression
@@ -39,7 +39,7 @@
 #' m = np_mean( Y , c_Y = X0 )
 #' 
 #' @export
-np_mean = function( Y , c_Y = NULL , link = SDFC::IdLink$new() , value = TRUE )
+np_mean = function( Y , c_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE )
 {
 	out  = NULL
 	coef = NULL
@@ -52,7 +52,7 @@ np_mean = function( Y , c_Y = NULL , link = SDFC::IdLink$new() , value = TRUE )
 	{
 		YY   = link$inverse(Y)
 		coef = as.vector(stats::lm( YY ~ c_Y )$coefficients)
-		out  = link$eval( base::cbind( 1 , c_Y )  %*% coef )
+		out  = link$transform( base::cbind( 1 , c_Y )  %*% coef )
 	}
 	
 	if( value )

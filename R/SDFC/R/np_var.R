@@ -24,7 +24,7 @@
 #' @param Y   [vector] Dataset to fit
 #' @param c_Y [vector or NULL] Covariate
 #' @param m_Y [vector or NULL] mean already (or not) estimated. If NULL, m = base::mean(Y) is called
-#' @param link  [SDFC::LinkFct] link function, default is identity
+#' @param link  [SDFC::UnivariateLink] link function, default is identity
 #' @param value  [bool] if TRUE return variance, else return coefficients of the fit
 #'
 #' @return [vector] Variance or coefficients of regression
@@ -43,7 +43,7 @@
 #' v = np_var( Y , c_Y = X1 , m_Y = m ) ## Now variance
 #' 
 #' @export
-np_var = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::IdLink$new() , value = TRUE )
+np_var = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE )
 {
 	out  = NULL
 	coef = NULL
@@ -57,7 +57,7 @@ np_var = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::IdLink$new() , val
 	{
 		Yres = link$inverse( (Y - m_Y)^2 )
 		coef = as.vector(stats::lm( Yres ~ c_Y )$coefficients)
-		out  = base::abs(link$eval( base::cbind( 1 , c_Y ) %*% coef ))
+		out  = base::abs(link$transform( base::cbind( 1 , c_Y ) %*% coef ))
 	}
 	
 	

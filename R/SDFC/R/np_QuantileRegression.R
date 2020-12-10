@@ -47,7 +47,7 @@
 #' @examples
 #' ## Data
 #' size = 2000
-#' c_data = dataset.covariates(size)
+#' c_data = SDFC::dataset(size)
 #' 
 #' loc   = 0.5 + 2 * c_data$X_loc
 #' scale = 1 + 2 * c_data$X_scale

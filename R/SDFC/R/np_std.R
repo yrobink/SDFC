@@ -24,7 +24,7 @@
 #' @param Y   [vector] Dataset to fit
 #' @param c_Y [vector or NULL] Covariate
 #' @param m_Y  [vector or NULL] mean already (or not) estimated. If NULL, m = base::mean(Y) is called
-#' @param link  [SDFC::LinkFct] link function, default is identity
+#' @param link  [SDFC::UnivariateLink] link function, default is identity
 #' @param value  [bool] if TRUE return mean, else return coefficients of the fit
 #'
 #' @return [vector] Standard deviation or coefficients of regression
@@ -43,7 +43,7 @@
 #' s = np_std( Y , c_Y = X1 , m_Y = m ) ## Now standard deviation
 #' 
 #' @export
-np_std = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::IdLink$new() , value = TRUE )
+np_std = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE )
 {
 	var = SDFC::np_var( Y , c_Y , m_Y , link )
 	out = base::sqrt( var )

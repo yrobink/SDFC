@@ -21,7 +21,7 @@
 #'
 #' Function used to generate examples of covariates
 #'
-#' @usage dataset.covariates(size)
+#' @usage dataset(size)
 #'
 #' @param size   [int]    Numbers of values generated
 #'

@@ -59,7 +59,7 @@ np_lmoments_stationary = function(Y)
 #' @examples
 #' ## Data
 #' size = 2000
-#' c_data = dataset.covariates(size)
+#' c_data = dataset(size)
 #' 
 #' t       = c_data$t
 #' X_loc   = c_data$X_loc

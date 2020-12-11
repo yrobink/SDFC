@@ -31,9 +31,9 @@
 #' ## Data
 #' c_data = dataset(2000)
 #' c_data$t       ## Time axis
-#' c_data$t       ## Covariate for loc
-#' c_data$t       ## Covariate for scale
-#' c_data$t       ## Covariate for shape
+#' c_data$X_loc   ## Covariate for loc
+#' c_data$X_scale ## Covariate for scale
+#' c_data$X_shape ## Covariate for shape
 #' @export
 dataset = function( size )
 {

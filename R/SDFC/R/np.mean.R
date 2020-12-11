@@ -47,7 +47,7 @@ mean = function( Y , c_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE ,
 	if( is.null(c_Y) )
 	{
 		kwargs  = list(...)
-		kwargs["x"] = Y
+		kwargs[["x"]] = Y
 		out  = base::do.call( base::mean , kwargs )
 		out  = base::mean(Y)
 		coef = link$inverse(out)

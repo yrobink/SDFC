@@ -47,8 +47,8 @@ quantile = function( Y , ltau , c_Y = NULL , value = TRUE , ... )
 	if( is.null(c_Y) )
 	{
 		kwargs = list(...)
-		kwargs["x"] = Y
-		kwargs["probs"] = ltau
+		kwargs[["x"]] = Y
+		kwargs[["probs"]] = ltau
 		out  = as.vector( base::do.call( stats::quantile , kwargs ) )
 		coef = out
 	}

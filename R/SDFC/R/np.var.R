@@ -52,7 +52,7 @@ var = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::ULIdentity$new() , va
 	if( is.null(c_Y) )
 	{
 		kwargs = list(...)
-		kwargs["x"] = Y - m_Y
+		kwargs[["x"]] = Y - m_Y
 		out  = base::do.call( stats::var , kwargs )
 		coef = link$inverse(out)
 	}

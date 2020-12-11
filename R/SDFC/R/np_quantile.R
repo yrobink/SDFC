@@ -57,7 +57,7 @@ quantile = function( Y , ltau , c_Y = NULL , value = TRUE , ... )
 		reg = QuantileRegression$new( ltau )
 		reg$fit( Y , c_Y )
 		out = reg$predict()
-		coef = reg$coef()
+		coef = reg$coef_
 	}
 	
 	if( value )

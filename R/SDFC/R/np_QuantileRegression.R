@@ -22,28 +22,16 @@
 #' Class to perform a Quantile Regression with covariates
 #'
 #' @docType class
+#'
+#' @description
+#' Class for quantile regression
+#'
+#' @details
+#' Wrapper which call c++ quantile regression
+#'
 #' @importFrom R6 R6Class
+#' @importFrom methods new
 #'
-#' @param ltau [vector]
-#'        Vector of quantiles where we want to perform the fit
-#' @param method [string]
-#'        Method used to fit, currently, only "Frish-Newton" is available
-#' @param verbose [bool]
-#'        Print warning and error message
-#'
-#' @return Object of \code{\link{R6Class}} 
-#' @format \code{\link{R6Class}} object.
-#'
-#' @section Methods:
-#' \describe{
-#'   \item{\code{new(ltau,method,verbose)}}{Initialize Quantile Regression with code{QuantileRegression}}
-#'   \item{\code{fit(Y,X)}}{Fit the quantile regression}.
-#'   \item{\code{predict()}}{Return the quantile fitted}.
-#'   \item{\code{coef()}}{Return coefficients fitted}.
-#'   \item{\code{is_fitted()}}{TRUE if fit is already called}.
-#'   \item{\code{is_success()}}{TRUE if fit is a success}.
-#'   \item{\code{is_unfeasible()}}{TRUE if fit is not feasible}.
-#' }
 #' @examples
 #' ## Data
 #' size = 2000
@@ -57,9 +45,86 @@
 #' ltau  = base::seq( 0.01 , 0.99 , length = 100 )
 #' qr = SDFC::QuantileRegression$new(ltau)
 #' qr$fit( Y , base::cbind( c_data$X_loc , c_data$X_scale ) )
-#' Yq = if( qr$is_success() ) qr$predict() else NULL
+#' Yq = if( qr$is_success ) qr$predict() else NULL
 #' @export
 QuantileRegression = R6::R6Class( "QuantileRegression" ,
+	
+	## Private list
+	##=============
+	## {{{
+	
+	private = list(
+	
+	###############
+	## Arguments ##
+	###############
+	
+	qrmethod      = NULL,
+	#' @field is_fitted [bool] If QR is fitted
+	.is_fitted    = NULL,
+	#' @field is_success [bool] If QR fit is a success
+	.is_success   = NULL,
+	#' @field is_unfeasible [bool] If QR fit is unfeasible
+	.is_unfeasible = NULL,
+	#' @field coef_ [vector] Value of coef fitted
+	.coef_ = NULL
+	
+	#############
+	## Methods ##
+	#############
+	
+	
+	),
+	##}}}
+	
+	## Active list
+	##=============
+	## {{{
+	
+	active = list(
+	
+	coef_ = function(value) ##{{{
+	{
+		if(missing(value))
+		{
+			return( private$qrmethod$coef() )
+		}
+	},
+	##}}}
+	
+	is_fitted = function(value) ##{{{
+	{
+		if(missing(value))
+		{
+			return( private$qrmethod$is_fitted() )
+		}
+	},
+	##}}}
+	
+	is_success = function(value) ##{{{
+	{
+		if(missing(value))
+		{
+			return( private$qrmethod$is_success() )
+		}
+	},
+	##}}}
+	
+	is_unfeasible = function(value) ##{{{
+	{
+		if(missing(value))
+		{
+			return( private$qrmethod$is_unfeasible() )
+		}
+	}
+	##}}}
+	
+	),
+	##}}}
+	
+	## Public list
+	##============
+	## {{{
 	
 	public = list(
 	
@@ -67,11 +132,17 @@ QuantileRegression = R6::R6Class( "QuantileRegression" ,
 	## Arguments ##
 	###############
 	
+	#' @field ltau [vector] vector of probabilities
 	ltau    = NULL,
+	#' @field maxit [integer] Max number of iterations for fit
 	maxit   = NULL,
+	#' @field tol [float] Numerical tolerance
 	tol     = NULL,
+	#' @field beta [float] Beta parameters
 	beta    = NULL,
+	#' @field method [string] Method used for fit
 	method  = NULL,
+	#' @field verbose [bool] Print or not message for fit
 	verbose = NULL,
 	
 	
@@ -79,7 +150,14 @@ QuantileRegression = R6::R6Class( "QuantileRegression" ,
 	## Constructor ##
 	#################
 	
-	initialize = function( ltau , method = "Frish-Newton" , verbose = FALSE ) ##{{{
+	## initialize ##{{{
+	#' @description
+    #' Create a new QuantileRegression object.
+	#' @param ltau    [vector] vector of probabilities
+	#' @param method  [string] Method used for fit
+	#' @param verbose [bool]   Print or not message for fit
+	#' @return A new `QuantileRegression` object.
+	initialize = function( ltau , method = "Frish-Newton" , verbose = FALSE )
 	{
 		self$ltau        = ltau
 		self$maxit       = 50
@@ -92,44 +170,17 @@ QuantileRegression = R6::R6Class( "QuantileRegression" ,
 	##}}}
 	
 	
-	###############
-	## Accessors ##
-	###############
-	
-	coef = function() ##{{{
-	{
-		return( private$qrmethod$coef() )
-	},
-	##}}}
-	
-	
-	###########
-	## State ##
-	###########
-	
-	is_fitted = function() ##{{{
-	{
-		return( private$qrmethod$is_fitted() )
-	},
-	##}}}
-	
-	is_success = function() ##{{{
-	{
-		return( private$qrmethod$is_success() )
-	},
-	##}}}
-	
-	is_unfeasible = function() ##{{{
-	{
-		return( private$qrmethod$is_unfeasible() )
-	},
-	##}}}
-	
 	#############
 	## Methods ##
 	#############
 	
-	fit = function( Y , X ) ##{{{
+	## fit ##{{{
+	#' @description
+    #' Fit the quantile regression
+    #' @param Y [vector] Dataset to fit
+    #' @param X [matrix] Covariates
+    #' @return NULL
+	fit = function( Y , X )
 	{
 		if( !is.matrix(X) )
 		{
@@ -143,33 +194,21 @@ QuantileRegression = R6::R6Class( "QuantileRegression" ,
 	},
 	##}}}
 	
-	predict = function() ##{{{
+	## predict ##{{{
+	#' @description
+    #' Return the quantile fitted
+    #' @return [vector] quantile fitted
+	predict = function()
 	{
 		return( private$qrmethod$predict() )
 	}
 	##}}}
 	
-	),
-	
-	
-	######################
-	## Private elements ##
-	######################
-	
-	private = list(
-	
-	###############
-	## Arguments ##
-	###############
-	
-	qrmethod = NULL
-	
-	
-	#############
-	## Methods ##
-	#############
-	
-	
 	)
+	
+	##}}}
+	
+	
+	
 )
 

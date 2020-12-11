@@ -17,7 +17,7 @@
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#' np_quantile
+#' quantile
 #'
 #' Compute the quantile with covariates
 #'
@@ -25,6 +25,7 @@
 #' @param ltau [vector] vector of quantiles to fit
 #' @param c_Y  [vector or NULL] Covariate
 #' @param value  [bool] if TRUE return variance, else return coefficients of the fit
+#' @param ... Arguments of stats::quantile used only if c_Y is NULL
 #'
 #' @return [vector] Quantile or coefficients of regression
 #'
@@ -36,16 +37,19 @@
 #' loc   = 1. + 2 * X0
 #' Y    = stats::rnorm( n = size , mean = loc , sd = 0.1 )
 #'
-#' q = np_quantile( Y , ltau = base::c(0.25,0.5,0.75) , c_Y = X0 )
+#' q = SDFC::quantile( Y , ltau = base::c(0.25,0.5,0.75) , c_Y = X0 )
 #' 
 #' @export
-np_quantile = function( Y , ltau , c_Y = NULL , value = TRUE )
+quantile = function( Y , ltau , c_Y = NULL , value = TRUE , ... )
 {
 	out  = NULL
 	coef = NULL
 	if( is.null(c_Y) )
 	{
-		out  = as.vector( stats::quantile( Y , ltau ) )
+		kwargs = list(...)
+		kwargs["x"] = Y
+		kwargs["probs"] = ltau
+		out  = as.vector( base::do.call( stats::quantile , kwargs ) )
 		coef = out
 	}
 	else

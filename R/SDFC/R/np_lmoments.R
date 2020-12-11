@@ -86,7 +86,7 @@ np_lmoments = function( Y , c_Y = NULL , order = NULL , lq = base::seq( 0.05 , 0
 	if( !is.matrix(c_Y) )
 		c_Y = matrix( c_Y , nrow = length(c_Y) , ncol = 1 )
 	
-	Yq = np_quantile( Y , lq , c_Y )
+	Yq = SDFC::quantile( Y , lq , c_Y )
 	lmom = base::t( base::apply( Yq , 1 , np_lmoments_stationary ) )
 	
 	return( lmom[,order] )

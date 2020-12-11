@@ -47,5 +47,5 @@ median = function( Y , c_Y = NULL , value = TRUE , ... )
 		kwargs["x"] = Y
 		return(base::do.call( stats::median , kwargs ))
 	}
-	return( np_quantile( Y , base::c(0.5) , c_Y , value ) )
+	return( SDFC::quantile( Y , base::c(0.5) , c_Y , value ) )
 }

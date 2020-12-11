@@ -17,7 +17,7 @@
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#' np_std
+#' std
 #'
 #' Compute the standard deviation with covariates and link function
 #'
@@ -40,10 +40,10 @@
 #' Y     = stats::rnorm( n = size , mean = loc , sd = scale )
 #'
 #' m = SDFC::mean( Y , c_Y = X0 ) ## First fit mean
-#' s = np_std( Y , c_Y = X1 , m_Y = m ) ## Now standard deviation
+#' s = SDFC::std( Y , c_Y = X1 , m_Y = m ) ## Now standard deviation
 #' 
 #' @export
-np_std = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE )
+std = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE )
 {
 	var = SDFC::np_var( Y , c_Y , m_Y , link )
 	out = base::sqrt( var )

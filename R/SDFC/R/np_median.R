@@ -24,6 +24,7 @@
 #' @param Y  [vector] Dataset to fit
 #' @param c_Y  [vector or NULL] Covariate
 #' @param value  [bool] if TRUE return variance, else return coefficients of the fit
+#' @param ... Arguments of stats::median used only if c_Y is NULL
 #'
 #' @return [vector] Median or coefficients of regression
 #'

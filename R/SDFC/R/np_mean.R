@@ -17,14 +17,15 @@
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#' np_mean
+#' mean
 #'
-#' Compute the mean with covariates and link function
+#' Compute the mean with covariates and link function.
 #'
 #' @param Y   [vector] Dataset to fit
 #' @param c_Y [vector or NULL] Covariate
 #' @param link  [SDFC::UnivariateLink] link function, default is identity
 #' @param value  [bool] if TRUE return mean, else return coefficients of the fit
+#' @param ... Arguments of base::mean used only if c_Y is NULL
 #'
 #' @return [vector] Mean or coefficients of regression
 #'
@@ -36,15 +37,18 @@
 #' loc   = 1. + 2 * X0
 #' Y    = stats::rnorm( n = size , mean = loc , sd = 0.1 )
 #'
-#' m = np_mean( Y , c_Y = X0 )
+#' m = SDFC::mean( Y , c_Y = X0 )
 #' 
 #' @export
-np_mean = function( Y , c_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE )
+mean = function( Y , c_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE , ... )
 {
 	out  = NULL
 	coef = NULL
 	if( is.null(c_Y) )
 	{
+		kwargs  = list(...)
+		kwargs["x"] = Y
+		out  = base::do.call( base::mean , kwargs )
 		out  = base::mean(Y)
 		coef = link$inverse(out)
 	}

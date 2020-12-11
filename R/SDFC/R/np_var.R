@@ -39,7 +39,7 @@
 #' scale = 0.6 + 0.5 * X1
 #' Y    = stats::rnorm( n = size , mean = loc , sd = scale )
 #'
-#' m = np_mean( Y , c_Y = X0 ) ## First fit mean
+#' m = SDFC::mean( Y , c_Y = X0 ) ## First fit mean
 #' v = np_var( Y , c_Y = X1 , m_Y = m ) ## Now variance
 #' 
 #' @export

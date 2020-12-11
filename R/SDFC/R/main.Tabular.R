@@ -17,25 +17,17 @@
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
 
-
 #' Tabular class
 #'
-#' Class used to print tabular in terminal
+#' @description
+#' Class printing generating a tabular
 #'
-#' @docType class
+#' @details
+#' Class used to generate a tabular
+#'
 #' @importFrom R6 R6Class
+#' @importFrom methods new
 #'
-#' @param x [vector]
-#'
-#' @return Object of \code{\link{R6Class}}
-#' @format \code{\link{R6Class}} object.
-#'
-#' @section Methods:
-#' \describe{
-#'   \item{\code{new()}}{This method is used to create object of this class with \code{Tabular}}
-#'   \item{\code{add_row(row)}}{add a row to tabular}
-#'   \item{\code{draw()}}{Return a character containing tabular}
-#' }
 #' @examples
 #'
 #' A = matrix( rnorm(20) , nrow = 5 , ncol = 4 )
@@ -44,7 +36,7 @@
 #' for( i in 1:5 )
 #'     tab$add_row( A[i,] )
 #' print(tab$draw())
-#' 
+#'
 #' @export
 Tabular = R6::R6Class( "Tabular" ,
 	
@@ -53,9 +45,13 @@ Tabular = R6::R6Class( "Tabular" ,
 	
 	private = list(
 	
+	#' @field header [vector of string] Header of the tabular
 	.header = NULL,
 	.rows   = NULL,
+	#' @field ncol [integer] Number of columns
 	.ncol   = NULL,
+	#' @field nrow [integer] Number of rows
+	.nrow   = NULL,
 	
 	build_size_cells = function() ##{{{
 	{
@@ -171,13 +167,22 @@ Tabular = R6::R6Class( "Tabular" ,
 	
 	public  = list(
 	
-	initialize = function()##{{{
+	## initialize ##{{{
+	#' @description
+    #' Create a new Tabular object.
+	#' @return A new `Tabular` object.
+	initialize = function()
 	{
 		private$.rows  = list()
 	},
 	##}}}
 	
-	add_row = function( row )##{{{
+	## add_row ##{{{
+	#' @description
+    #' Add row to tabular
+    #' @param row [vector] Vector of element to print
+    #' @return NULL
+	add_row = function( row )
 	{
 		if( is.null(self$ncol) )
 		{
@@ -192,7 +197,11 @@ Tabular = R6::R6Class( "Tabular" ,
 	},
 	##}}}
 	
-	draw = function() ##{{{
+	## draw ##{{{ 
+	#' @description
+    #' Generate the tabular
+    #' @return [string] Return the tabular in string form
+	draw = function()
 	{
 		tabular = ""
 		size_cells = private$build_size_cells()

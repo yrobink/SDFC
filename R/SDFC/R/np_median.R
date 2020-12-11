@@ -17,9 +17,9 @@
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#' np_median
+#' median
 #'
-#' Compute the median with covariates (in fact just call np_quantile)
+#' Compute the median with covariates (in fact just call quantile)
 #'
 #' @param Y  [vector] Dataset to fit
 #' @param c_Y  [vector or NULL] Covariate
@@ -35,10 +35,16 @@
 #' loc   = 1. + 2 * X0
 #' Y    = stats::rnorm( n = size , mean = loc , sd = 0.1 )
 #'
-#' med = np_median( Y , c_Y = X0 )
+#' med = SDFC::median( Y , c_Y = X0 )
 #' 
 #' @export
-np_median = function( Y , c_Y = NULL , value = TRUE )
+median = function( Y , c_Y = NULL , value = TRUE , ... )
 {
+	if( is.null(c_Y) )
+	{
+		kwargs = list(...)
+		kwargs["x"] = Y
+		return(base::do.call( stats::median , kwargs ))
+	}
 	return( np_quantile( Y , base::c(0.5) , c_Y , value ) )
 }

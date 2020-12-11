@@ -38,7 +38,7 @@ UnivariateLink = R6::R6Class( "UnivariateLink" ,
 	#' @description
     #' Create a new UnivariateLink object.
 	#' @return A new `UnivariateLink` object.
-	initialize = function(...)
+	initialize = function()
 	{
 	}
 	

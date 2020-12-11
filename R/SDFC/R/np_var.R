@@ -17,7 +17,7 @@
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#' np_var
+#' var
 #'
 #' Compute the variance with covariates and link function
 #'
@@ -26,6 +26,7 @@
 #' @param m_Y [vector or NULL] mean already (or not) estimated. If NULL, m = base::mean(Y) is called
 #' @param link  [SDFC::UnivariateLink] link function, default is identity
 #' @param value  [bool] if TRUE return variance, else return coefficients of the fit
+#' @param ... Arguments of stats::var used only if c_Y is NULL
 #'
 #' @return [vector] Variance or coefficients of regression
 #'
@@ -40,17 +41,19 @@
 #' Y    = stats::rnorm( n = size , mean = loc , sd = scale )
 #'
 #' m = SDFC::mean( Y , c_Y = X0 ) ## First fit mean
-#' v = np_var( Y , c_Y = X1 , m_Y = m ) ## Now variance
+#' v = SDFC::var( Y , c_Y = X1 , m_Y = m ) ## Now variance
 #' 
 #' @export
-np_var = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE )
+var = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE , ... )
 {
 	out  = NULL
 	coef = NULL
 	m_Y  = if( is.null(m_Y) ) base::mean(Y) else as.vector(m_Y)
 	if( is.null(c_Y) )
 	{
-		out  = stats::var(Y-m_Y)
+		kwargs = list(...)
+		kwargs["x"] = Y - m_Y
+		out  = base::do.call( stats::var , kwargs )
 		coef = link$inverse(out)
 	}
 	else

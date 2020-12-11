@@ -45,7 +45,7 @@
 #' @export
 std = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE )
 {
-	var = SDFC::np_var( Y , c_Y , m_Y , link )
+	var = SDFC::var( Y , c_Y , m_Y , link )
 	out = base::sqrt( var )
 	
 	if( !value )

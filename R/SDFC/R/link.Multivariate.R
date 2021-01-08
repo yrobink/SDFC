@@ -196,66 +196,195 @@ MLConstant = R6::R6Class( "MLConstant" ,
 )
 ##}}}
 
+## MLLinear ##{{{
 
+#' MLLinear 
+#'
+#' @description
+#' Linear link function
+#'
+#' @details
+#' Modelized a linear form link function
+#'
+#' @importFrom R6 R6Class
+#' @importFrom methods new
+#'
+#' @examples
+#' ##
+#'
+#' @export
+MLLinear = R6::R6Class( "MLLinear" ,
+	
+	inherit = MultivariateLink,
+	
+	## Private list
+	##=============
+	##{{{
+	
+	private = list(
+	
+	.l = NULL,
+	.c = NULL,
+	
+	linear_transform = function( coef , X )
+	{
+		return(self$design_ %*% coef)
+	}
+	
+	),
+	##}}}
+	
+	## Active list
+	##============
+	##{{{
+	
+	active = list(
+	
+	
+	),
+	
+	##}}}
+	
+	
+	## Public list
+	##============
+	##{{{
+	
+	public = list(
+	
+	#' @field design_ [matrix] Design matrix
+	design_ = NULL,
+	
+	#' @description
+    #' Create a new MLLinear object.
+    #' @param ... Some arguments
+	#' @return A new `MLLinear` object.
+	initialize = function( ... )
+	{
+		kwargs = list(...)
+		private$.l = kwargs[["l_"]]
+		private$.c = kwargs[["c_"]]
+		base::do.call( super$initialize , kwargs )
+		
+		self$design_ = matrix( 1 , nrow = self$n_samples , ncol = 1 )
+		if( !is.null(private$.c) )
+			self$design_ = base::cbind( self$design_ , private$.c )
+	},
+	
+	#' @description
+    #' Transform function
+    #' @param coef coefficients to fit
+    #' @param X co-variates
+	#' @return The value
+	transform = function( coef , X )
+	{
+		out = private$.l$transform( private$linear_transform(coef,X) )
+		return(out)
+	},
+	
+	#' @description
+    #' Jacobian of transform function
+    #' @param coef coefficients to fit
+    #' @param X co-variates
+	#' @return The value
+	jacobian = function( coef , X )
+	{
+		jac = matrix( 0 , nrow = self$n_samples , ncol = self$n_features )
+		jac[,1] = 1
+		jac[,2:self$n_features] = X
+		out = private$.l$jacobian( matrix( private$linear_transform(coef,X) , ncol = 1 ) ) * self$design_
+		return(out)
+	}
+	
+	)
+	
+	##}}}
+	
+)
+##}}}
 
-##==> class MLLinear(MultivariateLink): ##{{{
-##==> 	"""
-##==> 	SDFC.link.MLLinear
-##==> 	==================
-##==> 	Link function which contains an univariate link function. The idea is to
-##==> 	chain a linear map with an univariate transform
-##==> 	
-##==> 	"""
-##==> 	
-##==> 	def __init__( self , *args , **kwargs ):##{{{
-##==> 		self._l     = kwargs.get("l")
-##==> 		self._c     = kwargs.get("c")
-##==> 		if self._l is None: self._l = ULIdentity()
-##==> 		if self._c is not None: kwargs["n_samples"] = self._c.shape[0]
-##==> 		MultivariateLink.__init__( self , *args , **kwargs )
-##==> 		
-##==> 		self.design_ = np.ones( (self.n_samples,1) )
-##==> 		if self._c is not None:
-##==> 			self.design_ = np.hstack( (self.design_,self._c) )
-##==> 		
-##==> 	##}}}
-##==> 	
-##==> 	def _linear_transform( self , coef , X ): ##{{{
-##==> 		return self.design_ @ coef
-##==> 	##}}}
-##==> 	
-##==> 	def transform( self , coef , X ):##{{{
-##==> 		out = self._l.transform( self._linear_transform(coef,X) )
-##==> 		return out
-##==> 	##}}}
-##==> 	
-##==> 	def jacobian( self , coef , X ): ##{{{
-##==> #		jac = np.zeros( (self.n_samples,self.n_features) )
-##==> #		jac[:,0]  = 1
-##==> #		jac[:,1:] = X
-##==> 		return self._l.jacobian( self._linear_transform( coef , X ).reshape(-1,1) ) * self.design_
-##==> 	##}}}
-##==> 	
-##==> ##}}}
+## MLTensor ##{{{
 
-##=> class MLTensor(MultivariateLink):##{{{
-##=> 	"""
-##=> 	SDFC.link.MLTensor
-##=> 	==================
-##=> 	Link function used to build the product of univariate link function
-##=> 	
-##=> 	
-##=> 	"""
-##=> 	
-##=> 	def __init__( self , l_p , s_p , *args , **kwargs ):##{{{
-##=> 		kwargs["n_features"] = np.sum(s_p)
-##=> 		MultivariateLink.__init__( self , *args , **kwargs )
-##=> 		self._l_p = l_p
-##=> 		self._s_p = s_p
-##=> 		self._special_fit_allowed = np.all( [isinstance(l,(MLLinear,MLConstant)) for l in self._l_p] )
-##=> 	##}}}
-##=> 	
-##=> 	def transform( self , coef , X ): ##{{{
+#' MLTensor 
+#'
+#' @description
+#' Tensor link function
+#'
+#' @details
+#' Link function used to build the product of univariate link function
+#'
+#' @importFrom R6 R6Class
+#' @importFrom methods new
+#'
+#' @examples
+#' ##
+#'
+#' @export
+MLTensor = R6::R6Class( "MLTensor" ,
+	
+	inherit = MultivariateLink,
+	
+	## Private list
+	##=============
+	##{{{
+	
+	private = list(
+	
+	.l_p = NULL,
+	.s_p = NULL,
+	.special_fit_allowed = FALSE
+	
+	),
+	##}}}
+	
+	## Active list
+	##============
+	##{{{
+	
+	active = list(
+	
+	
+	),
+	
+	##}}}
+	
+	
+	## Public list
+	##============
+	##{{{
+	
+	public = list(
+	
+	#' @description
+    #' Create a new MLTensor object.
+    #' @param l_p List of Link function
+    #' @param s_p List of numbers of features per marginal
+    #' @param ... Some arguments
+	#' @return A new `MLTensor` object.
+	initialize = function( l_p , s_p , ... )
+	{
+		kwargs = list(...)
+		kwargs[["n_features"]] = base::sum(s_p)
+		base::do.call( super$initialize , kwargs )
+		private$.l_p = l_p
+		private$.s_p = s_p
+		private$.special_fit_allowed = 1:length(private$.l_p)
+		for( i in 1:length(private$.l_p) )
+		{
+			private$.special_fit_allowed = ("MLLinear" %in% class(private$.l_p[i])) || ("MLConstant" %in% class(private$.l_p[i]))
+		}
+		private$.special_fit_allowed = base::all(private$.special_fit_allowed)
+	},
+	
+	#' @description
+    #' Transform function
+    #' @param coef coefficients to fit
+    #' @param X co-variates
+	#' @return The value
+	transform = function( coef , X )
+	{
+		out = private$.l$transform( private$linear_transform(coef,X) )
+		return(out)
 ##=> 		list_p = []
 ##=> 		ib,ie = 0,0
 ##=> 		for s,l,x in zip(self._s_p,self._l_p,X):
@@ -263,9 +392,20 @@ MLConstant = R6::R6Class( "MLConstant" ,
 ##=> 			list_p.append( l.transform( coef[ib:ie] , x ) )
 ##=> 			ib += s
 ##=> 		return list_p
-##=> 	##}}}
-##=> 	
-##=> 	def jacobian( self , coef , X ): ##{{{
+	},
+	
+	#' @description
+    #' Jacobian of transform function
+    #' @param coef coefficients to fit
+    #' @param X co-variates
+	#' @return The value
+	jacobian = function( coef , X )
+	{
+		jac = matrix( 0 , nrow = self$n_samples , ncol = self$n_features )
+		jac[,1] = 1
+		jac[,2:self$n_features] = X
+		out = private$.l$jacobian( matrix( private$linear_transform(coef,X) , ncol = 1 ) ) * self$design_
+		return(out)
 ##=> 		list_jac = []
 ##=> 		ib,ie = 0,0
 ##=> 		jac = np.zeros( (np.nonzero(self._s_p)[0].size,self.n_samples,self.n_features) )
@@ -277,10 +417,12 @@ MLConstant = R6::R6Class( "MLConstant" ,
 ##=> 				ib += s
 ##=> 				i += 1
 ##=> 		return jac
-##=> 	##}}}
-##=> 	
-##=> ##}}}
-
-
-
+	}
+	
+	)
+	
+	##}}}
+	
+)
+##}}}
 

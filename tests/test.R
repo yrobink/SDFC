@@ -351,9 +351,11 @@ run_all_tests = function( show = TRUE )##{{{
 ## main ##
 ##########
 
-run_all_tests()
+#run_all_tests()
+#plt$wait()
 
-plt$wait()
+
+
 
 print("Done")
 

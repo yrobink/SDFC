@@ -219,6 +219,10 @@ class GEV(AbstractLaw):
 		gshape = scs.gamma( 1 - shape )
 		scale = - lmom[:,1] * shape / ( gshape * ( 1 - 2**shape ) )
 		
+		if not ~(scale.min() > 0):
+			idx = ~(scale > 0)
+			scale[idx] = 1e-3
+		
 		## Find loc
 		loc = lmom[:,0] - scale * ( gshape - 1 ) / shape
 		

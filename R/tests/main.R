@@ -106,8 +106,9 @@ plt = PlotTools$new()
 ## Build data
 n_samples = 2500
 data = SDFC::dataset(n_samples)
-loc   = 0.5 + 2 * data$X_loc
-scale = base::exp( 0.5 - 0.2 * data$X_scale )
+coef_ = base::c(0.5,2.,0.5,-0.2)
+loc   = coef_[1] + coef_[2] * data$X_loc
+scale = base::exp( coef_[3] + coef_[4] * data$X_scale )
 Y     = stats::rnorm( n = n_samples , mean = loc , sd = scale )
 
 ## And now the script
@@ -117,6 +118,15 @@ lhs = LHS$new( base::c("loc","scale") , 2500 )
 rhs = RHS$new(lhs)
 
 base::do.call( rhs$build , kwargs )
+rhs$coef_ = coef_
+
+law = SDFC::Normal$new()
+
+
+plt$new_screen( ncol = 2 )
+plot( loc , rhs$lhs$values$loc , type = "p" )
+plot( scale , rhs$lhs$values$scale , type = "p" )
+
 
 ## End
 plt$wait()

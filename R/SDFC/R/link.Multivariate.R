@@ -269,6 +269,9 @@ MLLinear = R6::R6Class( "MLLinear" ,
 		self$design_ = matrix( 1 , nrow = self$n_samples , ncol = 1 )
 		if( !is.null(private$.c) )
 			self$design_ = base::cbind( self$design_ , private$.c )
+		private$.n_features = base::ncol(self$design_)
+		if( is.null(private$.l) )
+			private$.l = ULIdentity$new()
 	},
 	
 	#' @description
@@ -292,7 +295,8 @@ MLLinear = R6::R6Class( "MLLinear" ,
 		jac = matrix( 0 , nrow = self$n_samples , ncol = self$n_features )
 		jac[,1] = 1
 		jac[,2:self$n_features] = X
-		out = private$.l$jacobian( matrix( private$linear_transform(coef,X) , ncol = 1 ) ) * self$design_
+		out = private$.l$jacobian( matrix( private$linear_transform(coef,X) , ncol = 1 ) )
+		out = as.vector(out) * self$design_
 		return(out)
 	}
 	
@@ -348,12 +352,13 @@ MLTensor = R6::R6Class( "MLTensor" ,
 	
 	##}}}
 	
-	
 	## Public list
 	##============
 	##{{{
 	
 	public = list(
+	
+	## Init ##{{{
 	
 	#' @description
     #' Create a new MLTensor object.
@@ -364,17 +369,21 @@ MLTensor = R6::R6Class( "MLTensor" ,
 	initialize = function( l_p , s_p , ... )
 	{
 		kwargs = list(...)
-		kwargs[["n_features"]] = base::sum(s_p)
+		kwargs[["n_features"]] = Reduce("+",s_p)
 		base::do.call( super$initialize , kwargs )
 		private$.l_p = l_p
 		private$.s_p = s_p
 		private$.special_fit_allowed = 1:length(private$.l_p)
+		sfa = base::rep(FALSE,length(private$.l_p))
 		for( i in 1:length(private$.l_p) )
 		{
-			private$.special_fit_allowed = ("MLLinear" %in% class(private$.l_p[i])) || ("MLConstant" %in% class(private$.l_p[i]))
+			sfa[i] = ("MLLinear" %in% class(private$.l_p[[i]])) || ("MLConstant" %in% class(private$.l_p[[i]]))
 		}
-		private$.special_fit_allowed = base::all(private$.special_fit_allowed)
+		private$.special_fit_allowed = base::all(sfa)
 	},
+	##}}}
+	
+	## Transform ##{{{
 	
 	#' @description
     #' Transform function
@@ -383,16 +392,21 @@ MLTensor = R6::R6Class( "MLTensor" ,
 	#' @return The value
 	transform = function( coef , X )
 	{
-		out = private$.l$transform( private$linear_transform(coef,X) )
+		out = list()
+		ib = 1
+		ie = 1
+		for( i in 1:length(X) )
+		{
+			ie = ie + private$.s_p[[i]] - 1
+			out[[i]] = private$.l_p[[i]]$transform( coef[ib:ie] , X[[i]] )
+			ib = ib + private$.s_p[[i]]
+			ie = ie + 1
+		}
 		return(out)
-##=> 		list_p = []
-##=> 		ib,ie = 0,0
-##=> 		for s,l,x in zip(self._s_p,self._l_p,X):
-##=> 			ie += s
-##=> 			list_p.append( l.transform( coef[ib:ie] , x ) )
-##=> 			ib += s
-##=> 		return list_p
 	},
+	##}}}
+	
+	## Jacobian ##{{{
 	
 	#' @description
     #' Jacobian of transform function
@@ -401,23 +415,21 @@ MLTensor = R6::R6Class( "MLTensor" ,
 	#' @return The value
 	jacobian = function( coef , X )
 	{
-		jac = matrix( 0 , nrow = self$n_samples , ncol = self$n_features )
-		jac[,1] = 1
-		jac[,2:self$n_features] = X
-		out = private$.l$jacobian( matrix( private$linear_transform(coef,X) , ncol = 1 ) ) * self$design_
-		return(out)
-##=> 		list_jac = []
-##=> 		ib,ie = 0,0
-##=> 		jac = np.zeros( (np.nonzero(self._s_p)[0].size,self.n_samples,self.n_features) )
-##=> 		i = 0
-##=> 		for s,l,x in zip(self._s_p,self._l_p,X):
-##=> 			if s > 0:
-##=> 				ie += s
-##=> 				jac[i,:,ib:ie] = l.jacobian( coef[ib:ie] , x )
-##=> 				ib += s
-##=> 				i += 1
-##=> 		return jac
+		jac = array( 0 , dim = base::c( base::sum(as.numeric(private$.s_p) > 0) , self$n_samples , self$n_features ) )
+		
+		ib = 1
+		ie = 1
+		for( i in 1:length(X) )
+		{
+			ie = ie + private$.s_p[[i]] - 1
+			jac[i,,ib:ie] = private$.l_p[[i]]$jacobian( coef[ib:ie] , X[[i]] )
+			ib = ib + private$.s_p[[i]]
+			ie = ie + 1
+		}
+		
+		return(jac)
 	}
+	##}}}
 	
 	)
 	

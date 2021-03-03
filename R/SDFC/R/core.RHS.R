@@ -40,6 +40,8 @@ RHS = R6::R6Class( "RHS" ,
 	
 	private = list(
 	
+	#' @field coef_ [vector] Coefficient fitted
+	.coef_ = NULL
 	
 	),
 	##}}}
@@ -49,6 +51,22 @@ RHS = R6::R6Class( "RHS" ,
 	##{{{
 	
 	active = list(
+	
+	coef_ = function(value)
+	{
+		if( missing(value) )
+		{
+			return(private$.coef_)
+		}
+		else
+		{
+			private$.coef_    = value
+			values            = self$l_global$transform( private$.coef_ , self$c_global )
+			names(values)     = lhs$names
+			self$lhs$values   = values
+			self$lhs$jacobian = self$l_global$jacobian(  private$.coef_ , self$c_global )
+		}
+	}
 	
 	),
 	
@@ -70,8 +88,6 @@ RHS = R6::R6Class( "RHS" ,
 	l_global = NULL,
 	#' @field s_global [list] Length of coef per params of lhs
 	s_global = NULL,
-	#' @field coef [vector] Coefficient fitted
-	coef     = NULL,
 	
 	#' @description
     #' Create a new RHS object.
@@ -153,10 +169,7 @@ RHS = R6::R6Class( "RHS" ,
 				l_global[[lhs]] = l
 			}
 		}
-		print(l_global)
-#		self.l_global = MLTensor( l_global , self.s_global , n_features = np.sum(self.s_global) , n_samples = self.lhs_.n_samples )
-#		print(names(self$c_global))
-#		print(self$s_global)
+		self$l_global = MLTensor$new( l_global , self$s_global , n_features = Reduce("+",self$s_global) , n_samples = self$lhs$n_samples )
 	}
 	
 	)

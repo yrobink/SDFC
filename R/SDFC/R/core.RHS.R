@@ -134,7 +134,7 @@ RHS = R6::R6Class( "RHS" ,
 			{
 				c = as.matrix(kwargs[[base::paste0("c_",lhs)]])
 				if( length(dim(c)) == 1 )
-					c = matrix( c , ncols = length(c) )
+					c = matrix( c , ncol = length(c) )
 				self$c_global[[lhs]]  = c
 				self$s_global[[lhs]]  = 1 + base::dim(c)[2]
 				self$lhs$fixed[[lhs]] = FALSE

@@ -104,6 +104,84 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 	fit_Bayesian = function(...)##{{{
 	{
 		kwargs = list(...)
+		
+		## Find numbers of features
+		n_features = private$.rhs$n_features
+		
+		## Define prior
+		prior = kwargs[["prior"]]
+		if( is.null(prior) )
+		{
+			m = numeric(n_features)
+			S = base::diag(10 + numeric(n_features))
+			prior = MultivariateNormal$new( m , S )
+		}
+		
+		## Define transition
+		transition = kwargs[["transition"]]
+		if( is.null(transition))
+		{
+			transition = function(x) { return( x + stats::rnorm(n_features,0,0.1) ) }
+		}
+		
+		## Define numbers of iterations of MCMC algorithm
+		n_mcmc_drawn = kwargs[["n_mcmc_drawn"]]
+		if( is.null(n_mcmc_drawn) )
+		{
+			n_mcmc_drawn = 10000
+		}
+		
+		## Init values
+		init = kwargs[["mcmc_init"]]
+		if( is.null(init) )
+		{
+			init = prior$rvs()
+		}
+		
+		## MCMC algorithm
+		##===============
+		draw   = matrix( 0 , nrow = n_mcmc_drawn , ncol = n_features )
+		accept = numeric( n_mcmc_drawn )
+		
+		draw[1,]      = init
+		lll_current   = -private$negloglikelihood(draw[1,])
+		prior_current = base::sum( prior$logpdf(draw[1,]) )
+		p_current     = prior_current + lll_current
+		
+		for( i in 2:n_mcmc_drawn )
+		{
+			draw[i,] = transition(draw[i-1,])
+			
+			## Likelihood and probability of new points
+			lll_next   = - private$negloglikelihood(draw[i,])
+			prior_next = base::sum( prior$logpdf(draw[i,]) )
+			p_next     = prior_next + lll_next
+			
+			## Accept or not ?
+			p_accept = base::exp( p_next - p_current )
+			if( stats::runif(1) < p_accept )
+			{
+				lll_current   = lll_next
+				prior_current = prior_next
+				p_current     = p_next
+				accept[i]     = TRUE
+			}
+			else
+			{
+				draw[i,]  = draw[i-1,]
+				accept[i] = FALSE
+			}
+		}
+		
+		self$coef_ = base::apply( draw[as.integer(n_mcmc_drawn/2):n_mcmc_drawn,] , 2 , base::mean )
+		
+		## Update information
+		self$info_$draw         = draw
+		self$info_$accept       = accept
+		self$info_$n_mcmc_drawn = n_mcmc_drawn
+		self$info_$rate_accept  = base::sum(accept) / n_mcmc_drawn
+		self$info_$cov          = stats::cov(draw)
+		
 	}
 	##}}}
 	

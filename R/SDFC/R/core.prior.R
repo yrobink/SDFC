@@ -81,7 +81,12 @@ ginv = function( X , tol = base::sqrt(.Machine$double.eps) )
 #'
 #' @examples
 #' ##
-#'
+#' m = base::c(1.,3)
+#' S = matrix( base::c(1,-0.5,-0.5,1) , nrow = 2 )
+#' p = MultivariateNormal$new(m,S)
+#' X = p$rvs(1000)
+#' pdf = p$pdf(X)
+#' 
 #' @export
 MultivariateNormal = R6::R6Class( "MultivariateNormal" ,
 	

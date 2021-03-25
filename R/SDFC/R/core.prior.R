@@ -224,7 +224,7 @@ MultivariateNormal = R6::R6Class( "MultivariateNormal" ,
     #' Random values generator
     #' @param n Number of samples to drawn
 	#' @return X matrix of samples
-	rvs = function(n)
+	rvs = function( n = 1 )
 	{
 		n_dim = length(self$mean)
 		X = base::matrix( stats::rnorm(n * n_dim) , nrow = n, ncol = n_dim )

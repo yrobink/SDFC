@@ -204,7 +204,7 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 		self$coef_ = numeric(private$.rhs$n_features)
 		
 		## Now fit
-		if( !(self$method %in% base::c("mle","bayesian")) && private$.rhs$l_global$.special_fit_allowed )
+		if( !(self$method %in% base::c("mle","bayesian")) && private$.rhs$l_global$special_fit_allowed )
 		{
 			private$special_fit()
 		}

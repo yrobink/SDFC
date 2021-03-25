@@ -42,6 +42,7 @@ RHS = R6::R6Class( "RHS" ,
 	
 	#' @field coef_ [vector] Coefficient fitted
 	.coef_ = NULL
+	#' @field n_features [integer] Number of features, i.e. length of coef_
 	
 	),
 	##}}}
@@ -66,6 +67,12 @@ RHS = R6::R6Class( "RHS" ,
 			self$lhs$values   = values
 			self$lhs$jacobian = self$l_global$jacobian(  private$.coef_ , self$c_global )
 		}
+	},
+	
+	n_features = function(value)
+	{
+		if( missing(value) )
+			return(self$l_global$n_features)
 	}
 	
 	),

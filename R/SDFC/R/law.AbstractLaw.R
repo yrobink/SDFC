@@ -50,6 +50,7 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 	#' @field coef_ [numeric] Coefficients fitted
 	.Y = NULL,
 	#' @field lhs [SDFC::RHS] Left Hand Side
+	#' @field cov [matrix] Covariance matrix of coefs
 	
 	##}}}
 	
@@ -61,7 +62,7 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 		p_coef = coef_
 		n_it = 1
 		
-		while( !(is.finite(private$negloglikelihood(p_coef)) && base::all(is.finite(private$gradient_nlll(p_coef)))) )
+		while( !(is.finite(private$negloglikelihood(p_coef)) ) )# && base::all(is.finite(private$gradient_nlll(p_coef)))) )
 		{
 			if( n_it %% 100 == 0 ) scale = scale * 2
 			
@@ -79,7 +80,7 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 		private$init_MLE()
 		coef_ = self$coef_
 		
-		is_success = FALSE
+		is.success = FALSE
 		n_test     = 0
 		max_test   = kwargs[["mle_n_restart"]]
 		if( is.null(max_test) ) max_test = 2
@@ -87,14 +88,14 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 		while( !is.success && n_test < max_test )
 		{
 			private$random_valid_point()
-			self$info_[["mle_optim_result"]] = "TODO"
-			self$info_[["cov"]] = "TODO"
-			self$coef_ = coef_
-			is_success = FALSE
+			self$info_[["mle_optim_result"]] = stats::optim( self$coef_ , private$negloglikelihood , method = "BFGS" , hessian = TRUE )
+			self$coef_ = self$info_[["mle_optim_result"]]$par
+			is.success = self$info_[["mle_optim_result"]]$convergence == 0
 			n_test = n_test + 1
 		}
+		self$info_[["cov"]] = base::solve(self$info_[["mle_optim_result"]]$hessian)
 		
-		if( !is_success )
+		if( !is.success )
 			self$coef_ = coef_
 		
 	},
@@ -147,6 +148,12 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 		{
 			private$.rhs$coef_ = value
 		}
+	},
+	
+	cov = function(value)
+	{
+		if(missing(value))
+			return(self$info_$cov)
 	}
 	
 	),

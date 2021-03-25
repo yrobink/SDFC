@@ -225,6 +225,7 @@ MLLinear = R6::R6Class( "MLLinear" ,
 	
 	.l = NULL,
 	.c = NULL,
+	#' @field l [UnivariateLink] Univariate link
 	
 	linear_transform = function( coef , X )
 	{
@@ -240,6 +241,12 @@ MLLinear = R6::R6Class( "MLLinear" ,
 	
 	active = list(
 	
+	l = function(value) ##{{{
+	{
+		if( missing(value) )
+			return(private$.l)
+	}
+	##}}}
 	
 	),
 	
@@ -428,6 +435,30 @@ MLTensor = R6::R6Class( "MLTensor" ,
 		}
 		
 		return(jac)
+	},
+	##}}}
+	
+	## linkc {{{
+	
+	#' @description
+    #' Link function component
+    #' @param name name of component
+	#' @return The link
+	linkc = function(name)
+	{
+		return(private$.l_p[[name]])
+	},
+	##}}}
+	
+	## sizec {{{
+	
+	#' @description
+    #' Size of each component
+    #' @param name name of component
+	#' @return The size
+	sizec = function(name)
+	{
+		return(private$.s_p[[name]])
 	}
 	##}}}
 	

@@ -63,7 +63,7 @@ RHS = R6::R6Class( "RHS" ,
 		{
 			private$.coef_    = value
 			values            = self$l_global$transform( private$.coef_ , self$c_global )
-			names(values)     = lhs$names
+			names(values)     = self$lhs$names
 			self$lhs$values   = values
 			self$lhs$jacobian = self$l_global$jacobian(  private$.coef_ , self$c_global )
 		}
@@ -78,7 +78,6 @@ RHS = R6::R6Class( "RHS" ,
 	),
 	
 	##}}}
-	
 	
 	## Public list
 	##============

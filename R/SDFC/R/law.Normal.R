@@ -42,6 +42,66 @@ Normal = R6::R6Class( "Normal" ,
 	
 	private = list(
 	
+	fit_moments = function() ##{{{
+	{
+		coef_ = numeric(length(self$coef_))
+		
+		## Find loc
+		if( !private$.rhs$lhs$fixed[["loc"]] )
+		{
+			X_loc = self$rhs$c_global[["loc"]]
+			coef_[1:private$.rhs$l_global$sizec("loc")] = SDFC::mean( private$.Y , X_loc , private$.rhs$l_global$linkc("loc")$l , value = FALSE )
+			self$coef_ = coef_
+		}
+		## Find scale
+		if( !private$.rhs$lhs$fixed[["scale"]] )
+		{
+			X_scale = self$rhs$c_global[["scale"]]
+			ib = private$.rhs$l_global$sizec("loc")+1
+			ie = length(self$coef_)
+			coef_[ib:ie] = SDFC::std( private$.Y , X_scale , self$loc , private$.rhs$l_global$linkc("scale")$l , value = FALSE )
+			self$coef_ = coef_
+		}
+		
+	},
+	##}}}
+	
+	special_fit = function() ##{{{
+	{
+		if( self$method == "moments" )
+			private$fit_moments()
+	},
+	##}}}
+	
+	init_MLE = function()##{{{
+	{
+		if( private$.rhs$l_global$special_fit_allowed )
+		{
+			private$fit_moments()
+		}
+		else
+		{
+			self$coef_ = private$.rhs$l_global$valid_point(self)
+		}
+	},
+	##}}}
+	
+	negloglikelihood = function(coef) ##{{{
+	{
+		self$coef_ = coef
+		
+		if( !base::all(self$scale > 0) )
+			return(Inf)
+		if( !base::all(is.finite(self$scale)) )
+			return(Inf)
+		
+		scale2 = self$scale^2
+		
+		nlll = base::sum(base::log(scale2)) / 2 + base::sum( (private$.Y - self$loc)^2 / scale2 ) / 2
+		return(nlll)
+	}
+	##}}}
+	
 	),
 	##}}}
 	

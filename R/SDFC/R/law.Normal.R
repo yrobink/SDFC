@@ -23,8 +23,24 @@
 #' Normal distribution
 #'
 #' @details
-#' Class of Normal distribution
+#' Class to fit a Normal law with covariates, available methods are:
+#' 
+#' moments  : use empirical estimator of mean and standard deviation to find
+#'            loc and scale, possibly with least square regression if
+#'            covariates are given
 #'
+#' bayesian : Bayesian estimation, i.e. the coefficient fitted is the mean of
+#'            n_mcmc_iteration sample draw from the posterior P(coef_ | Y)
+#'
+#' mle      : Maximum likelihood estimation
+#' 
+#' Parameters:
+#'
+#' loc   : location parameter
+#'
+#' scale : scale parameter
+#'
+#' See AbstractLaw for details and examples
 #' @importFrom R6 R6Class
 #' @importFrom methods new
 #'

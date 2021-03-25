@@ -88,7 +88,7 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 		while( !is.success && n_test < max_test )
 		{
 			private$random_valid_point()
-			self$info_[["mle_optim_result"]] = stats::optim( self$coef_ , private$negloglikelihood , method = "BFGS" , hessian = TRUE )
+			self$info_[["mle_optim_result"]] = stats::optim( self$coef_ , private$negloglikelihood , gr = private$gradient_nlll , method = "BFGS" , hessian = TRUE )
 			self$coef_ = self$info_[["mle_optim_result"]]$par
 			is.success = self$info_[["mle_optim_result"]]$convergence == 0
 			n_test = n_test + 1

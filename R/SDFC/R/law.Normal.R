@@ -99,6 +99,33 @@ Normal = R6::R6Class( "Normal" ,
 		
 		nlll = base::sum(base::log(scale2)) / 2 + base::sum( (private$.Y - self$loc)^2 / scale2 ) / 2
 		return(nlll)
+	},
+	##}}}
+	
+	gradient_nlll = function(coef) ##{{{
+	{
+		self$coef_ = coef
+		
+		loc   = self$loc
+		scale = self$scale
+		Z     = (private$.Y - loc) / scale
+		
+		## Compute gradient
+		T0  = - Z / scale
+		T1  = - private$.Y * Z / scale^2 + loc * Z / scale^2 + 1 / scale
+		jac = private$.rhs$lhs$jacobian
+		p   = 1
+		if( !private$.rhs$lhs$fixed[["loc"]] )
+		{
+			jac[p,,] = jac[p,,] * as.vector(T0)
+			p = p + 1
+		}
+		if( !private$.rhs$lhs$fixed[["scale"]] )
+		{
+			jac[p,,] = jac[p,,] * as.vector(T1)
+		}
+		
+		return( base::apply( jac , 3 , base::sum ) )
 	}
 	##}}}
 	

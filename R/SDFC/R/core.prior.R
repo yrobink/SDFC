@@ -16,6 +16,57 @@
 ## You should have received a copy of the GNU General Public License
 ## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
+## ginv {{{
+
+#' ginv (Moore-Penrose generalized inverse of a matrix)
+#'
+#' Compute the Moore-Penrose generalized inverse of a matrix, code from MASS package
+#'
+#' @usage ginv(X,tol)
+#'
+#' @param X [matrix] a matrix
+#' @param tol [double] Numerical tolerance
+#'
+#' @return Xinv [matrix] Generalized inverse
+#'
+#' @examples
+#'
+#' X = matrix( base::c(0,0,1,1) , nrow = 2 ) ## Not invertible (det==0)
+#' Xinv = ginv(X) ## But generalized inverse exist
+#' 
+#' @export
+ginv = function( X , tol = base::sqrt(.Machine$double.eps) )
+{
+	if( length(dim(X)) > 2L || !(is.numeric(X) || is.complex(X)) )
+		stop("'X' must be a numeric or complex matrix")
+	
+	if( !is.matrix(X) )
+		X = as.matrix(X)
+	
+	Xsvd = svd(X)
+	
+	if( is.complex(X) )
+		Xsvd$u = base::Conj(Xsvd$u)
+	
+	Positive = ( Xsvd$d > base::max( tol * Xsvd$d[1L] , 0 ) )
+	
+	out = NULL
+	if( base::all(Positive) )
+	{
+		out = Xsvd$v %*% ( 1. / Xsvd$d * base::t(Xsvd$u) )
+	}
+	else if( !base::any(Positive) )
+	{
+		out = array( 0 , dim(X)[2L:1L] )
+	}
+	else
+	{
+		out = Xsvd$v[, Positive, drop = FALSE] %*% ( ( 1. / Xsvd$d[Positive] ) * base::t( Xsvd$u[, Positive, drop = FALSE] ) )
+	}
+	return(out)
+}
+##}}}
+
 
 #' MultivariateNormal
 #'
@@ -42,11 +93,27 @@ MultivariateNormal = R6::R6Class( "MultivariateNormal" ,
 	
 	#' @field mean [vector] mean of multivariate Normal law
 	.mean = NULL,
-	#' @field cov [matrix] covariance of multivariate Normal law
+	#' @field cov [matrix] covariance matrix of multivariate Normal law
 	.cov  = NULL,
 	#' @field std [matrix] square root of covariance matrix
-	.std  = NULL
+	.std  = NULL,
+	#' @field icov [matrix] inverse of covariance matrix
+	.icov = NULL,
+	#' @field det [double] determinant of covariance matrix
+	.det  = NULL,
+	#' @field rank [integer] rank of covariance matrix
+	.rank = NULL,
 	
+	##}}}
+	
+	update_icov_det = function() ##{{{
+	{
+		private$.icov = ginv(private$.cov)
+		svd           = base::svd(private$.cov)
+		d             = svd$d[svd$d > 0]
+		private$.det  = base::prod(d)
+		private$.rank = length(d)
+	}
 	##}}}
 	
 	),
@@ -77,9 +144,10 @@ MultivariateNormal = R6::R6Class( "MultivariateNormal" ,
 		}
 		else
 		{
-			private$.cov = value
-			svd          = base::svd(value)
-			private$.std = svd$u %*% base::diag(base::sqrt(svd$d)) %*% base::t(svd$u)
+			private$.cov  = value
+			svd           = base::svd(value)
+			private$.std  = svd$u %*% base::diag(base::sqrt(svd$d)) %*% base::t(svd$u)
+			private$update_icov_det()
 		}
 	},
 	
@@ -91,9 +159,34 @@ MultivariateNormal = R6::R6Class( "MultivariateNormal" ,
 		}
 		else
 		{
-			private$.std = std
+			private$.std = value
 			svd          = base::svd(value)
 			private$.cov = svd$u %*% base::diag(svd$d^2) %*% base::t(svd$u)
+			private$update_icov_det()
+		}
+	},
+	
+	icov = function(value)
+	{
+		if( missing(value) )
+		{
+			return(private$.icov)
+		}
+	},
+	
+	det = function(value)
+	{
+		if( missing(value) )
+		{
+			return(private$.det)
+		}
+	},
+	
+	rank = function(value)
+	{
+		if( missing(value) )
+		{
+			return(private$.rank)
 		}
 	}
 	
@@ -134,6 +227,50 @@ MultivariateNormal = R6::R6Class( "MultivariateNormal" ,
 		X = base::t(base::t(X) + self$mean)
 		
 		return(X)
+	},
+	##}}}
+	
+	## pdf {{{
+	
+	#' @description
+    #' Probability density function, this function works with degenerate distribution
+    #' @param X Compute pdf at values of matrix X
+	#' @return pdf The PDF
+	pdf = function(X)
+	{
+		X  = matrix( X , ncol = length(self$mean) )
+		Xm = base::t( base::t(X) - self$mean )
+		
+		e   = base::apply( Xm * base::t(self$icov %*% t(Xm)) , 1 , base::sum )
+		val = base::exp( - e / 2 ) / base::sqrt( self$det * (2*pi)^self$rank )
+		
+		return(val)
+	},
+	##}}}
+	
+	## logpdf ##{{{
+	
+	#' @description
+    #' Log of probability density function
+    #' @param X Compute log of pdf at values of matrix X
+	#' @return logpdf Log of the PDF
+	logpdf = function(X)
+	{
+		return(base::log(self$pdf(X)))
+	},
+	##}}}
+	
+	## fit ##{{{
+	
+	#' @description
+    #' Fit the parameters from a dataset
+    #' @param X Data to fit
+	#' @return NULL
+	fit = function(X)
+	{
+		self$mean = base::apply( X , 2 , base::mean )
+		self$cov  = stats::cov(X)
+		invisible(NULL)
 	}
 	##}}}
 	

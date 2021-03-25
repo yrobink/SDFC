@@ -114,18 +114,26 @@ Y     = stats::rnorm( n = n_samples , mean = loc , sd = scale )
 ## And now the script
 kwargs = list( c_loc = data$X_loc , c_scale = data$X_scale , l_scale = SDFC::ULExponential$new() )
 
-lhs = LHS$new( base::c("loc","scale") , 2500 )
-rhs = RHS$new(lhs)
+#lhs = LHS$new( base::c("loc","scale") , 2500 )
+#rhs = RHS$new(lhs)
+#base::do.call( rhs$build , kwargs )
+#rhs$coef_ = coef_
+#plt$new_screen( ncol = 2 )
+#plot( loc , rhs$lhs$values$loc , type = "p" )
+#plot( scale , rhs$lhs$values$scale , type = "p" )
 
-base::do.call( rhs$build , kwargs )
-rhs$coef_ = coef_
 
-law = SDFC::Normal$new()
+law = SDFC::Normal$new( "mle" )
+law$fit( Y , c_loc = data$X_loc , c_scale = data$X_scale , l_scale = SDFC::ULExponential$new() )
+
+prior = SDFC::MultivariateNormal$new( law$coef_ , law$cov )
+X = prior$rvs(100)
+print(prior$pdf(X))
 
 
 plt$new_screen( ncol = 2 )
-plot( loc , rhs$lhs$values$loc , type = "p" )
-plot( scale , rhs$lhs$values$scale , type = "p" )
+plot( loc   , law$loc , type = "p" )
+plot( scale , law$scale , type = "p" )
 
 
 ## End

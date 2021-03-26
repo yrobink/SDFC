@@ -214,7 +214,7 @@ SDFCLawTest = R6::R6Class( "SDFCLawTest" , ##{{{
 	
 	build_shape = function( code )##{{{
 	{
-		if( self.shape_p )
+		if( self$shape_p )
 		{
 			coef_ = base::c(1,-0.2)
 		}
@@ -303,6 +303,7 @@ SDFCLawTest = R6::R6Class( "SDFCLawTest" , ##{{{
 		colnames(indexes) = NULL
 		rownames(indexes) = NULL
 		indexes = as.matrix(indexes)
+		indexes = indexes[,base::rev(1:ncol(indexes))]
 		
 		for( i in 1:nrow(indexes) )
 		{
@@ -312,17 +313,16 @@ SDFCLawTest = R6::R6Class( "SDFCLawTest" , ##{{{
 			if( "try-error" %in% class(test) )
 			{
 				if( base::min(idx) == 2 )
-				{
 					row = base::c( paste0("Test ",str_idx),"OK", "/" , "/" , "/" )
-				}
 				else
-				{
 					row = base::c( paste0("Test ",str_idx),"Fail", "/" , "/" , "/" )
-				}
 			}
 			else
 			{
-				row = base::c( paste0("Test ",str_idx),"OK",round(max(abs(self$coef_ - self$law$coef_)),3) , toString(self$coef_) , toString(round(self$law$coef_,2)) )
+				if( base::min(idx) == 2 )
+					row = base::c( paste0("Test ",str_idx),"OK", "/" , "/" , "/" )
+				else
+					row = base::c( paste0("Test ",str_idx),"OK",round(max(abs(self$coef_ - self$law$coef_)),3) , toString(self$coef_) , toString(round(self$law$coef_,2)) )
 			}
 			tab$add_row( row )
 		}
@@ -362,6 +362,32 @@ NormalTest = R6::R6Class( "NormalTest" , ##{{{
 )
 ##}}}
 
+GEVTest = R6::R6Class( "GEVTest" , ##{{{
+	
+	inherit = SDFCLawTest,
+	
+	public = list(
+	
+	initialize = function( n_samples = 2500 )
+	{
+		kwargs = list( n_samples = n_samples,
+		               name    = "GEV",
+		               sd_law  = SDFC::GEV,
+		               params  = base::c("loc","scale","shape"),
+		               shape_p = FALSE
+		)
+		base::do.call( super$initialize , kwargs )
+	},
+	
+	rvs = function()
+	{
+		return(ROOPSD::rgev( length(self$loc) , self$loc , self$scale , self$shape ))
+	}
+	
+	)
+)
+##}}}
+
 
 ###############
 ## Functions ##
@@ -371,15 +397,21 @@ NormalTest = R6::R6Class( "NormalTest" , ##{{{
 ## main ##
 ##########
 
-for( nt in list(NormalTest) )
-{
-	t = nt$new()
-	t$run_all( "MLE" )
-	base::cat("\n")
-	t$run_all( "bayesian" )
-	base::cat("\n")
-}
+#l_test = list(NormalTest,GEVTest)
+#
+#for( nt in l_test )
+#{
+#	t = nt$new()
+#	t$run_all( "MLE" )
+#	base::cat("\n")
+#	t$run_all( "bayesian" )
+#	base::cat("\n")
+#}
 
+t = GEVTest$new()
+t$run_all("lmoments")
+
+#t$testXXX( base::c(0,0,0) , "moments" )
 
 ## End
 plt$wait()

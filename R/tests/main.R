@@ -13,6 +13,7 @@ base::rm( list = base::ls() )
 
 library(R6)
 library(devtools)
+library(ROOPSD)
 
 try(roxygen2::roxygenize("../SDFC"))
 devtools::load_all("../SDFC")
@@ -234,6 +235,8 @@ SDFCLawTest = R6::R6Class( "SDFCLawTest" , ##{{{
 	
 	testXXX = function( code , method = "MLE" )##{{{
 	{
+		self$kwargs = list()
+		self$coef_  = base::c()
 		i = 1
 		if( self$has_loc )
 		{
@@ -254,9 +257,16 @@ SDFCLawTest = R6::R6Class( "SDFCLawTest" , ##{{{
 		
 		if( length(self$coef_) > 0 )
 		{
-			m = self$coef_
-			S = base::diag(0.1 + numeric(length(self$coef_)))
-			self$kwargs[["prior"]] = MultivariateNormal$new(m,S)
+			if( length(self$coef_) == 1 )
+			{
+				self$kwargs[["prior"]] = ROOPSD::Normal$new( self$coef_ , 0.1 )
+			}
+			else
+			{
+				m = self$coef_
+				S = base::diag(0.1 + numeric(length(self$coef_)))
+				self$kwargs[["prior"]] = MultivariateNormal$new(m,S)
+			}
 		}
 		
 		self$law = self$sd_law$new( method = method )
@@ -284,8 +294,6 @@ SDFCLawTest = R6::R6Class( "SDFCLawTest" , ##{{{
 		for( i in 1:nrow(indexes) )
 		{
 			idx = indexes[i,]
-			self$kwargs = list()
-			self$coef_  = base::c()
 			test = try(self$testXXX( idx ),silent=TRUE)
 			str_idx = gsub(", ","",toString(idx))
 			if( "try-error" %in% class(test) )

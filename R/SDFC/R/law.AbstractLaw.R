@@ -135,7 +135,7 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 		init = kwargs[["mcmc_init"]]
 		if( is.null(init) )
 		{
-			init = prior$rvs()
+			init = prior$rvs( n = 1 )
 		}
 		
 		## MCMC algorithm
@@ -172,8 +172,8 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 				accept[i] = FALSE
 			}
 		}
-		
-		self$coef_ = base::apply( draw[as.integer(n_mcmc_drawn/2):n_mcmc_drawn,] , 2 , base::mean )
+		mdraw = matrix( draw[as.integer(n_mcmc_drawn/2):n_mcmc_drawn,] , ncol = ncol(draw) )
+		self$coef_ = base::apply( mdraw , 2 , base::mean )
 		
 		## Update information
 		self$info_$draw         = draw

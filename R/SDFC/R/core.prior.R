@@ -85,7 +85,7 @@ ginv = function( X , tol = base::sqrt(.Machine$double.eps) )
 #' S = matrix( base::c(1,-0.5,-0.5,1) , nrow = 2 )
 #' p = MultivariateNormal$new(m,S)
 #' X = p$rvs(1000)
-#' pdf = p$pdf(X)
+#' density = p$density(X)
 #' 
 #' @export
 MultivariateNormal = R6::R6Class( "MultivariateNormal" ,
@@ -235,13 +235,13 @@ MultivariateNormal = R6::R6Class( "MultivariateNormal" ,
 	},
 	##}}}
 	
-	## pdf {{{
+	## density {{{
 	
 	#' @description
     #' Probability density function, this function works with degenerate distribution
-    #' @param X Compute pdf at values of matrix X
-	#' @return pdf The PDF
-	pdf = function(X)
+    #' @param X Compute density at values of matrix X
+	#' @return density The PDF
+	density = function(X)
 	{
 		X  = matrix( X , ncol = length(self$mean) )
 		Xm = base::t( base::t(X) - self$mean )
@@ -253,15 +253,15 @@ MultivariateNormal = R6::R6Class( "MultivariateNormal" ,
 	},
 	##}}}
 	
-	## logpdf ##{{{
+	## logdensity ##{{{
 	
 	#' @description
     #' Log of probability density function
-    #' @param X Compute log of pdf at values of matrix X
-	#' @return logpdf Log of the PDF
-	logpdf = function(X)
+    #' @param X Compute log of density at values of matrix X
+	#' @return logdensity Log of the PDF
+	logdensity = function(X)
 	{
-		return(base::log(self$pdf(X)))
+		return(base::log(self$density(X)))
 	},
 	##}}}
 	

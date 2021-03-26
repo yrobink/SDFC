@@ -145,7 +145,7 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 		
 		draw[1,]      = init
 		lll_current   = -private$negloglikelihood(draw[1,])
-		prior_current = base::sum( prior$logpdf(draw[1,]) )
+		prior_current = base::sum( prior$logdensity(draw[1,]) )
 		p_current     = prior_current + lll_current
 		
 		for( i in 2:n_mcmc_drawn )
@@ -154,7 +154,7 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 			
 			## Likelihood and probability of new points
 			lll_next   = - private$negloglikelihood(draw[i,])
-			prior_next = base::sum( prior$logpdf(draw[i,]) )
+			prior_next = base::sum( prior$logdensity(draw[i,]) )
 			p_next     = prior_next + lll_next
 			
 			## Accept or not ?

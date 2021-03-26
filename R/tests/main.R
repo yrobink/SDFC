@@ -1,8 +1,20 @@
 
-#############################
-## Yoann Robin             ##
-## yoann.robin.k@gmail.com ##
-#############################
+## Copyright(c) 2020 Yoann Robin
+## 
+## This file is part of SDFC.
+## 
+## SDFC is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+## 
+## SDFC is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+## 
+## You should have received a copy of the GNU General Public License
+## along with SDFC.  If not, see <https://www.gnu.org/licenses/>.
 
 base::rm( list = base::ls() )
 
@@ -257,6 +269,7 @@ SDFCLawTest = R6::R6Class( "SDFCLawTest" , ##{{{
 		
 		if( length(self$coef_) > 0 )
 		{
+			self$kwargs[["n_mcmc_drawn"]] = 100
 			if( length(self$coef_) == 1 )
 			{
 				self$kwargs[["prior"]] = ROOPSD::Normal$new( self$coef_ , 0.1 )
@@ -294,7 +307,7 @@ SDFCLawTest = R6::R6Class( "SDFCLawTest" , ##{{{
 		for( i in 1:nrow(indexes) )
 		{
 			idx = indexes[i,]
-			test = try(self$testXXX( idx ),silent=TRUE)
+			test = try(self$testXXX( idx , method ),silent=TRUE)
 			str_idx = gsub(", ","",toString(idx))
 			if( "try-error" %in% class(test) )
 			{
@@ -358,44 +371,17 @@ NormalTest = R6::R6Class( "NormalTest" , ##{{{
 ## main ##
 ##########
 
-nt = NormalTest$new()
-nt$run_all()
-
-
-## Build data
-#n_samples = 2500
-#data = SDFC::dataset(n_samples)
-#coef_ = base::c(0.5,2.,0.5,-0.2)
-#loc   = coef_[1] + coef_[2] * data$X_loc
-#scale = base::exp( coef_[3] + coef_[4] * data$X_scale )
-#Y     = stats::rnorm( n = n_samples , mean = loc , sd = scale )
-#
-### And now the script
-#kwargs = list( c_loc = data$X_loc , c_scale = data$X_scale , l_scale = SDFC::ULExponential$new() )
-
-#lhs = LHS$new( base::c("loc","scale") , 2500 )
-#rhs = RHS$new(lhs)
-#base::do.call( rhs$build , kwargs )
-#rhs$coef_ = coef_
-#plt$new_screen( ncol = 2 )
-#plot( loc , rhs$lhs$values$loc , type = "p" )
-#plot( scale , rhs$lhs$values$scale , type = "p" )
-
-
-#law = SDFC::Normal$new( "mle" )
-#law$fit( Y , c_loc = data$X_loc , c_scale = data$X_scale , l_scale = SDFC::ULExponential$new() )
-#prior = SDFC::MultivariateNormal$new( law$coef_ , law$cov )
-
-#law = SDFC::Normal$new( "bayesian" )
-#law$fit( Y , c_loc = data$X_loc , c_scale = data$X_scale , l_scale = SDFC::ULExponential$new() , prior = prior , n_mcmc_drawn = 100 )
-
-
-#plt$new_screen( ncol = 2 )
-#plot( loc   , law$loc , type = "p" )
-#plot( scale , law$scale , type = "p" )
+for( nt in list(NormalTest) )
+{
+	t = nt$new()
+	t$run_all( "MLE" )
+	base::cat("\n")
+	t$run_all( "bayesian" )
+	base::cat("\n")
+}
 
 
 ## End
 plt$wait()
-print("Done")
+base::cat("Done\n")
 

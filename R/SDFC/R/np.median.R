@@ -22,7 +22,7 @@
 #' Compute the median with covariates (in fact just call quantile)
 #'
 #' @param Y  [vector] Dataset to fit
-#' @param c_Y  [vector or NULL] Covariate
+#' @param c_Y  [vector or NA] Covariate
 #' @param value  [bool] if TRUE return variance, else return coefficients of the fit
 #' @param ... Arguments of stats::median used only if c_Y is NULL
 #'
@@ -39,9 +39,9 @@
 #' med = SDFC::median( Y , c_Y = X0 )
 #' 
 #' @export
-median = function( Y , c_Y = NULL , value = TRUE , ... )
+median = function( Y , c_Y = NA , value = TRUE , ... )
 {
-	if( is.null(c_Y) )
+	if( base::any(is.na(c_Y)) )
 	{
 		kwargs = list(...)
 		kwargs[["x"]] = Y

@@ -22,7 +22,7 @@
 #' Compute the mean with covariates and link function.
 #'
 #' @param Y   [vector] Dataset to fit
-#' @param c_Y [vector or NULL] Covariate
+#' @param c_Y [vector or NA] Covariate
 #' @param link  [SDFC::UnivariateLink] link function, default is identity
 #' @param value  [bool] if TRUE return mean, else return coefficients of the fit
 #' @param ... Arguments of base::mean used only if c_Y is NULL
@@ -40,11 +40,11 @@
 #' m = SDFC::mean( Y , c_Y = X0 )
 #' 
 #' @export
-mean = function( Y , c_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE , ... )
+mean = function( Y , c_Y = NA , link = SDFC::ULIdentity$new() , value = TRUE , ... )
 {
 	out  = NULL
 	coef = NULL
-	if( is.null(c_Y) )
+	if( base::any(is.na(c_Y)) )
 	{
 		kwargs  = list(...)
 		kwargs[["x"]] = Y

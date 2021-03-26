@@ -23,7 +23,7 @@
 #'
 #' @param Y  [vector] Dataset to fit
 #' @param ltau [vector] vector of quantiles to fit
-#' @param c_Y  [vector or NULL] Covariate
+#' @param c_Y  [vector or NA] Covariate
 #' @param value  [bool] if TRUE return variance, else return coefficients of the fit
 #' @param ... Arguments of stats::quantile used only if c_Y is NULL
 #'
@@ -40,11 +40,11 @@
 #' q = SDFC::quantile( Y , ltau = base::c(0.25,0.5,0.75) , c_Y = X0 )
 #' 
 #' @export
-quantile = function( Y , ltau , c_Y = NULL , value = TRUE , ... )
+quantile = function( Y , ltau , c_Y = NA , value = TRUE , ... )
 {
 	out  = NULL
 	coef = NULL
-	if( is.null(c_Y) )
+	if( base::any(is.na(c_Y)) )
 	{
 		kwargs = list(...)
 		kwargs[["x"]] = Y

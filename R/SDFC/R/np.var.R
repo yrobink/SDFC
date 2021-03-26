@@ -22,7 +22,7 @@
 #' Compute the variance with covariates and link function
 #'
 #' @param Y   [vector] Dataset to fit
-#' @param c_Y [vector or NULL] Covariate
+#' @param c_Y [vector or NA] Covariate
 #' @param m_Y [vector or NULL] mean already (or not) estimated. If NULL, m = base::mean(Y) is called
 #' @param link  [SDFC::UnivariateLink] link function, default is identity
 #' @param value  [bool] if TRUE return variance, else return coefficients of the fit
@@ -44,12 +44,12 @@
 #' v = SDFC::var( Y , c_Y = X1 , m_Y = m ) ## Now variance
 #' 
 #' @export
-var = function( Y , c_Y = NULL , m_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE , ... )
+var = function( Y , c_Y = NA , m_Y = NULL , link = SDFC::ULIdentity$new() , value = TRUE , ... )
 {
 	out  = NULL
 	coef = NULL
 	m_Y  = if( is.null(m_Y) ) base::mean(Y) else as.vector(m_Y)
-	if( is.null(c_Y) )
+	if( base::any(is.na(c_Y)) )
 	{
 		kwargs = list(...)
 		kwargs[["x"]] = Y - m_Y

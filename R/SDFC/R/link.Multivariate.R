@@ -274,7 +274,7 @@ MLLinear = R6::R6Class( "MLLinear" ,
 		base::do.call( super$initialize , kwargs )
 		
 		self$design_ = matrix( 1 , nrow = self$n_samples , ncol = 1 )
-		if( !is.null(private$.c) )
+		if( !base::any(is.na(private$.c)) )
 			self$design_ = base::cbind( self$design_ , private$.c )
 		private$.n_features = base::ncol(self$design_)
 		if( is.null(private$.l) )
@@ -299,9 +299,6 @@ MLLinear = R6::R6Class( "MLLinear" ,
 	#' @return The value
 	jacobian = function( coef , X )
 	{
-		jac = matrix( 0 , nrow = self$n_samples , ncol = self$n_features )
-		jac[,1] = 1
-		jac[,2:self$n_features] = X
 		out = private$.l$jacobian( matrix( private$linear_transform(coef,X) , ncol = 1 ) )
 		out = as.vector(out) * self$design_
 		return(out)

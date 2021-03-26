@@ -148,7 +148,7 @@ RHS = R6::R6Class( "RHS" ,
 			else
 			{
 				## No covariate, two choices : lhs is 1d or fixed
-				self$c_global[[lhs]] = 0
+				self$c_global[[lhs]] = NA
 				if( !is.null(kwargs[[base::paste0("f_",lhs)]]) )
 				{
 					self$s_global[[lhs]]  = 0
@@ -157,6 +157,7 @@ RHS = R6::R6Class( "RHS" ,
 				else
 				{
 					self$s_global[[lhs]]  = 1
+					self$lhs$fixed[[lhs]] = FALSE
 				}
 			}
 			

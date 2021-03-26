@@ -14,3 +14,4 @@ R/*.tar.gz
 documentation/TeX/logs/*
 *__pycache__*
 python/tests/*.log
+*.Rcheck

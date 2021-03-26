@@ -420,15 +420,19 @@ MLTensor = R6::R6Class( "MLTensor" ,
 	jacobian = function( coef , X )
 	{
 		jac = array( 0 , dim = base::c( base::sum(as.numeric(private$.s_p) > 0) , self$n_samples , self$n_features ) )
-		
 		ib = 1
 		ie = 1
+		ii = 1
 		for( i in 1:length(X) )
 		{
-			ie = ie + private$.s_p[[i]] - 1
-			jac[i,,ib:ie] = private$.l_p[[i]]$jacobian( coef[ib:ie] , X[[i]] )
-			ib = ib + private$.s_p[[i]]
-			ie = ie + 1
+			if( private$.s_p[[i]] > 0 )
+			{
+				ie = ie + private$.s_p[[i]] - 1
+				jac[ii,,ib:ie] = private$.l_p[[i]]$jacobian( coef[ib:ie] , X[[i]] )
+				ib = ib + private$.s_p[[i]]
+				ie = ie + 1
+				ii = ii + 1
+			}
 		}
 		
 		return(jac)

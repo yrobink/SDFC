@@ -301,7 +301,6 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 		{
 			base::do.call( private$fit_Bayesian , kwargs )
 		}
-		
 	}
 	##}}}
 	

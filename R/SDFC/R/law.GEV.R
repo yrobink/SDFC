@@ -174,7 +174,65 @@ GEV = R6::R6Class( "GEV" ,
 	
 	fit_lmoments_experimental = function() ##{{{
 	{
+		## First step, find lmoments
+		c_Y  = matrix( 1 , nrow = length(private$.Y) )
+		rank = 1
+		for( c in private$.rhs$c_global )
+		{
+			if( is.matrix(c) )
+			{
+				for( i in 1:ncol(c) )
+				{
+					c_Y2  = base::cbind(c_Y,c)
+					rank2 = base::qr(c_Y2)$rank
+					if( rank2 > rank )
+					{
+						c_Y   = c_Y2
+						rank = rank2
+					}
+				}
+			}
+		}
+		if( rank == 1 )
+		{
+			c_Y = NULL
+		}
+		else
+		{
+			c_Y = c_Y[,2:rank]
+		}
+		lmom = SDFC::lmoments( private$.Y , c_Y )
 		
+		## Now find loc/scale/shape
+		tau3  = lmom[,3] / lmom[,2]
+		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
+		shape = - 7.8590 * co - 2.9554 * co^2
+		
+		## Find scale
+		gshape = base::gamma( 1 - shape )
+		scale  = - lmom[,2] * shape / ( gshape * ( 1 - 2^shape ) )
+		
+		if( !(base::min(scale) > 0 ) )
+		{
+			idx = !(scale > 0)
+			scale[idx] = 1e-3
+		}
+		
+		## Find loc
+		loc = lmom[,1] - scale * ( gshape - 1 ) / shape
+		
+		## Find coefs
+		coefs = base::c()
+		for( p in base::c("loc","scale","shape") )
+		{
+			if( !private$.rhs$lhs$fixed[[p]] )
+			{
+				X = self$rhs$c_global[[p]]
+				coefs = base::c(coefs,SDFC::mean( private$.Y , X , private$.rhs$l_global$linkc(p)$l , value = FALSE ))
+			}
+		}
+		
+		self$coef_ = coefs
 	},
 	##}}}
 	

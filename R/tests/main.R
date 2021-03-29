@@ -409,10 +409,11 @@ GEVTest = R6::R6Class( "GEVTest" , ##{{{
 #}
 
 t = GEVTest$new()
-t$run_all("lmoments")
+#t$run_all("lmoments")
 
-#t$testXXX( base::c(0,0,0) , "moments" )
 
+t$testXXX( base::c(0,0,0) , "lmoments-experimental" )
+print(t$law$coef_)
 ## End
 plt$wait()
 base::cat("Done\n")

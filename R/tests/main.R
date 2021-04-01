@@ -300,10 +300,11 @@ SDFCLawTest = R6::R6Class( "SDFCLawTest" , ##{{{
 			idxkwargs = base::c( idxkwargs , list(0:2) )
 		}
 		indexes = do.call( expand.grid , idxkwargs )
+		print(indexes)
 		colnames(indexes) = NULL
 		rownames(indexes) = NULL
 		indexes = as.matrix(indexes)
-		indexes = indexes[,base::rev(1:ncol(indexes))]
+		indexes = matrix( indexes[,base::rev(1:ncol(indexes))] , ncol = ncol(indexes) )
 		
 		for( i in 1:nrow(indexes) )
 		{
@@ -388,6 +389,32 @@ GEVTest = R6::R6Class( "GEVTest" , ##{{{
 )
 ##}}}
 
+ExponentialTest = R6::R6Class( "ExponentialTest" , ##{{{
+	
+	inherit = SDFCLawTest,
+	
+	public = list(
+	
+	initialize = function( n_samples = 2500 )
+	{
+		kwargs = list( n_samples = n_samples,
+		               name    = "Exponential",
+		               sd_law  = SDFC::Exponential,
+		               params  = base::c("scale"),
+		               shape_p = FALSE
+		)
+		base::do.call( super$initialize , kwargs )
+	},
+	
+	rvs = function()
+	{
+		return(stats::rexp( length(self$scale) , rate = 1 / self$scale ))
+	}
+	
+	)
+)
+##}}}
+
 
 ###############
 ## Functions ##
@@ -399,19 +426,19 @@ GEVTest = R6::R6Class( "GEVTest" , ##{{{
 
 l_test = list(NormalTest,GEVTest)
 
-for( nt in l_test )
-{
-	t = nt$new()
-	t$run_all( "MLE" )
-	base::cat("\n")
-	t$run_all( "bayesian" )
-	base::cat("\n")
-}
+#for( nt in l_test )
+#{
+#	t = nt$new()
+#	t$run_all( "MLE" )
+#	base::cat("\n")
+#	t$run_all( "bayesian" )
+#	base::cat("\n")
+#}
 
 #set.seed(42)
 
-#t = GEVTest$new(250)
-#t$run_all("bayesian")
+t = ExponentialTest$new()
+t$run_all("mle")
 
 #t$testXXX( base::c(1,0,0) , "bayesian" )
 #print(round(t$law$coef_,2))

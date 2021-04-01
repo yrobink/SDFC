@@ -62,14 +62,13 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 		p_coef = coef_
 		n_it = 1
 		
-		while( !(is.finite(private$negloglikelihood(p_coef)) ) )# && base::all(is.finite(private$gradient_nlll(p_coef)))) )
+		while( !(is.finite(private$negloglikelihood(p_coef)) ) && !base::all(is.finite(private$gradient_nlll(p_coef))) )
 		{
 			if( n_it %% 100 == 0 ) scale = scale * 2
 			
 			p_coef = coef_ + stats::rnorm( n = length(coef_) , mean = 0 , sd = scale )
 			n_it = n_it + 1
 		}
-		
 		self$coef_ = p_coef
 	},
 	##}}}
@@ -158,7 +157,9 @@ AbstractLaw = R6::R6Class( "AbstractLaw" ,
 			p_next     = prior_next + lll_next
 			
 			## Accept or not ?
-			p_accept = base::exp( p_next - p_current )
+			p_accept = base::exp( p_next  - p_current )
+			if( !is.finite(p_accept) )
+				p_accept = 0
 			if( stats::runif(1) < p_accept )
 			{
 				lll_current   = lll_next

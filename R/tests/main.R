@@ -224,7 +224,7 @@ SDFCLawTest = R6::R6Class( "SDFCLawTest" , ##{{{
 		}
 		if( code == 1 )
 		{
-			coef_      = -coef_[1]
+			coef_      = -coef_[2]
 			self$shape = base::rep( coef_[1] , self$n_samples )
 			self$coef_ = base::c(self$coef_,coef_)
 		}
@@ -397,23 +397,27 @@ GEVTest = R6::R6Class( "GEVTest" , ##{{{
 ## main ##
 ##########
 
-#l_test = list(NormalTest,GEVTest)
-#
-#for( nt in l_test )
-#{
-#	t = nt$new()
-#	t$run_all( "MLE" )
-#	base::cat("\n")
-#	t$run_all( "bayesian" )
-#	base::cat("\n")
-#}
+l_test = list(NormalTest,GEVTest)
 
-t = GEVTest$new()
-#t$run_all("lmoments")
+for( nt in l_test )
+{
+	t = nt$new()
+	t$run_all( "MLE" )
+	base::cat("\n")
+	t$run_all( "bayesian" )
+	base::cat("\n")
+}
+
+#set.seed(42)
+
+#t = GEVTest$new(250)
+#t$run_all("bayesian")
+
+#t$testXXX( base::c(1,0,0) , "bayesian" )
+#print(round(t$law$coef_,2))
+#print(t$coef_)
 
 
-t$testXXX( base::c(0,0,0) , "lmoments-experimental" )
-print(t$law$coef_)
 ## End
 plt$wait()
 base::cat("Done\n")

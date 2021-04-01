@@ -203,6 +203,9 @@ GEV = R6::R6Class( "GEV" ,
 		}
 		lmom = SDFC::lmoments( private$.Y , c_Y )
 		
+		if( !is.matrix(lmom) )
+			lmom = matrix( lmom , ncol = 4 , nrow = 1 )
+		
 		## Now find loc/scale/shape
 		tau3  = lmom[,3] / lmom[,2]
 		co    = 2. / ( 3. + tau3 ) - base::log(2) / base::log(3)
@@ -223,12 +226,13 @@ GEV = R6::R6Class( "GEV" ,
 		
 		## Find coefs
 		coefs = base::c()
+		fpar = list( loc = loc , scale = scale , shape = shape )
 		for( p in base::c("loc","scale","shape") )
 		{
 			if( !private$.rhs$lhs$fixed[[p]] )
 			{
-				X = self$rhs$c_global[[p]]
-				coefs = base::c(coefs,SDFC::mean( private$.Y , X , private$.rhs$l_global$linkc(p)$l , value = FALSE ))
+				X = private$.rhs$c_global[[p]]
+				coefs = base::c(coefs,SDFC::mean( fpar[[p]] , X , private$.rhs$l_global$linkc(p)$l , value = FALSE ))
 			}
 		}
 		
@@ -266,13 +270,28 @@ GEV = R6::R6Class( "GEV" ,
 		
 		if( !base::all(self$scale > 0) )
 			return(Inf)
-		if( !base::all(is.finite(self$scale)) )
+		
+		## Remove exponential case
+		zero_shape = ( base::abs(self$shape) < 1e-10 )
+		shape = self$shape
+		if( base::any(zero_shape) )
+			shape[zero_shape] = 1e-10
+		
+		loc   = self$loc
+		scale = self$scale
+		
+		##
+		Z = 1 + shape * ( private$.Y - loc ) / scale
+		
+		if( !base::all(Z > 0) )
 			return(Inf)
 		
-		scale2 = self$scale^2
+		res = base::sum( ( 1. + 1. / shape ) * base::log(Z) + Z^( - 1. / shape ) + base::log(scale) )
 		
-		nlll = base::sum(base::log(scale2)) / 2 + base::sum( (private$.Y - self$loc)^2 / scale2 ) / 2
-		return(nlll)
+		if( is.finite(res) )
+			return(res)
+		
+		return(Inf)
 	},
 	##}}}
 	
@@ -282,11 +301,27 @@ GEV = R6::R6Class( "GEV" ,
 		
 		loc   = self$loc
 		scale = self$scale
-		Z     = (private$.Y - loc) / scale
+		shape = self$shape
+		shc   = 1 + 1 / shape
+		Z     = ( private$.Y - loc ) / scale
+		ZZ    = 1 + shape * Z
+		ZZi   = ZZ^( - 1 / shape )
+		ZZim1 = ZZ^( - shc )
+		
+		T0 = ZZim1 / scale - shc * shape / ( ZZ * scale )
+		T1 = 1 / scale + ZZim1 * Z / scale - shc * shape * Z / ( ZZ * scale )
+		T2 = base::log(ZZ) * ZZi / shape^2 - ZZim1 * Z / shape - base::log(ZZ) / shape^2 + shc * Z / ZZ
+		
+		for( T in list(T0,T1,T2) )
+		{
+			if( !base::all(is.finite(T)) )
+			{
+				return( numeric(length(self$coef_)) + NA )
+			}
+		}
+		
 		
 		## Compute gradient
-		T0  = - Z / scale
-		T1  = - private$.Y * Z / scale^2 + loc * Z / scale^2 + 1 / scale
 		jac = private$.rhs$lhs$jacobian
 		p   = 1
 		if( !private$.rhs$lhs$fixed[["loc"]] )
@@ -297,6 +332,10 @@ GEV = R6::R6Class( "GEV" ,
 		if( !private$.rhs$lhs$fixed[["scale"]] )
 		{
 			jac[p,,] = jac[p,,] * as.vector(T1)
+		}
+		if( !private$.rhs$lhs$fixed[["shape"]] )
+		{
+			jac[p,,] = jac[p,,] * as.vector(T2)
 		}
 		
 		return( base::apply( jac , 3 , base::sum ) )

@@ -300,7 +300,6 @@ SDFCLawTest = R6::R6Class( "SDFCLawTest" , ##{{{
 			idxkwargs = base::c( idxkwargs , list(0:2) )
 		}
 		indexes = do.call( expand.grid , idxkwargs )
-		print(indexes)
 		colnames(indexes) = NULL
 		rownames(indexes) = NULL
 		indexes = as.matrix(indexes)
@@ -415,6 +414,32 @@ ExponentialTest = R6::R6Class( "ExponentialTest" , ##{{{
 )
 ##}}}
 
+GammaTest = R6::R6Class( "GammaTest" , ##{{{
+	
+	inherit = SDFCLawTest,
+	
+	public = list(
+	
+	initialize = function( n_samples = 2500 )
+	{
+		kwargs = list( n_samples = n_samples,
+		               name    = "Gamma",
+		               sd_law  = SDFC::Gamma,
+		               params  = base::c("scale","shape"),
+		               shape_p = TRUE
+		)
+		base::do.call( super$initialize , kwargs )
+	},
+	
+	rvs = function()
+	{
+		return(stats::rgamma( length(self$scale) , shape = self$shape , rate = 1. / self$scale ))
+	}
+	
+	)
+)
+##}}}
+
 
 ###############
 ## Functions ##
@@ -424,23 +449,30 @@ ExponentialTest = R6::R6Class( "ExponentialTest" , ##{{{
 ## main ##
 ##########
 
-l_test = list(NormalTest,GEVTest)
-
-#for( nt in l_test )
-#{
-#	t = nt$new()
-#	t$run_all( "MLE" )
-#	base::cat("\n")
-#	t$run_all( "bayesian" )
-#	base::cat("\n")
-#}
+if( FALSE )
+{
+	l_test     = list(NormalTest,GEVTest,ExponentialTest,GammaTest)
+	l_nsamples = list(2500,250,2500,2500)
+	
+	for( i in 1:4 )
+	{
+		nt = l_test[[i]]
+		n_samples = l_nsamples[[i]]
+		
+		t = nt$new(n_samples)
+		t$run_all( "MLE" )
+		base::cat("\n")
+		t$run_all( "bayesian" )
+		base::cat("\n")
+	}
+}
 
 #set.seed(42)
 
-t = ExponentialTest$new()
-t$run_all("mle")
+#t = GammaTest$new()
+#t$run_all("bayesian")
 
-#t$testXXX( base::c(1,0,0) , "bayesian" )
+#t$testXXX( base::c(1,1) , "mle" )
 #print(round(t$law$coef_,2))
 #print(t$coef_)
 

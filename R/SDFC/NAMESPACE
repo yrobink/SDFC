@@ -3,6 +3,7 @@
 export(AbstractLaw)
 export(Exponential)
 export(GEV)
+export(Gamma)
 export(LHS)
 export(MLConstant)
 export(MLLinear)

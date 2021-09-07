@@ -244,6 +244,20 @@ class GEV(AbstractLaw):
 		self.coef_ = coefs
 	##}}}
 	
+	def _fit_last_chance(self): ##{{{
+		il_b  = 0
+		il_e  = il_b + self._rhs.s_global[0]
+		isc_b = il_e
+		isc_e = isc_b + self._rhs.s_global[1]
+		ish_b = isc_e
+		ish_e = ish_b + self._rhs.s_global[2]
+		coefs = np.zeros(ish_e)
+		if not self._lhs.is_fixed("scale"):
+			coefs[isc_b] = 0.5
+		if not self._lhs.is_fixed("shape"):
+			coefs[ish_b] = -0.1
+		self.coef_ = coefs
+	##}}}
 	
 	def _special_fit( self ):##{{{
 		if self.method == "moments":
@@ -252,11 +266,16 @@ class GEV(AbstractLaw):
 			self._fit_lmoments()
 		elif self.method == "lmoments-experimental":
 			self._fit_lmoments_experimental()
+		elif self.method == "last-chance":
+			self._fit_last_chance()
 	##}}}
 	
 	def _init_MLE( self ): ##{{{
 		if self._rhs.l_global._special_fit_allowed:
-			self._fit_lmoments_experimental()
+			try:
+				self._fit_lmoments_experimental()
+			except:
+				self._fit_last_chance()
 		else:
 			self.coef_ = self._rhs.l_global.valid_point( self )
 	##}}}

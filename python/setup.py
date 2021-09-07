@@ -173,7 +173,7 @@ list_packages = [
 setup(
 	name = "SDFC" ,
 	description = "Statistical Distribution Fit with Covariates" ,
-	version = "0.6.0r0" ,
+	version = "0.6.0r1" ,
 	author = "Yoann Robin" ,
 	author_email = "yoann.robin.k@gmail.com" ,
 	license = "GNU-GPL3" ,

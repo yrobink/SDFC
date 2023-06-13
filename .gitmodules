@@ -1,0 +1,6 @@
+[submodule "SDFC-python"]
+	path = SDFC-python
+	url = https://github.com/yrobink/SDFC-python
+[submodule "SDFC-R"]
+	path = SDFC-R
+	url = https://github.com/yrobink/SDFC-R
